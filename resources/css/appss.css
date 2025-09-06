@@ -1,0 +1,18 @@
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(to right, #111111, #2e2e2e, #2e2e2e);
+}
+
+#logo {
+    width: 30px;
+    height: 30px;
+}
+
+nav {
+    background: linear-gradient(to bottom, #ff9f01, #f8d398);
+}
+
+.formbg {
+    background: linear-gradient(to right, #ff9f01, #f8d398, #f8d398);
+}
+  

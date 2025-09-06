@@ -1,0 +1,22 @@
+// Test commands for artisan tinker
+$controller = new App\Http\Controllers\AttendanceController();
+
+// Test daily analytics
+$request = new Illuminate\Http\Request(['period' => 'daily']);
+$response = $controller->getAnalyticsData($request);
+echo "Daily Analytics Response: \n";
+echo $response->getContent();
+echo "\n\n";
+
+// Test real-time data
+$request = new Illuminate\Http\Request();
+$response = $controller->getRealTimeData($request);
+echo "Real-time Data Response: \n";
+echo $response->getContent();
+echo "\n\n";
+
+// Test weekly analytics
+$request = new Illuminate\Http\Request(['period' => 'weekly']);
+$response = $controller->getAnalyticsData($request);
+echo "Weekly Analytics Response: \n";
+echo $response->getContent();

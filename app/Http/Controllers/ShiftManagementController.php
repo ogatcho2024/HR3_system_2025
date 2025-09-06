@@ -1,0 +1,855 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\ShiftTemplate;
+use App\Models\ShiftAssignment;
+use App\Models\Employee;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
+
+class ShiftManagementController extends Controller
+{
+    /**
+     * Display the shift management page
+     */
+    public function index(Request $request)
+    {
+        $shiftTemplates = ShiftTemplate::active()
+            ->orderBy('name')
+            ->get();
+            
+        // Get the active tab from the request, default to 'overview'
+        $activeTab = $request->get('tab', 'overview');
+        
+        // Validate that the tab is one of the allowed tabs
+        $allowedTabs = ['overview', 'shifts', 'schedule', 'assignments', 'requests'];
+        if (!in_array($activeTab, $allowedTabs)) {
+            $activeTab = 'overview';
+        }
+        
+        // Calculate real statistics for overview
+        $stats = [
+            'total_shifts' => $shiftTemplates->count(),
+            'active_shifts' => $shiftTemplates->where('status', 'active')->count(),
+            'total_assigned_employees' => $shiftTemplates->sum('assigned_employees_count'),
+            'pending_requests' => 0, // This would come from a requests table
+            'coverage_rate' => $this->calculateCoverageRate($shiftTemplates),
+        ];
+        
+        // Get recent activities (mock data for now - would come from activity log)
+        $recentActivities = $this->getRecentActivities();
+        
+        // Get employee assignments (real data from database)
+        $employeeAssignments = $this->getEmployeeAssignments();
+        
+        // Get shift calendar data for the current week
+        $currentWeekStart = Carbon::now()->startOfWeek();
+        $currentWeekEnd = Carbon::now()->endOfWeek();
+        $shiftCalendarData = $this->getShiftCalendarData($currentWeekStart, $currentWeekEnd);
+            
+        return view('workScheduleShiftManagement', compact('shiftTemplates', 'activeTab', 'stats', 'recentActivities', 'employeeAssignments', 'shiftCalendarData'));
+    }
+
+    /**
+     * Get shift templates (API endpoint)
+     */
+    public function getShiftTemplates()
+    {
+        $shiftTemplates = ShiftTemplate::active()
+            ->orderBy('name')
+            ->get()
+            ->map(function ($shift) {
+                return [
+                    'id' => $shift->id,
+                    'name' => $shift->name,
+                    'start_time' => $shift->start_time,
+                    'end_time' => $shift->end_time,
+                    'time_range' => $shift->time_range,
+                    'days' => $shift->days,
+                    'formatted_days' => $shift->formatted_days,
+                    'department' => $shift->department,
+                    'description' => $shift->description,
+                    'status' => $shift->status,
+                    'assigned_employees_count' => $shift->assigned_employees_count
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $shiftTemplates
+        ]);
+    }
+
+    /**
+     * Store a new shift template
+     */
+    public function store(Request $request)
+    {
+        // Basic validation rules
+        $rules = [
+            'name' => 'required|string|max:255|unique:shift_templates,name',
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i',
+            'schedule_type' => 'required|in:weekly,dates',
+            'department' => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:1000'
+        ];
+        
+        // Conditional validation based on schedule type
+        if ($request->schedule_type === 'weekly') {
+            $rules['days'] = 'required|array|min:1';
+            $rules['days.*'] = 'in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday';
+        } elseif ($request->schedule_type === 'dates') {
+            $rules['selected_dates'] = 'required|array|min:1';
+            $rules['selected_dates.*'] = 'date_format:Y-m-d|after_or_equal:today';
+        }
+        
+        $validator = Validator::make($request->all(), $rules);
+
+        // Custom validation for time comparison
+        if (!$validator->fails()) {
+            $startTime = \Carbon\Carbon::createFromFormat('H:i', $request->start_time);
+            $endTime = \Carbon\Carbon::createFromFormat('H:i', $request->end_time);
+            
+            // For night shifts (end time is next day), this is allowed
+            // Only validate that they are not the exact same time
+            if ($startTime->format('H:i') === $endTime->format('H:i')) {
+                $validator->after(function ($validator) {
+                    $validator->errors()->add('end_time', 'The end time must be different from the start time.');
+                });
+            }
+        }
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $shiftTemplate = ShiftTemplate::create([
+                'name' => $request->name,
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+                'days' => $request->schedule_type === 'weekly' ? $request->days : [],
+                'schedule_type' => $request->schedule_type,
+                'selected_dates' => $request->schedule_type === 'dates' ? $request->selected_dates : [],
+                'department' => $request->department,
+                'description' => $request->description,
+                'status' => 'active'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Shift template created successfully',
+                'data' => [
+                    'id' => $shiftTemplate->id,
+                    'name' => $shiftTemplate->name,
+                    'start_time' => $shiftTemplate->start_time,
+                    'end_time' => $shiftTemplate->end_time,
+                    'time_range' => $shiftTemplate->time_range,
+                    'days' => $shiftTemplate->days,
+                    'formatted_days' => $shiftTemplate->formatted_days,
+                    'schedule_type' => $shiftTemplate->schedule_type ?? 'weekly',
+                    'selected_dates' => $shiftTemplate->selected_dates ?? [],
+                    'department' => $shiftTemplate->department,
+                    'description' => $shiftTemplate->description,
+                    'status' => $shiftTemplate->status,
+                    'assigned_employees_count' => $shiftTemplate->assigned_employees_count
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error creating shift template: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating shift template. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get a specific shift template
+     */
+    public function show($id)
+    {
+        $shiftTemplate = ShiftTemplate::find($id);
+
+        if (!$shiftTemplate) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Shift template not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $shiftTemplate->id,
+                'name' => $shiftTemplate->name,
+                'start_time' => $shiftTemplate->start_time,
+                'end_time' => $shiftTemplate->end_time,
+                'days' => $shiftTemplate->days,
+                'department' => $shiftTemplate->department,
+                'description' => $shiftTemplate->description,
+                'status' => $shiftTemplate->status
+            ]
+        ]);
+    }
+
+    /**
+     * Update a shift template
+     */
+    public function update(Request $request, $id)
+    {
+        $shiftTemplate = ShiftTemplate::find($id);
+
+        if (!$shiftTemplate) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Shift template not found'
+            ], 404);
+        }
+
+        // Basic validation rules
+        $rules = [
+            'name' => 'required|string|max:255|unique:shift_templates,name,' . $id,
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i',
+            'schedule_type' => 'required|in:weekly,dates',
+            'department' => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:1000'
+        ];
+        
+        // Conditional validation based on schedule type
+        if ($request->schedule_type === 'weekly') {
+            $rules['days'] = 'required|array|min:1';
+            $rules['days.*'] = 'in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday';
+        } elseif ($request->schedule_type === 'dates') {
+            $rules['selected_dates'] = 'required|array|min:1';
+            $rules['selected_dates.*'] = 'date_format:Y-m-d|after_or_equal:today';
+        }
+        
+        $validator = Validator::make($request->all(), $rules);
+
+        // Custom validation for time comparison
+        if (!$validator->fails()) {
+            $startTime = \Carbon\Carbon::createFromFormat('H:i', $request->start_time);
+            $endTime = \Carbon\Carbon::createFromFormat('H:i', $request->end_time);
+            
+            // For night shifts (end time is next day), this is allowed
+            // Only validate that they are not the exact same time
+            if ($startTime->format('H:i') === $endTime->format('H:i')) {
+                $validator->after(function ($validator) {
+                    $validator->errors()->add('end_time', 'The end time must be different from the start time.');
+                });
+            }
+        }
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $shiftTemplate->update([
+                'name' => $request->name,
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+                'days' => $request->schedule_type === 'weekly' ? $request->days : [],
+                'schedule_type' => $request->schedule_type,
+                'selected_dates' => $request->schedule_type === 'dates' ? $request->selected_dates : [],
+                'department' => $request->department,
+                'description' => $request->description
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Shift template updated successfully',
+                'data' => [
+                    'id' => $shiftTemplate->id,
+                    'name' => $shiftTemplate->name,
+                    'start_time' => $shiftTemplate->start_time,
+                    'end_time' => $shiftTemplate->end_time,
+                    'time_range' => $shiftTemplate->time_range,
+                    'days' => $shiftTemplate->days,
+                    'formatted_days' => $shiftTemplate->formatted_days,
+                    'schedule_type' => $shiftTemplate->schedule_type ?? 'weekly',
+                    'selected_dates' => $shiftTemplate->selected_dates ?? [],
+                    'department' => $shiftTemplate->department,
+                    'description' => $shiftTemplate->description,
+                    'status' => $shiftTemplate->status,
+                    'assigned_employees_count' => $shiftTemplate->assigned_employees_count
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error updating shift template: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating shift template. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a shift template
+     */
+    public function destroy($id)
+    {
+        $shiftTemplate = ShiftTemplate::find($id);
+
+        if (!$shiftTemplate) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Shift template not found'
+            ], 404);
+        }
+
+        // Check if template has assigned employees
+        if ($shiftTemplate->assigned_employees_count > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete shift template with assigned employees. Please reassign employees first.'
+            ], 422);
+        }
+
+        try {
+            $shiftTemplate->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Shift template deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error deleting shift template: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting shift template. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle shift template status
+     */
+    public function toggleStatus($id)
+    {
+        $shiftTemplate = ShiftTemplate::find($id);
+
+        if (!$shiftTemplate) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Shift template not found'
+            ], 404);
+        }
+
+        try {
+            $shiftTemplate->status = $shiftTemplate->status === 'active' ? 'inactive' : 'active';
+            $shiftTemplate->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Shift template status updated successfully',
+                'data' => [
+                    'id' => $shiftTemplate->id,
+                    'status' => $shiftTemplate->status
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error toggling shift template status: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating shift template status. Please try again.'
+            ], 500);
+        }
+    }
+    
+    /**
+     * Calculate coverage rate based on shift templates
+     */
+    private function calculateCoverageRate($shiftTemplates)
+    {
+        if ($shiftTemplates->count() === 0) {
+            return 0;
+        }
+        
+        $totalShifts = $shiftTemplates->count();
+        $coveredShifts = $shiftTemplates->where('assigned_employees_count', '>', 0)->count();
+        
+        return $totalShifts > 0 ? round(($coveredShifts / $totalShifts) * 100) : 0;
+    }
+    
+    /**
+     * Get recent activities (mock data for now)
+     * In a real application, this would come from an activity log table
+     */
+    private function getRecentActivities()
+    {
+        // This is mock data. In a real application, you would query an activity log table
+        return [
+            [
+                'type' => 'approval',
+                'icon' => 'check',
+                'color' => 'green',
+                'message' => 'Schedule approved for <strong>Marketing Team</strong>',
+                'time' => '2 hours ago'
+            ],
+            [
+                'type' => 'creation',
+                'icon' => 'plus',
+                'color' => 'blue',
+                'message' => 'New shift template <strong>Weekend Support</strong> created',
+                'time' => '4 hours ago'
+            ],
+            [
+                'type' => 'request',
+                'icon' => 'exclamation',
+                'color' => 'yellow',
+                'message' => 'Schedule change request from <strong>John Smith</strong>',
+                'time' => '6 hours ago'
+            ]
+        ];
+    }
+    
+    /**
+     * Get employee shift assignments from database
+     */
+    private function getEmployeeAssignments()
+    {
+        try {
+            // Get unique assignments grouped by employee and shift template
+            $assignments = ShiftAssignment::with(['employee.user', 'shiftTemplate'])
+                ->select('employee_id', 'shift_template_id', 'status')
+                ->selectRaw('MIN(assignment_date) as start_date')
+                ->selectRaw('MAX(assignment_date) as end_date')
+                ->selectRaw('COUNT(*) as assignment_count')
+                ->groupBy('employee_id', 'shift_template_id', 'status')
+                ->get()
+                ->map(function ($assignment) {
+                    if (!$assignment->employee || !$assignment->employee->user || !$assignment->shiftTemplate) {
+                        return null;
+                    }
+                    
+                    $employee = $assignment->employee;
+                    $user = $employee->user;
+                    $shiftTemplate = $assignment->shiftTemplate;
+                    
+                    // Generate schedule description
+                    $scheduleDesc = $shiftTemplate->formatted_days . ', ' . $shiftTemplate->time_range;
+                    
+                    return [
+                        'id' => $assignment->employee_id . '_' . $assignment->shift_template_id, // Composite ID
+                        'employee' => [
+                            'name' => $user->name,
+                            'email' => $user->email ?? '',
+                            'department' => $employee->department ?? 'No Department',
+                            'avatar' => null, // You can add avatar logic later
+                            'initials' => $this->getInitials($user->name),
+                            'avatar_color' => $this->getAvatarColor($user->name)
+                        ],
+                        'shift' => [
+                            'name' => $shiftTemplate->name,
+                            'time_range' => $shiftTemplate->time_range,
+                            'color' => $this->getShiftColor($shiftTemplate->name)
+                        ],
+                        'schedule' => $scheduleDesc,
+                        'status' => $assignment->status,
+                        'assignment_count' => $assignment->assignment_count,
+                        'start_date' => Carbon::parse($assignment->start_date)->format('M j, Y'),
+                        'end_date' => Carbon::parse($assignment->end_date)->format('M j, Y')
+                    ];
+                })
+                ->filter() // Remove null entries
+                ->take(20) // Limit to prevent overwhelming the UI
+                ->values();
+                
+            return $assignments->toArray();
+        } catch (\Exception $e) {
+            Log::error('Error fetching employee assignments: ' . $e->getMessage());
+            
+            // Return empty array on error
+            return [];
+        }
+    }
+
+    /**
+     * Get shift calendar data for a specific date range
+     */
+    public function getShiftCalendarData($startDate, $endDate)
+    {
+        // Get all active shift templates
+        $shiftTemplates = ShiftTemplate::active()->get();
+        
+        // Get all shift assignments for the date range
+        $assignments = ShiftAssignment::with(['employee.user', 'shiftTemplate'])
+            ->inDateRange($startDate, $endDate)
+            ->byStatus(['scheduled', 'confirmed'])
+            ->get();
+        
+        // Create a structure for each day of the week
+        $weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $calendarData = [];
+        
+        foreach ($shiftTemplates as $shiftTemplate) {
+            $shiftData = [
+                'id' => $shiftTemplate->id,
+                'name' => $shiftTemplate->name,
+                'time_range' => $shiftTemplate->time_range,
+                'color' => $this->getShiftColor($shiftTemplate->name),
+                'days' => []
+            ];
+            
+            // Initialize days with empty data
+            foreach ($weekDays as $day) {
+                $shiftData['days'][$day] = [
+                    'total_count' => 0,
+                    'departments' => []
+                ];
+            }
+            
+            // Fill in actual assignment data
+            foreach ($assignments as $assignment) {
+                if ($assignment->shift_template_id === $shiftTemplate->id) {
+                    $dayOfWeek = $assignment->assignment_date->format('l');
+                    $department = $assignment->employee->department ?? 'Other';
+                    
+                    $shiftData['days'][$dayOfWeek]['total_count']++;
+                    
+                    if (!isset($shiftData['days'][$dayOfWeek]['departments'][$department])) {
+                        $shiftData['days'][$dayOfWeek]['departments'][$department] = [
+                            'count' => 0,
+                            'employees' => [],
+                            'color' => $this->getDepartmentColor($department)
+                        ];
+                    }
+                    
+                    $shiftData['days'][$dayOfWeek]['departments'][$department]['count']++;
+                    $shiftData['days'][$dayOfWeek]['departments'][$department]['employees'][] = [
+                        'name' => $assignment->employee->user->name ?? 'Unknown',
+                        'initials' => $this->getInitials($assignment->employee->user->name ?? 'UN')
+                    ];
+                }
+            }
+            
+            $calendarData[] = $shiftData;
+        }
+        
+        return $calendarData;
+    }
+
+    /**
+     * Get API endpoint for shift calendar data
+     */
+    public function getShiftCalendarDataApi(Request $request)
+    {
+        $startDate = $request->get('start_date', Carbon::now()->startOfWeek());
+        $endDate = $request->get('end_date', Carbon::now()->endOfWeek());
+        $department = $request->get('department');
+        $shiftTemplate = $request->get('shift_template');
+        
+        $startDate = Carbon::parse($startDate);
+        $endDate = Carbon::parse($endDate);
+        
+        $calendarData = $this->getShiftCalendarData($startDate, $endDate);
+        
+        // Apply filters if provided
+        if ($department) {
+            foreach ($calendarData as &$shift) {
+                foreach ($shift['days'] as &$day) {
+                    $day['departments'] = array_filter($day['departments'], function($key) use ($department) {
+                        return strtolower($key) === strtolower($department);
+                    }, ARRAY_FILTER_USE_KEY);
+                    
+                    $day['total_count'] = array_sum(array_column($day['departments'], 'count'));
+                }
+            }
+        }
+        
+        if ($shiftTemplate) {
+            $calendarData = array_filter($calendarData, function($shift) use ($shiftTemplate) {
+                return $shift['id'] == $shiftTemplate;
+            });
+        }
+        
+        return response()->json([
+            'success' => true,
+            'data' => array_values($calendarData),
+            'week_range' => [
+                'start' => $startDate->format('M j'),
+                'end' => $endDate->format('M j, Y')
+            ]
+        ]);
+    }
+
+    /**
+     * Get color for shift based on name/type
+     */
+    private function getShiftColor($shiftName)
+    {
+        $colors = [
+            'morning' => 'blue',
+            'evening' => 'green',
+            'night' => 'purple',
+            'weekend' => 'yellow'
+        ];
+        
+        $lowerName = strtolower($shiftName);
+        foreach ($colors as $keyword => $color) {
+            if (strpos($lowerName, $keyword) !== false) {
+                return $color;
+            }
+        }
+        
+        return 'gray';
+    }
+
+    /**
+     * Get color for department
+     */
+    private function getDepartmentColor($department)
+    {
+        $colors = [
+            'IT' => 'blue',
+            'Marketing' => 'green',
+            'HR' => 'purple',
+            'Finance' => 'indigo',
+            'Operations' => 'orange',
+            'Security' => 'red',
+            'Maintenance' => 'gray'
+        ];
+        
+        return $colors[$department] ?? 'gray';
+    }
+
+    /**
+     * Get initials from name
+     */
+    private function getInitials($name)
+    {
+        $words = explode(' ', trim($name));
+        $initials = '';
+        
+        foreach ($words as $word) {
+            if (!empty($word)) {
+                $initials .= strtoupper(substr($word, 0, 1));
+            }
+        }
+        
+        return substr($initials, 0, 2); // Limit to 2 characters
+    }
+    
+    /**
+     * Get all employees for assignment dropdown
+     */
+    public function getEmployeesForAssignment()
+    {
+        try {
+            $employees = Employee::with('user')
+                ->whereHas('user')
+                ->where('status', 'active')
+                ->get()
+                ->map(function ($employee) {
+                    return [
+                        'id' => $employee->id,
+                        'user_id' => $employee->user_id,
+                        'name' => $employee->user->name,
+                        'email' => $employee->user->email ?? '',
+                        'department' => $employee->department ?? 'No Department',
+                        'position' => $employee->position ?? 'No Position',
+                        'initials' => $this->getInitials($employee->user->name),
+                        'avatar_color' => $this->getAvatarColor($employee->user->name)
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $employees
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching employees for assignment: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching employees. Please try again.'
+            ], 500);
+        }
+    }
+    
+    /**
+     * Store a new shift assignment
+     */
+    public function storeAssignment(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'employee_id' => 'required|exists:employees,id',
+            'shift_template_id' => 'required|exists:shift_templates,id',
+            'start_date' => 'required|date|after_or_equal:today',
+            'notes' => 'nullable|string|max:500'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $employee = Employee::find($request->employee_id);
+            $shiftTemplate = ShiftTemplate::find($request->shift_template_id);
+            
+            if (!$employee || !$shiftTemplate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Employee or shift template not found'
+                ], 404);
+            }
+
+            // Create shift assignment based on the template schedule type
+            $startDate = Carbon::parse($request->start_date);
+            $assignments = [];
+            
+            if ($shiftTemplate->schedule_type === 'weekly' && !empty($shiftTemplate->days)) {
+                // Create assignments for the next 4 weeks for weekly schedules
+                $endDate = $startDate->copy()->addWeeks(4);
+                
+                for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+                    $dayName = $date->format('l'); // Monday, Tuesday, etc.
+                    
+                    if (in_array($dayName, $shiftTemplate->days)) {
+                        $assignments[] = [
+                            'employee_id' => $request->employee_id,
+                            'shift_template_id' => $request->shift_template_id,
+                            'assignment_date' => $date->toDateString(),
+                            'status' => 'scheduled',
+                            'notes' => $request->notes,
+                            'assigned_by' => auth()->id() ?? 1,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ];
+                    }
+                }
+            } elseif ($shiftTemplate->schedule_type === 'dates' && !empty($shiftTemplate->selected_dates)) {
+                // Create assignments for specific dates
+                foreach ($shiftTemplate->selected_dates as $dateString) {
+                    $date = Carbon::parse($dateString);
+                    if ($date->gte($startDate)) {
+                        $assignments[] = [
+                            'employee_id' => $request->employee_id,
+                            'shift_template_id' => $request->shift_template_id,
+                            'assignment_date' => $date->toDateString(),
+                            'status' => 'scheduled',
+                            'notes' => $request->notes,
+                            'assigned_by' => auth()->id() ?? 1,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ];
+                    }
+                }
+            } else {
+                // Fallback: create single assignment for start date
+                $assignments[] = [
+                    'employee_id' => $request->employee_id,
+                    'shift_template_id' => $request->shift_template_id,
+                    'assignment_date' => $startDate->toDateString(),
+                    'status' => 'scheduled',
+                    'notes' => $request->notes,
+                    'assigned_by' => auth()->id() ?? 1,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ];
+            }
+            
+            if (!empty($assignments)) {
+                ShiftAssignment::insert($assignments);
+                
+                // Update the assigned employees count on the shift template
+                $shiftTemplate->increment('assigned_employees_count');
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Employee assigned to shift successfully',
+                    'data' => [
+                        'assignments_created' => count($assignments),
+                        'employee_name' => $employee->user->name,
+                        'shift_name' => $shiftTemplate->name
+                    ]
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No valid dates found for assignment'
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error creating shift assignment: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating shift assignment. Please try again.'
+            ], 500);
+        }
+    }
+    
+    /**
+     * Remove a shift assignment
+     */
+    public function removeAssignment($assignmentId)
+    {
+        try {
+            $assignment = ShiftAssignment::with(['employee.user', 'shiftTemplate'])->find($assignmentId);
+            
+            if (!$assignment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Assignment not found'
+                ], 404);
+            }
+            
+            $shiftTemplate = $assignment->shiftTemplate;
+            $employeeName = $assignment->employee->user->name ?? 'Unknown Employee';
+            
+            $assignment->delete();
+            
+            // Decrease the assigned employees count
+            if ($shiftTemplate && $shiftTemplate->assigned_employees_count > 0) {
+                $shiftTemplate->decrement('assigned_employees_count');
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Assignment for {$employeeName} removed successfully"
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error removing shift assignment: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error removing assignment. Please try again.'
+            ], 500);
+        }
+    }
+    
+    /**
+     * Get avatar color based on name hash
+     */
+    private function getAvatarColor($name)
+    {
+        $colors = ['blue', 'green', 'purple', 'red', 'indigo', 'pink', 'yellow', 'teal', 'orange', 'cyan'];
+        $colorIndex = abs(crc32($name)) % count($colors);
+        return $colors[$colorIndex];
+    }
+}

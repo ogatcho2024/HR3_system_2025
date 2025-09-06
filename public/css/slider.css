@@ -1,0 +1,41 @@
+.feature_section {
+  background-color: #bebdbd;
+}
+
+.feature_section .row {
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+}
+
+.feature_section .detail-box {
+  color: #111111;
+  margin: 45px 0;
+}
+
+.feature_section .detail-box h2 {
+  margin-bottom: 35px;
+}
+
+.feature_section .detail-box a {
+  display: inline-block;
+  padding: 8px 35px;
+  background-color: #111111;
+  color: #ffffff;
+  -webkit-transition: all 0.3s;
+  transition: all 0.3s;
+  border: none;
+  margin-top: 35px;
+}
+
+.feature_section .detail-box a:hover {
+  background-color: #040404;
+}
+
+.feature_section .img-box img {
+  width: 100%;
+}
+
+.carousel-slide {
+  color: var(--slider-page);
+}
