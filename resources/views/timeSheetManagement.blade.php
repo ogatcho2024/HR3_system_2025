@@ -99,7 +99,7 @@
                 </svg>
               </div>
             </div>
-            <div class="bg-gradient-to-r from-yellow-50 to-yellow-100 p-4 rounded-lg">
+            <div class="bg-yellow-50 to-yellow-100 p-4 rounded-lg">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-yellow-600">Pending Review</p>
@@ -110,7 +110,7 @@
                 </svg>
               </div>
             </div>
-            <div class="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-lg">
+            <div class="bg-red-50 to-red-100 p-4 rounded-lg">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-red-600">Overdue</p>
@@ -175,79 +175,6 @@
                 <button @click="viewActivityDetails(activity.id)" class="text-blue-600 hover:text-blue-800 text-sm">View</button>
               </div>
             </template>
-          </div>
-        </div>
-
-        <!-- Weekly Timesheet Grid -->
-        <div class="bg-white rounded-2xl p-6 shadow overflow-x-auto">
-          <table class="w-full min-w-[800px]">
-            <thead>
-              <tr class="border-b">
-                <th class="text-left py-3 px-2 font-medium text-gray-700">Employee</th>
-                <template x-for="day in weekDays" :key="day.date">
-                  <th class="text-center py-3 px-2 font-medium text-gray-700 min-w-[100px]">
-                    <div x-text="day.name"></div>
-                    <div class="text-xs text-gray-500" x-text="day.date"></div>
-                  </th>
-                </template>
-                <th class="text-center py-3 px-2 font-medium text-gray-700">Total</th>
-                <th class="text-center py-3 px-2 font-medium text-gray-700">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template x-for="(entry, index) in weeklyEntries" :key="entry.id">
-                <tr class="border-b hover:bg-gray-50">
-                  <td class="py-3 px-2">
-                    <div class="font-medium" x-text="entry.project"></div>
-                    <div class="text-sm text-gray-500" x-text="entry.task"></div>
-                  </td>
-                  <template x-for="day in weekDays" :key="day.date">
-                    <td class="py-3 px-2 text-center">
-                      <input 
-                        type="number" 
-                        step="0.5" 
-                        min="0" 
-                        max="24"
-                        :value="getHoursForDay(entry.id, day.date)"
-                        @input="updateHours(entry.id, day.date, $event.target.value)"
-                        class="w-16 px-2 py-1 border rounded text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        :disabled="entry.status === 'approved'"
-                      />
-                    </td>
-                  </template>
-                  <td class="py-3 px-2 text-center font-medium" x-text="getEntryTotal(entry.id)"></td>
-                  <td class="py-3 px-2 text-center">
-                    <button @click="editEntry(entry.id)" class="text-blue-600 hover:text-blue-800 mx-1">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                      </svg>
-                    </button>
-                    <button @click="deleteEntry(entry.id)" class="text-red-600 hover:text-red-800 mx-1" :disabled="entry.status === 'approved'">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-          
-          <!-- Add New Entry Button -->
-          <div class="mt-4">
-            <button @click="showAddEntryModal = true" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-              </svg>
-              Add New Entry
-            </button>
-          </div>
-
-          <!-- Weekly Actions -->
-          <div class="mt-6 flex gap-3">
-            <button @click="submitWeeklyTimesheet()" :disabled="weeklyStatus === 'approved'" class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg">Submit Timesheet</button>
-            <button @click="saveWeeklyDraft()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">Save as Draft</button>
-            <button @click="exportWeekly()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-lg">Export PDF</button>
           </div>
         </div>
       </div>
@@ -446,75 +373,110 @@
       
       <!-- Employees Timesheet Tab -->
       <div x-show="activeTab === 'employees'" class="space-y-6">
-        <!-- Employee Search and Filter -->
+        <!-- Date Range and Filter Controls -->
         <div class="bg-white rounded-2xl p-6 shadow">
+          <h3 class="text-lg font-semibold">Employees Timesheet Management</h3>
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold">Employees Timesheet Management</h3>
             <div class="flex gap-2">
-              <select x-model="employeeFilter" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
-                <option value="all">All Departments</option>
-                <option value="engineering">Engineering</option>
-                <option value="marketing">Marketing</option>
-                <option value="sales">Sales</option>
-                <option value="hr">HR</option>
+              <input x-model="timesheetDateRange.start" type="date" class="border border-gray-300 rounded-md px-3 py-2 text-sm" @change="loadEmployeeTimesheets()">
+              <span class="flex items-center text-gray-500">to</span>
+              <input x-model="timesheetDateRange.end" type="date" class="border border-gray-300 rounded-md px-3 py-2 text-sm" @change="loadEmployeeTimesheets()">
+              <select x-model="timesheetDepartmentFilter" @change="loadEmployeeTimesheets()" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                <option value="">All Departments</option>
+                <template x-for="dept in availableDepartments" :key="dept">
+                  <option :value="dept" x-text="dept"></option>
+                </template>
               </select>
-              <input x-model="employeeSearch" type="text" placeholder="Search employees..." class="border border-gray-300 rounded-md px-3 py-2 text-sm w-64">
+              <input x-model="timesheetSearch" @input="loadEmployeeTimesheets()" type="text" placeholder="Search employees..." class="border border-gray-300 rounded-md px-3 py-2 text-sm w-64">
+              <button @click="loadEmployeeTimesheets()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+              </button>
             </div>
           </div>
           
-          <!-- Employee List -->
+          <!-- Summary Stats -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-blue-100 p-4 rounded-lg text-center">
+              <div class="text-2xl font-bold text-blue-600" x-text="timesheetStats.total_timesheets || 0"></div>
+              <div class="text-sm text-gray-600">Total Entries</div>
+            </div>
+            <div class="bg-green-50 p-4 rounded-lg text-center">
+              <div class="text-2xl font-bold text-green-600" x-text="timesheetStats.total_hours || 0"></div>
+              <div class="text-sm text-gray-600">Total Hours</div>
+            </div>
+            <div class="bg-orange-50 p-4 rounded-lg text-center">
+              <div class="text-2xl font-bold text-orange-600" x-text="timesheetStats.total_overtime || 0"></div>
+              <div class="text-sm text-gray-600">Overtime Hours</div>
+            </div>
+            <div class="bg-purple-100 p-4 rounded-lg text-center">
+              <div class="text-2xl font-bold text-purple-600" x-text="timesheetStats.pending_approval || 0"></div>
+              <div class="text-sm text-gray-600">Pending Approval</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Employee Timesheets Table -->
+        <div class="bg-white rounded-2xl p-6 shadow">
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead class="bg-gray-50">
                 <tr>
                   <th class="text-left py-3 px-4 font-medium text-gray-700">Employee</th>
-                  <th class="text-left py-3 px-4 font-medium text-gray-700">Department</th>
-                  <th class="text-center py-3 px-4 font-medium text-gray-700">This Week</th>
+                  <th class="text-center py-3 px-4 font-medium text-gray-700">Date</th>
+                  <th class="text-center py-3 px-4 font-medium text-gray-700">Time Start</th>
+                  <th class="text-center py-3 px-4 font-medium text-gray-700">Time End</th>
+                  <th class="text-center py-3 px-4 font-medium text-gray-700">Over Time</th>
+                  <th class="text-center py-3 px-4 font-medium text-gray-700">Total Hours</th>
                   <th class="text-center py-3 px-4 font-medium text-gray-700">Status</th>
-                  <th class="text-center py-3 px-4 font-medium text-gray-700">Last Submission</th>
                   <th class="text-center py-3 px-4 font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <template x-for="employee in filteredEmployees" :key="employee.id">
+                <template x-for="timesheet in employeeTimesheets" :key="timesheet.id">
                   <tr class="border-b hover:bg-gray-50">
                     <td class="py-3 px-4">
-                      <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-sm font-medium" x-text="employee.initials"></div>
-                        <div>
-                          <div class="font-medium" x-text="employee.name"></div>
-                          <div class="text-sm text-gray-500" x-text="employee.position"></div>
-                        </div>
+                      <div>
+                        <div class="font-medium" x-text="timesheet.employee"></div>
+                        <div class="text-sm text-gray-500" x-text="timesheet.department"></div>
                       </div>
                     </td>
-                    <td class="py-3 px-4 text-gray-600" x-text="employee.department"></td>
-                    <td class="py-3 px-4 text-center font-mono" x-text="employee.weeklyHours + 'h'"></td>
+                    <td class="py-3 px-4 text-center font-mono" x-text="new Date(timesheet.date).toLocaleDateString()"></td>
+                    <td class="py-3 px-4 text-center font-mono" x-text="timesheet.time_start"></td>
+                    <td class="py-3 px-4 text-center font-mono" x-text="timesheet.time_end"></td>
+                    <td class="py-3 px-4 text-center font-mono" x-text="timesheet.overtime_hours + 'h'"></td>
+                    <td class="py-3 px-4 text-center font-mono font-semibold" x-text="timesheet.total_hours + 'h'"></td>
                     <td class="py-3 px-4 text-center">
-                      <span class="px-2 py-1 rounded-full text-xs" :class="getEmployeeStatusClass(employee.status)" x-text="employee.status"></span>
+                      <span class="px-2 py-1 rounded-full text-xs" :class="getTimesheetStatusClass(timesheet.status)" x-text="timesheet.status"></span>
                     </td>
-                    <td class="py-3 px-4 text-center text-sm text-gray-600" x-text="employee.lastSubmission"></td>
                     <td class="py-3 px-4 text-center">
                       <div class="flex justify-center gap-1">
-                        <button @click="viewEmployeeTimesheet(employee.id)" class="text-blue-600 hover:text-blue-800 p-1" title="View Timesheet">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                          </svg>
-                        </button>
-                        <button @click="editEmployeeTimesheet(employee.id)" class="text-green-600 hover:text-green-800 p-1" title="Edit Timesheet">
+                        <button @click="editTimesheetEntry(timesheet)" class="text-blue-600 hover:text-blue-800 p-1" title="Edit Entry">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                           </svg>
                         </button>
-                        <button @click="sendReminder(employee.id)" class="text-orange-600 hover:text-orange-800 p-1" title="Send Reminder">
+                        <button @click="deleteTimesheetEntry(timesheet.id)" class="text-red-600 hover:text-red-800 p-1" title="Delete Entry">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                           </svg>
                         </button>
                       </div>
                     </td>
                   </tr>
                 </template>
+                <tr x-show="employeeTimesheets.length === 0">
+                  <td colspan="8" class="py-8 text-center text-gray-500">
+                    <div class="flex flex-col items-center">
+                      <svg class="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                      </svg>
+                      <p class="text-lg font-medium">No timesheet entries found</p>
+                      <p class="text-sm">Try adjusting your date range or filters</p>
+                    </div>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -624,40 +586,7 @@
           </div>
         </div>
       </div>
-
     </main>
-  </div>
-
-  <!-- Add Entry Modal -->
-  <div x-show="showAddEntryModal" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-      <h3 class="text-lg font-semibold mb-4">Add New Timesheet Entry</h3>
-      <form @submit.prevent="addNewEntry()">
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Project</label>
-            <select x-model="newEntry.project" required class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500">
-              <option value="">Select Project</option>
-              <template x-for="project in projects" :key="project.id">
-                <option :value="project.name" x-text="project.name"></option>
-              </template>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Task</label>
-            <input x-model="newEntry.task" type="text" required class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500" placeholder="Enter task description">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea x-model="newEntry.description" rows="3" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500" placeholder="Optional description"></textarea>
-          </div>
-        </div>
-        <div class="flex gap-3 mt-6">
-          <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Add Entry</button>
-          <button type="button" @click="showAddEntryModal = false" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg">Cancel</button>
-        </div>
-      </form>
-    </div>
   </div>
 
   <script>
@@ -742,7 +671,7 @@
       
       selectAllApprovals: false,
       
-      // Employee Management
+      // Employee Management (legacy)
       employeeFilter: 'all',
       employeeSearch: '',
       employees: [
@@ -751,6 +680,25 @@
         { id: 3, name: 'Mike Johnson', initials: 'MJ', position: 'Sales Rep', department: 'Sales', weeklyHours: 35, status: 'Approved', lastSubmission: '3 days ago' },
         { id: 4, name: 'Sarah Wilson', initials: 'SW', position: 'HR Specialist', department: 'HR', weeklyHours: 40, status: 'Draft', lastSubmission: '5 days ago' }
       ],
+      
+      // New Employee Timesheets Data
+      employeeTimesheets: [],
+      timesheetStats: {
+        total_employees: 0,
+        total_timesheets: 0,
+        total_hours: 0,
+        total_overtime: 0,
+        pending_approval: 0,
+        approved: 0
+      },
+      timesheetDateRange: {
+        start: new Date().toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+      },
+      timesheetSearch: '',
+      timesheetDepartmentFilter: '',
+      availableDepartments: [],
+      editingTimesheet: null,
       
       // Compliance Data
       complianceStats: {
@@ -848,6 +796,10 @@
         this.loadWeeklyTimesheet();
         this.loadMonthlyData();
         this.loadPendingApprovals();
+        
+        // Set up employee timesheets date range and load data
+        this.setCurrentWeekDateRange();
+        this.loadEmployeeTimesheets();
       },
       
       setCurrentWeekStart() {
@@ -1256,6 +1208,111 @@
           'Modified': 'bg-yellow-100 text-yellow-800'
         };
         return classes[action] || 'bg-gray-100 text-gray-800';
+      },
+      
+      // Employee Timesheet Methods
+      async loadEmployeeTimesheets() {
+        try {
+          const params = new URLSearchParams({
+            start_date: this.timesheetDateRange.start,
+            end_date: this.timesheetDateRange.end,
+            search: this.timesheetSearch,
+            department: this.timesheetDepartmentFilter
+          });
+          
+          const response = await fetch(`/timesheets/employee-timesheets?${params}`);
+          const result = await response.json();
+          
+          if (result.success) {
+            this.employeeTimesheets = result.data;
+            this.availableDepartments = result.departments;
+            this.loadTimesheetStats();
+          } else {
+            console.error('Failed to load employee timesheets:', result.message);
+          }
+        } catch (error) {
+          console.error('Error loading employee timesheets:', error);
+        }
+      },
+      
+      async loadTimesheetStats() {
+        try {
+          const params = new URLSearchParams({
+            start_date: this.timesheetDateRange.start,
+            end_date: this.timesheetDateRange.end
+          });
+          
+          const response = await fetch(`/timesheets/stats?${params}`);
+          const result = await response.json();
+          
+          if (result.success) {
+            this.timesheetStats = result.stats;
+          }
+        } catch (error) {
+          console.error('Error loading timesheet stats:', error);
+        }
+      },
+      
+      getTimesheetStatusClass(status) {
+        const classes = {
+          'draft': 'bg-gray-100 text-gray-800',
+          'submitted': 'bg-blue-100 text-blue-800',
+          'approved': 'bg-green-100 text-green-800',
+          'rejected': 'bg-red-100 text-red-800'
+        };
+        return classes[status] || 'bg-gray-100 text-gray-800';
+      },
+      
+      editTimesheetEntry(timesheet) {
+        // Open edit modal or inline editing
+        this.editingTimesheet = { ...timesheet };
+        console.log('Editing timesheet:', timesheet);
+        // You can implement a modal here for editing
+      },
+      
+      async deleteTimesheetEntry(timesheetId) {
+        if (!confirm('Are you sure you want to delete this timesheet entry?')) {
+          return;
+        }
+        
+        try {
+          const response = await fetch(`/timesheets/${timesheetId}`, {
+            method: 'DELETE',
+            headers: {
+              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            this.loadEmployeeTimesheets();
+            alert('Timesheet entry deleted successfully!');
+          } else {
+            alert('Failed to delete timesheet entry: ' + result.message);
+          }
+        } catch (error) {
+          console.error('Error deleting timesheet:', error);
+          alert('Error deleting timesheet entry');
+        }
+      },
+      
+      setCurrentWeekDateRange() {
+        const today = new Date();
+        const startOfWeek = new Date(today);
+        const endOfWeek = new Date(today);
+        
+        // Set to Monday of current week
+        const dayOfWeek = today.getDay();
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        startOfWeek.setDate(today.getDate() + mondayOffset);
+        
+        // Set to Friday of current week
+        endOfWeek.setDate(startOfWeek.getDate() + 4);
+        
+        this.timesheetDateRange.start = startOfWeek.toISOString().split('T')[0];
+        this.timesheetDateRange.end = endOfWeek.toISOString().split('T')[0];
       }
     }
   }

@@ -26,7 +26,7 @@
     <!-- Key Metrics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <!-- Total Employees -->
-        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-blue-100 text-sm">Total Employees</p>
@@ -47,7 +47,7 @@
         </div>
 
         <!-- Active Leave Requests -->
-        <div class="bg-yellow-500 rounded-lg shadow-lg p-6 text-white">
+        <div class="bg-yellow-500 rounded-2xl shadow-lg p-6 text-white">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-white-100 text-sm">Pending Requests</p>
@@ -70,7 +70,7 @@
         </div>
 
         <!-- Today's Attendance -->
-        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-green-100 text-sm">Attendance</p>
@@ -89,7 +89,7 @@
 
     <!-- Today's Attendance Breakdown -->
     @if(isset($attendanceStats))
-    <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-semibold text-gray-900">Today's Attendance Overview</h3>
             <div class="text-sm text-gray-500">
@@ -154,7 +154,7 @@
     @endif
 
     <!-- Quick Actions -->
-    <div class="bg-gray-100 rounded-lg shadow-lg p-6 mb-8">
+    <div class="bg-gray-100 rounded-2xl shadow-lg p-6 mb-8">
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <a href="{{ route('reports.index') }}" class="flex flex-col items-center border border-gray-400 p-4 rounded-lg group">
                 <div class="p-3 bg-green-600 rounded-full mb-3 group-hover:bg-green-700">
@@ -200,8 +200,8 @@
     <!-- Dashboard Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         <!-- Recent Activities -->
-        <div class="lg:col-span-2 bg-gray-100 rounded-lg shadow-lg">
-            <div class="px-6 py-4 border-b bg-gray-200 border-gray-200">
+        <div class="lg:col-span-2 rounded-2xl bg-gray-100 shadow-lg">
+            <div class="px-6 py-4 border-b rounded-tr-2xl rounded-tl-2xl bg-gray-200 border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">Recent Activities</h3>
             </div>
             <div class="p-6">
@@ -269,8 +269,8 @@
         </div>
 
         <!-- Upcoming Events -->
-        <div class="bg-gray-100 rounded-lg shadow-lg">
-            <div class="px-6 py-4 border-b bg-gray-200 border-gray-200">
+        <div class="bg-gray-100 rounded-2xl shadow-lg">
+            <div class="px-6 py-4 border-b rounded-tr-2xl rounded-tl-2xl bg-gray-200 border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">Upcoming Events</h3>
             </div>
             <div class="p-6">

@@ -31,12 +31,12 @@
     <!-- content area -->
     <div id="app-content" class="flex-1 flex flex-col transition-all duration-300 mt-16 ml-64">
         <!-- main content -->
-        <main class="flex-1 overflow-y-auto p-0 flex flex-col">
-            <div class="flex-1">
+        <main class="flex-1 overflow-y-auto p-0">
+            <div>
                 @yield('content')
             </div>
             
-            <!-- Footer at bottom of content -->
+            <!-- Footer at bottom of page content -->
             <footer class="bg-[#111111] text-white py-2 shadow-lg" id="main-footer">
                 <div class="flex items-center justify-center gap-3">
                     <img class="rounded-full w-10 h-10" src="{{ asset('images/logo.png') }}" alt="Logo">
@@ -75,13 +75,10 @@ footer {
     max-height: calc(100vh - 4rem);
 }
 
-/* Main content with flexbox for footer positioning */
+/* Main content with scrolling */
 main {
     height: 100%;
     max-height: 100%;
-    display: flex;
-    flex-direction: column;
-    min-height: 0; /* Allow flex items to shrink */
 }
 
 /* Collapsed sidebar: tighter spacing for nav items */

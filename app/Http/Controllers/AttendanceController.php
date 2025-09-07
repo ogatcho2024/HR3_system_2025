@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Attendance;
+use App\Models\Timesheet;
 use App\Models\User;
 use App\Models\Employee;
 use Illuminate\Http\RedirectResponse;
@@ -78,7 +79,10 @@ class AttendanceController extends Controller
             $validatedData['hours_worked'] = $attendance->calculateHours();
         }
 
-        Attendance::create($validatedData);
+        $attendance = Attendance::create($validatedData);
+        
+        // Sync to timesheet
+        $this->syncAttendanceToTimesheet($attendance);
 
         return redirect()->route('attendanceTimeTracking')
             ->with('success', 'Attendance record created successfully!');
@@ -116,6 +120,9 @@ class AttendanceController extends Controller
         }
 
         $attendance->update($validatedData);
+        
+        // Sync to timesheet
+        $this->syncAttendanceToTimesheet($attendance->refresh());
 
         return redirect()->route('attendanceTimeTracking')
             ->with('success', 'Attendance record updated successfully!');
@@ -148,20 +155,25 @@ class AttendanceController extends Controller
             return redirect()->back()->with('error', 'Already clocked in today!');
         }
 
+        $clockInTime = now()->format('H:i');
+        
         if ($existing) {
             $existing->update([
-                'clock_in_time' => now()->format('H:i'),
+                'clock_in_time' => $clockInTime,
                 'status' => 'present'
             ]);
         } else {
-            Attendance::create([
+            $existing = Attendance::create([
                 'user_id' => $user_id,
                 'date' => now()->toDateString(),
-                'clock_in_time' => now()->format('H:i'),
+                'clock_in_time' => $clockInTime,
                 'status' => 'present',
                 'created_by' => Auth::id()
             ]);
         }
+        
+        // Create or update timesheet entry
+        $this->syncAttendanceToTimesheet($existing);
 
         return redirect()->back()->with('success', 'Clocked in successfully!');
     }
@@ -188,6 +200,10 @@ class AttendanceController extends Controller
         $attendance->update([
             'clock_out_time' => now()->format('H:i'),
         ]);
+        
+        // Calculate hours worked and update timesheet
+        $attendance->refresh();
+        $this->syncAttendanceToTimesheet($attendance);
 
         return redirect()->back()->with('success', 'Clocked out successfully!');
     }
@@ -1435,5 +1451,47 @@ class AttendanceController extends Controller
                 'trace' => $e->getTraceAsString()
             ], 500);
         }
+    }
+    
+    /**
+     * Sync attendance data to timesheet
+     */
+    private function syncAttendanceToTimesheet(Attendance $attendance)
+    {
+        // Find or create timesheet entry for this date
+        $timesheet = Timesheet::firstOrCreate(
+            [
+                'user_id' => $attendance->user_id,
+                'work_date' => $attendance->date
+            ],
+            [
+                'status' => 'draft',
+                'project_name' => 'General Work',
+                'work_description' => 'Daily work activities'
+            ]
+        );
+        
+        // Update timesheet with attendance data
+        $updateData = [
+            'clock_in_time' => $attendance->clock_in_time,
+            'clock_out_time' => $attendance->clock_out_time,
+            'break_start' => $attendance->break_start,
+            'break_end' => $attendance->break_end,
+        ];
+        
+        // Calculate hours worked and overtime if both clock in/out times exist
+        if ($attendance->clock_in_time && $attendance->clock_out_time) {
+            $hoursWorked = $attendance->calculateHours();
+            $updateData['hours_worked'] = $hoursWorked;
+            
+            // Calculate overtime (anything over 8 hours)
+            $regularHours = 8.0;
+            $overtimeHours = max(0, $hoursWorked - $regularHours);
+            $updateData['overtime_hours'] = $overtimeHours;
+        }
+        
+        $timesheet->update($updateData);
+        
+        return $timesheet;
     }
 }

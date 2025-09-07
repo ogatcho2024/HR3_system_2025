@@ -805,34 +805,179 @@ class ShiftManagementController extends Controller
     }
     
     /**
+     * Update a shift assignment
+     */
+    public function updateAssignment(Request $request, $assignmentId)
+    {
+        $validator = Validator::make($request->all(), [
+            'employee_id' => 'required|exists:employees,id',
+            'shift_template_id' => 'required|exists:shift_templates,id',
+            'start_date' => 'required|date|after_or_equal:today',
+            'notes' => 'nullable|string|max:500'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // For composite ID structure (employee_id + shift_template_id)
+            $parts = explode('_', $assignmentId);
+            if (count($parts) >= 2) {
+                $employeeId = $parts[0];
+                $shiftTemplateId = $parts[1];
+                
+                // Find existing assignments for this employee and shift template
+                $assignments = ShiftAssignment::where('employee_id', $employeeId)
+                    ->where('shift_template_id', $shiftTemplateId)
+                    ->get();
+                
+                if ($assignments->isEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Assignment not found'
+                    ], 404);
+                }
+                
+                // Update the notes for all related assignments
+                ShiftAssignment::where('employee_id', $employeeId)
+                    ->where('shift_template_id', $shiftTemplateId)
+                    ->update(['notes' => $request->notes]);
+                
+                // Get updated assignment data for response
+                $employee = Employee::with('user')->find($request->employee_id);
+                $shiftTemplate = ShiftTemplate::find($request->shift_template_id);
+                
+                $updatedAssignment = [
+                    'id' => $assignmentId,
+                    'employee' => [
+                        'id' => $employee->id,
+                        'name' => $employee->user->name,
+                        'email' => $employee->user->email ?? '',
+                        'department' => $employee->department ?? 'No Department',
+                        'avatar' => null,
+                        'initials' => $this->getInitials($employee->user->name),
+                        'avatar_color' => $this->getAvatarColor($employee->user->name)
+                    ],
+                    'shift' => [
+                        'id' => $shiftTemplate->id,
+                        'name' => $shiftTemplate->name,
+                        'time_range' => $shiftTemplate->time_range,
+                        'color' => $this->getShiftColor($shiftTemplate->name)
+                    ],
+                    'schedule' => $shiftTemplate->formatted_days . ', ' . $shiftTemplate->time_range,
+                    'start_date' => Carbon::parse($request->start_date)->format('M j, Y'),
+                    'notes' => $request->notes
+                ];
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Assignment updated successfully',
+                    'data' => $updatedAssignment
+                ]);
+            } else {
+                // Handle regular assignment ID
+                $assignment = ShiftAssignment::with(['employee.user', 'shiftTemplate'])->find($assignmentId);
+                
+                if (!$assignment) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Assignment not found'
+                    ], 404);
+                }
+                
+                $assignment->update([
+                    'notes' => $request->notes
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Assignment updated successfully',
+                    'data' => $assignment
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error updating shift assignment: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating assignment. Please try again.'
+            ], 500);
+        }
+    }
+    
+    /**
      * Remove a shift assignment
      */
     public function removeAssignment($assignmentId)
     {
         try {
-            $assignment = ShiftAssignment::with(['employee.user', 'shiftTemplate'])->find($assignmentId);
-            
-            if (!$assignment) {
+            // Handle composite ID structure (employee_id + shift_template_id)
+            $parts = explode('_', $assignmentId);
+            if (count($parts) >= 2) {
+                $employeeId = $parts[0];
+                $shiftTemplateId = $parts[1];
+                
+                // Find and delete all assignments for this employee and shift template
+                $assignments = ShiftAssignment::with(['employee.user', 'shiftTemplate'])
+                    ->where('employee_id', $employeeId)
+                    ->where('shift_template_id', $shiftTemplateId)
+                    ->get();
+                
+                if ($assignments->isEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Assignment not found'
+                    ], 404);
+                }
+                
+                $shiftTemplate = $assignments->first()->shiftTemplate;
+                $employeeName = $assignments->first()->employee->user->name ?? 'Unknown Employee';
+                
+                // Delete all related assignments
+                ShiftAssignment::where('employee_id', $employeeId)
+                    ->where('shift_template_id', $shiftTemplateId)
+                    ->delete();
+                
+                // Decrease the assigned employees count
+                if ($shiftTemplate && $shiftTemplate->assigned_employees_count > 0) {
+                    $shiftTemplate->decrement('assigned_employees_count');
+                }
+                
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Assignment not found'
-                ], 404);
+                    'success' => true,
+                    'message' => "Assignment for {$employeeName} removed successfully"
+                ]);
+            } else {
+                // Handle regular assignment ID
+                $assignment = ShiftAssignment::with(['employee.user', 'shiftTemplate'])->find($assignmentId);
+                
+                if (!$assignment) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Assignment not found'
+                    ], 404);
+                }
+                
+                $shiftTemplate = $assignment->shiftTemplate;
+                $employeeName = $assignment->employee->user->name ?? 'Unknown Employee';
+                
+                $assignment->delete();
+                
+                // Decrease the assigned employees count
+                if ($shiftTemplate && $shiftTemplate->assigned_employees_count > 0) {
+                    $shiftTemplate->decrement('assigned_employees_count');
+                }
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => "Assignment for {$employeeName} removed successfully"
+                ]);
             }
-            
-            $shiftTemplate = $assignment->shiftTemplate;
-            $employeeName = $assignment->employee->user->name ?? 'Unknown Employee';
-            
-            $assignment->delete();
-            
-            // Decrease the assigned employees count
-            if ($shiftTemplate && $shiftTemplate->assigned_employees_count > 0) {
-                $shiftTemplate->decrement('assigned_employees_count');
-            }
-            
-            return response()->json([
-                'success' => true,
-                'message' => "Assignment for {$employeeName} removed successfully"
-            ]);
         } catch (\Exception $e) {
             Log::error('Error removing shift assignment: ' . $e->getMessage());
             

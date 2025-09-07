@@ -3,7 +3,7 @@
 @section('title', 'Employee Dashboard')
 
 @section('content')
-<div class="min-h-screen bg-gray-100">
+<div class="min-h-screen bg-gray-300">
     <!-- Header -->
     <div class="bg-white shadow">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -47,7 +47,7 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Leave Balance</dt>
+                                <dt class="text-sm font-medium text-gray-500">Leave Balance</dt>
                                 <dd class="text-lg font-medium text-gray-900">{{ $stats['leave_balance']['remaining'] }}/{{ $stats['leave_balance']['total'] }} days</dd>
                             </dl>
                         </div>
@@ -68,7 +68,7 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Attendance</dt>
+                                <dt class="text-sm font-medium text-gray-500">Attendance</dt>
                                 <dd class="text-lg font-medium text-gray-900">{{ $stats['total_attendance_days'] }} days</dd>
                             </dl>
                         </div>
@@ -89,7 +89,7 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Pending Requests</dt>
+                                <dt class="text-sm font-medium text-gray-500">Pending Requests</dt>
                                 <dd class="text-lg font-medium text-gray-900">{{ $stats['pending_leave_requests'] + $stats['pending_shift_requests'] }}</dd>
                             </dl>
                         </div>
@@ -110,7 +110,7 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Quick Action</dt>
+                                <dt class="text-sm font-medium text-gray-500 ">Quick Action</dt>
                                 <dd class="text-lg font-medium text-gray-900">
                                     <a href="{{ route('employee.leave-requests') }}" class="text-purple-600 hover:text-purple-900">Request Leave</a>
                                 </dd>

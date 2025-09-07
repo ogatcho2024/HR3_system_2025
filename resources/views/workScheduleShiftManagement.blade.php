@@ -3,7 +3,7 @@
 @section('title', 'Work Schedule & Shift Management')
 
 @section('content')
-<div class="py-2 px-3 md:p-6 max-w-full bg-gray-300" x-data="shiftManagement()"
+<div class="py-2 px-3 md:p-6 max-w-full bg-gray-300" x-data="shiftManagement()" x-init="init()"
     x-cloak>
     <!-- Header -->
     <div class="mb-6 md:mb-8">
@@ -446,21 +446,34 @@
                 <div class="mb-4 md:mb-6">
                     <div class="flex flex-col sm:flex-row gap-2 md:gap-4">
                         <div class="flex-1">
-                            <input type="search" placeholder="Search employees..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <input x-model="assignmentFilters.search" 
+                                   @input="filterAssignments()"
+                                   type="search" 
+                                   placeholder="Search employees..." 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
                         </div>
-                        <select class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-                            <option>All Shifts</option>
-                            <option>Morning Shift</option>
-                            <option>Evening Shift</option>
-                            <option>Night Shift</option>
+                        <select x-model="assignmentFilters.shift" 
+                                @change="filterAssignments()"
+                                class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <option value="">All Shifts</option>
+                            <template x-for="template in shiftTemplates" :key="template.id">
+                                <option :value="template.name" x-text="template.name"></option>
+                            </template>
                         </select>
-                        <select class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-                            <option>All Departments</option>
-                            <option>IT</option>
-                            <option>Marketing</option>
-                            <option>Finance</option>
-                            <option>HR</option>
+                        <select x-model="assignmentFilters.department" 
+                                @change="filterAssignments()"
+                                class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <option value="">All Departments</option>
+                            <option value="IT">IT</option>
+                            <option value="Marketing">Marketing</option>
+                            <option value="Finance">Finance</option>
+                            <option value="HR">Human Resources</option>
+                            <option value="Operations">Operations</option>
+                            <option value="Security">Security</option>
+                            <option value="Maintenance">Maintenance</option>
                         </select>
+                        <button @click="resetFilters()" 
+                                class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm whitespace-nowrap">Reset</button>
                     </div>
                 </div>
                 <div class="overflow-x-auto rounded-lg shadow border border-gray-200">
@@ -469,64 +482,76 @@
                             <thead>
                                 <tr class="bg-gray-50">
                                     <th class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Department</th>
+                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                                     <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shift</th>
                                     <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Schedule</th>
-                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Started</th>
                                     <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @forelse($employeeAssignments as $assignment)
+                                <template x-for="assignment in filteredAssignments" :key="assignment.id">
                                     <tr class="hover:bg-gray-50">
                                         <td class="px-3 md:px-6 py-3 md:py-4">
                                             <div class="flex items-center">
                                                 <div class="flex-shrink-0 h-8 w-8 md:h-10 md:w-10">
-                                                    @if($assignment['employee']['avatar'])
+                                                    <div x-show="assignment.employee.avatar">
                                                         <img class="h-8 w-8 md:h-10 md:w-10 rounded-full object-cover" 
-                                                             src="{{ $assignment['employee']['avatar'] }}" 
-                                                             alt="{{ $assignment['employee']['name'] }}">
-                                                    @else
-                                                        <div class="h-8 w-8 md:h-10 md:w-10 rounded-full bg-{{ $assignment['employee']['avatar_color'] ?? 'blue' }}-500 flex items-center justify-center text-white font-medium text-xs md:text-sm">
-                                                            {{ $assignment['employee']['initials'] }}
-                                                        </div>
-                                                    @endif
+                                                             :src="assignment.employee.avatar" 
+                                                             :alt="assignment.employee.name">
+                                                    </div>
+                                                    <div x-show="!assignment.employee.avatar" 
+                                                         class="h-8 w-8 md:h-10 md:w-10 rounded-full flex items-center justify-center text-white font-medium text-xs md:text-sm"
+                                                         :class="'bg-' + (assignment.employee.avatar_color || 'blue') + '-500'"
+                                                         x-text="assignment.employee.initials">
+                                                    </div>
                                                 </div>
                                                 <div class="ml-2 md:ml-4 min-w-0">
-                                                    <div class="text-xs md:text-sm font-medium text-gray-900 truncate">{{ $assignment['employee']['name'] }}</div>
-                                                    <div class="text-xs text-gray-500 truncate hidden sm:block">{{ $assignment['employee']['email'] }}</div>
-                                                    <div class="text-xs text-gray-500 block sm:hidden">{{ $assignment['employee']['department'] }}</div>
+                                                    <div class="text-xs md:text-sm font-medium text-gray-900 truncate" x-text="assignment.employee.name"></div>
+                                                    <div class="text-xs text-gray-500 truncate" x-text="assignment.employee.email"></div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="px-2 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-900 hidden sm:table-cell">{{ $assignment['employee']['department'] }}</td>
+                                        <td class="px-2 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-900" x-text="assignment.employee.department"></td>
                                         <td class="px-2 md:px-6 py-3 md:py-4">
-                                            <span class="px-1.5 md:px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-{{ $assignment['shift']['color'] ?? 'blue' }}-100 text-{{ $assignment['shift']['color'] ?? 'blue' }}-800">
-                                                {{ $assignment['shift']['name'] }}
+                                            <span class="px-1.5 md:px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                                  :class="'bg-' + (assignment.shift.color || 'blue') + '-100 text-' + (assignment.shift.color || 'blue') + '-800'"
+                                                  x-text="assignment.shift.name">
                                             </span>
-                                            <div class="text-xs text-gray-500 mt-1 lg:hidden">{{ $assignment['shift']['time_range'] }}</div>
+                                            <div class="text-xs text-gray-500 mt-1 lg:hidden" x-text="assignment.shift.time_range"></div>
                                         </td>
-                                        <td class="px-2 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-900 hidden lg:table-cell">{{ $assignment['schedule'] }}</td>
-                                        <td class="px-2 md:px-6 py-3 md:py-4">
-                                            <span class="px-1.5 md:px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                                @if($assignment['status'] === 'active') bg-green-100 text-green-800
-                                                @elseif($assignment['status'] === 'pending') bg-yellow-100 text-yellow-800
-                                                @elseif($assignment['status'] === 'inactive') bg-gray-100 text-gray-800
-                                                @else bg-red-100 text-red-800
-                                                @endif">
-                                                {{ ucfirst($assignment['status']) }}
-                                            </span>
-                                        </td>
+                                        <td class="px-2 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-900 hidden lg:table-cell" x-text="assignment.schedule"></td>
+                                        <td class="px-2 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-900" x-text="assignment.start_date"></td>
                                         <td class="px-2 md:px-6 py-3 md:py-4 text-xs md:text-sm font-medium">
                                             <div class="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-2">
-                                                <button onclick="editAssignment({{ $assignment['id'] }})" 
+                                                <button @click="editAssignment(assignment.id)" 
                                                         class="text-blue-600 hover:text-blue-900 text-xs md:text-sm">Edit</button>
-                                                <button onclick="removeAssignment({{ $assignment['id'] }})" 
+                                                <button @click="removeAssignment(assignment.id)" 
                                                         class="text-red-600 hover:text-red-900 text-xs md:text-sm">Remove</button>
                                             </div>
                                         </td>
                                     </tr>
-                                @empty
+                                </template>
+                                <tr x-show="filteredAssignments.length === 0">
+                                    <td colspan="6" class="px-6 py-12 text-center">
+                                        <div class="flex flex-col items-center">
+                                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                            </svg>
+                                            <h3 class="mt-2 text-sm font-medium text-gray-900">No employee assignments found</h3>
+                                            <p class="mt-1 text-sm text-gray-500" x-text="employeeAssignments.length === 0 ? 'Get started by assigning employees to shifts.' : 'Try adjusting your filters or search terms.'"></p>
+                                            <div class="mt-6" x-show="employeeAssignments.length === 0">
+                                                <button @click="openAssignModal()" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                                    <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                                    </svg>
+                                                    Assign First Employee
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @if(isset($employeeAssignments) && count($employeeAssignments) === 0)
                                     <tr>
                                         <td colspan="6" class="px-6 py-12 text-center">
                                             <div class="flex flex-col items-center">
@@ -546,7 +571,7 @@
                                             </div>
                                         </td>
                                     </tr>
-                                @endforelse
+                                @endif
                             </tbody>
                         </table>
                     </div>
@@ -887,12 +912,12 @@
                             </svg>
                         </div>
                         <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="assign-modal-title">
-                                Assign Employee to Shift
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="assign-modal-title"
+                                x-text="editingAssignmentId ? 'Edit Employee Assignment' : 'Assign Employee to Shift'">
                             </h3>
                             <div class="mt-2">
-                                <p class="text-sm text-gray-500">
-                                    Select an employee and assign them to a specific shift schedule.
+                                <p class="text-sm text-gray-500"
+                                   x-text="editingAssignmentId ? 'Update the employee assignment details.' : 'Select an employee and assign them to a specific shift schedule.'">
                                 </p>
                             </div>
                         </div>
@@ -939,11 +964,10 @@
                     <button type="button" 
                             @click="assignEmployee()"
                             :disabled="assignmentLoading"
-                            class="inline-flex items-center justify-center gap-2 rounded-lg border border-transparent shadow-sm 
-                                px-6 py-2.5 
-                                bg-green-600 text-sm font-semibold text-white 
+                            class="assign-modal-button w-full ml-2 mt-3 sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg border border-transparent shadow-sm 
+                                bg-green-600 text-white 
                                 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
-                                transition-all duration-200 ease-in-out
+                                transition-colors duration-200
                                 disabled:opacity-50 disabled:cursor-not-allowed">
                         <svg x-show="!assignmentLoading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -952,18 +976,16 @@
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <span x-text="assignmentLoading ? 'Assigning...' : 'Assign Employee'"></span>
+                        <span x-text="assignmentLoading ? (editingAssignmentId ? 'Updating...' : 'Assigning...') : (editingAssignmentId ? 'Update Assignment' : 'Assign Employee')"></span>
                     </button>
 
                     <!-- Secondary Button -->
                     <button type="button" 
                             @click="showAssignModal = false"
-                            class="mt-3 inline-flex items-center justify-center rounded-lg border border-gray-300 shadow-sm 
-                                px-6 py-2.5 
-                                bg-white text-sm font-medium text-gray-700 
-                                hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400
-                                transition-all duration-200 ease-in-out
-                                sm:mt-0 sm:ml-3">
+                            class="assign-modal-cancel-button mt-3 w-full sm:mt-0 sm:w-auto sm:ml-3 inline-flex items-center justify-center rounded-lg border border-gray-300 shadow-sm 
+                                bg-white text-gray-700 
+                                hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                                transition-colors duration-200">
                         Cancel
                     </button>
                 </div>
@@ -974,6 +996,23 @@
 
 <style>
   [x-cloak] { display: none !important; }
+  
+  /* Fix for assign employee modal button sizing */
+  .assign-modal-button {
+    min-height: 36px !important;
+    max-height: 40px !important;
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+  }
+  
+  .assign-modal-cancel-button {
+    min-height: 36px !important;
+    max-height: 40px !important;
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+  }
 </style>
 
 <script>
@@ -991,6 +1030,13 @@ function shiftManagement() {
         
         // Assignment form data
         availableEmployees: [],
+        employeeAssignments: @json($employeeAssignments ?? []),
+        filteredAssignments: [],
+        assignmentFilters: {
+            search: '',
+            shift: '',
+            department: ''
+        },
         assignForm: {
             employee_id: '',
             shift_template_id: '',
@@ -999,6 +1045,7 @@ function shiftManagement() {
         },
         assignmentLoading: false,
         loadingEmployees: false,
+        editingAssignmentId: null,
         shiftForm: {
             id: null,
             name: '',
@@ -1013,6 +1060,92 @@ function shiftManagement() {
         
         // Calendar properties
         currentCalendarDate: new Date(),
+
+        init() {
+            this.filterAssignments();
+        },
+
+        filterAssignments() {
+            const search = this.assignmentFilters.search.toLowerCase();
+            const shiftFilter = this.assignmentFilters.shift;
+            const departmentFilter = this.assignmentFilters.department;
+            
+            this.filteredAssignments = this.employeeAssignments.filter(assignment => {
+                // Search filter (name or email)
+                const matchesSearch = !search || 
+                    assignment.employee.name.toLowerCase().includes(search) ||
+                    assignment.employee.email.toLowerCase().includes(search);
+                
+                // Shift filter
+                const matchesShift = !shiftFilter || assignment.shift.name === shiftFilter;
+                
+                // Department filter
+                const matchesDepartment = !departmentFilter || assignment.employee.department === departmentFilter;
+                
+                return matchesSearch && matchesShift && matchesDepartment;
+            });
+        },
+        
+        resetFilters() {
+            this.assignmentFilters = {
+                search: '',
+                shift: '',
+                department: ''
+            };
+            this.filterAssignments();
+        },
+
+        async editAssignment(assignmentId) {
+            const assignment = this.employeeAssignments.find(a => a.id === assignmentId);
+            if (!assignment) {
+                alert('Assignment not found');
+                return;
+            }
+            
+            // Pre-populate the assignment form with current data
+            this.assignForm = {
+                employee_id: assignment.employee.id || assignment.employee.employee_id,
+                shift_template_id: assignment.shift.id || assignment.shift.shift_template_id,
+                start_date: assignment.start_date.includes('/') ? 
+                    new Date(assignment.start_date).toISOString().split('T')[0] : 
+                    assignment.start_date,
+                notes: assignment.notes || ''
+            };
+            
+            // Open the assign modal in edit mode
+            this.editingAssignmentId = assignmentId;
+            this.openAssignModal();
+        },
+        
+        async removeAssignment(assignmentId) {
+            if (!confirm('Are you sure you want to remove this employee assignment?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/shift-management/api/assignments/${assignmentId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Remove from local array
+                    this.employeeAssignments = this.employeeAssignments.filter(a => a.id !== assignmentId);
+                    this.filterAssignments();
+                    alert('Assignment removed successfully!');
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error removing assignment:', error);
+                alert('An error occurred while removing the assignment.');
+            }
+        },
 
         resetShiftForm() {
             this.shiftForm = {
@@ -1283,8 +1416,14 @@ function shiftManagement() {
             this.assignmentLoading = true;
             
             try {
-                const response = await fetch('/shift-management/api/assignments', {
-                    method: 'POST',
+                const isEditing = this.editingAssignmentId !== null;
+                const url = isEditing 
+                    ? `/shift-management/api/assignments/${this.editingAssignmentId}`
+                    : '/shift-management/api/assignments';
+                const method = isEditing ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method: method,
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
@@ -1301,6 +1440,21 @@ function shiftManagement() {
                 const result = await response.json();
                 
                 if (result.success) {
+                    if (isEditing) {
+                        // Update existing assignment in local array
+                        const index = this.employeeAssignments.findIndex(a => a.id === this.editingAssignmentId);
+                        if (index !== -1) {
+                            this.employeeAssignments[index] = result.data;
+                        }
+                        this.editingAssignmentId = null;
+                    } else {
+                        // Add new assignment to local array
+                        this.employeeAssignments.push(result.data);
+                    }
+                    
+                    // Update filtered results
+                    this.filterAssignments();
+                    
                     // Reset form
                     this.assignForm = {
                         employee_id: '',
@@ -1313,7 +1467,7 @@ function shiftManagement() {
                     this.showAssignModal = false;
                     
                     // Show success message
-                    alert('Employee assigned successfully!');
+                    alert(isEditing ? 'Assignment updated successfully!' : 'Employee assigned successfully!');
                     
                     // Refresh calendar if on calendar tab
                     if (this.activeTab === 'calendar') {
@@ -1334,6 +1488,16 @@ function shiftManagement() {
         openAssignModal() {
             this.showAssignModal = true;
             this.loadEmployeesForAssignment();
+            
+            // If not in editing mode, reset the form
+            if (this.editingAssignmentId === null) {
+                this.assignForm = {
+                    employee_id: '',
+                    shift_template_id: '',
+                    start_date: '',
+                    notes: ''
+                };
+            }
         }
     }
 }

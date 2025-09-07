@@ -56,6 +56,7 @@ Route::prefix('shift-management/api')->name('shift-management.api.')->group(func
     // Employee Assignment Routes
     Route::get('employees', [ShiftManagementController::class, 'getEmployeesForAssignment'])->name('employees');
     Route::post('assignments', [ShiftManagementController::class, 'storeAssignment'])->name('assignments.store');
+    Route::put('assignments/{id}', [ShiftManagementController::class, 'updateAssignment'])->name('assignments.update');
     Route::delete('assignments/{id}', [ShiftManagementController::class, 'removeAssignment'])->name('assignments.destroy');
     
     // Calendar Data
@@ -179,6 +180,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/employees', [EmployeeManagementController::class, 'employees'])->name('employees');
         Route::get('/employees/{user}/setup', [EmployeeManagementController::class, 'showProfileSetup'])->name('employees.setup');
         Route::post('/employees/{user}/profile', [EmployeeManagementController::class, 'storeProfile'])->name('employees.store-profile');
+        Route::put('/users/{user}', [EmployeeManagementController::class, 'updateUser'])->name('users.update');
+        Route::delete('/users/{user}', [EmployeeManagementController::class, 'deleteUser'])->name('users.delete');
         
         // Alert System
         Route::get('/alerts', [EmployeeManagementController::class, 'alerts'])->name('alerts');
@@ -324,6 +327,17 @@ Route::middleware(['auth'])->group(function () {
         
         // Debug PDF Route
         Route::get('/debug-pdf', [\App\Http\Controllers\AttendanceController::class, 'debugPDF'])->name('debug-pdf');
+    });
+});
+
+// Timesheet Routes (Protected by auth middleware)
+Route::middleware(['auth'])->group(function () {
+    Route::prefix('timesheets')->name('timesheets.')->group(function () {
+        // API routes for employee timesheets
+        Route::get('/employee-timesheets', [\App\Http\Controllers\TimesheetController::class, 'getEmployeeTimesheets'])->name('employee-timesheets');
+        Route::get('/stats', [\App\Http\Controllers\TimesheetController::class, 'getTimesheetStats'])->name('stats');
+        Route::put('/{timesheet}', [\App\Http\Controllers\TimesheetController::class, 'updateTimesheet'])->name('update');
+        Route::delete('/{timesheet}', [\App\Http\Controllers\TimesheetController::class, 'deleteTimesheet'])->name('delete');
     });
 });
 

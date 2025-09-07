@@ -56,7 +56,7 @@ class EmployeeManagementController extends Controller
     }
 
     /**
-     * Display all employees with search and filter
+     * Display all users (existing users have complete profiles, non-existing need setup)
      */
     public function employees(Request $request): View
     {
@@ -72,14 +72,24 @@ class EmployeeManagementController extends Controller
             });
         }
 
-        // Filter by profile status
+        // Filter by profile status (all users in the users table have complete profiles)
+        // For incomplete profiles, we would need to add logic to show potential users
+        // For now, all users in the database are considered "complete"
         if ($request->filled('profile_status')) {
             $status = $request->get('profile_status');
+            // Since all users in DB are complete, incomplete filter shows none
             if ($status === 'incomplete') {
-                $query->whereDoesntHave('employee');
-            } elseif ($status === 'complete') {
-                $query->whereHas('employee');
+                $query->whereRaw('1 = 0'); // No results
             }
+            // Complete status shows all users (no additional filter needed)
+        }
+        
+        // Filter by department (using employee relationship)
+        if ($request->filled('department')) {
+            $department = $request->get('department');
+            $query->whereHas('employee', function($q) use ($department) {
+                $q->where('department', $department);
+            });
         }
 
         $employees = $query->paginate(15);
@@ -134,6 +144,69 @@ class EmployeeManagementController extends Controller
 
         return redirect()->route('employee-management.employees')
             ->with('success', 'Employee profile updated successfully!');
+    }
+
+    /**
+     * Update user account information
+     */
+    public function updateUser(Request $request, User $user): RedirectResponse
+    {
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'lastname' => 'nullable|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|max:20',
+            'position' => 'nullable|string|max:255',
+            'account_type' => 'required|in:1,2,3',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+        ]);
+
+        try {
+            // Handle photo upload
+            if ($request->hasFile('photo')) {
+                // Delete old photo if exists
+                if ($user->photo && \Storage::disk('public')->exists($user->photo)) {
+                    \Storage::disk('public')->delete($user->photo);
+                }
+                
+                // Store new photo
+                $photoPath = $request->file('photo')->store('profile-photos', 'public');
+                $validatedData['photo'] = $photoPath;
+            }
+
+            // Update user
+            $user->update($validatedData);
+
+            return redirect()->route('employee-management.employees')
+                ->with('success', "User account for {$user->name} {$user->lastname} has been updated successfully.");
+        } catch (\Exception $e) {
+            return redirect()->route('employee-management.employees')
+                ->with('error', 'An error occurred while updating the user account. Please try again.');
+        }
+    }
+
+    /**
+     * Delete a user account and their employee profile
+     */
+    public function deleteUser(User $user): RedirectResponse
+    {
+        try {
+            $userName = $user->name . ' ' . ($user->lastname ?? '');
+            
+            // Delete associated employee record if it exists
+            if ($user->employee) {
+                $user->employee->delete();
+            }
+            
+            // Delete the user account
+            $user->delete();
+            
+            return redirect()->route('employee-management.employees')
+                ->with('success', "User account for {$userName} has been deleted successfully.");
+        } catch (\Exception $e) {
+            return redirect()->route('employee-management.employees')
+                ->with('error', 'An error occurred while deleting the user account. Please try again.');
+        }
     }
 
     /**
