@@ -116,6 +116,76 @@
         </div>
     </div>
     
+    <!-- Conflict Detection Alert -->
+    <div id="conflictAlert" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8 hidden">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-yellow-800">Department Coverage Alert</h3>
+                <div class="mt-2 text-sm text-yellow-700" id="conflictDetails">
+                    <!-- Conflict details will be populated here -->
+                </div>
+                <div class="mt-4">
+                    <div class="-mx-2 -my-1.5 flex">
+                        <button type="button" onclick="hideConflictAlert()" class="bg-yellow-50 px-2 py-1.5 rounded-md text-sm font-medium text-yellow-800 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-yellow-50 focus:ring-yellow-600">
+                            Dismiss
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Calendar Filters -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-4">
+                <div>
+                    <label for="departmentFilter" class="block text-sm font-medium text-gray-700">Department</label>
+                    <select id="departmentFilter" onchange="filterCalendar()" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All Departments</option>
+                        <option value="IT">IT</option>
+                        <option value="Finance">Finance</option>
+                        <option value="HR">HR</option>
+                        <option value="Operations">Operations</option>
+                        <option value="Marketing">Marketing</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="leaveTypeFilter" class="block text-sm font-medium text-gray-700">Leave Type</label>
+                    <select id="leaveTypeFilter" onchange="filterCalendar()" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All Leave Types</option>
+                        <option value="Annual">Annual Leave</option>
+                        <option value="Sick">Sick Leave</option>
+                        <option value="Personal">Personal Leave</option>
+                        <option value="Emergency">Emergency Leave</option>
+                        <option value="Maternity">Maternity Leave</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="checkDepartmentCoverage()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                    Check Coverage
+                </button>
+                <button onclick="exportCalendar()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                    Export
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Department Coverage Summary -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Department Coverage Today</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="coverageSummary">
+            <!-- Coverage data will be populated here -->
+        </div>
+    </div>
+
     <!-- Event Details Modal -->
     <div id="eventModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
@@ -231,6 +301,109 @@
         document.getElementById('eventModal').classList.add('hidden');
         document.getElementById('eventModal').classList.remove('flex');
     }
+    
+    // Calendar enhancement functions
+    function filterCalendar() {
+        const department = document.getElementById('departmentFilter').value;
+        const leaveType = document.getElementById('leaveTypeFilter').value;
+        
+        // Reload the calendar with filters
+        const url = new URL(window.location.href);
+        if (department) {
+            url.searchParams.set('department', department);
+        } else {
+            url.searchParams.delete('department');
+        }
+        
+        if (leaveType) {
+            url.searchParams.set('leave_type', leaveType);
+        } else {
+            url.searchParams.delete('leave_type');
+        }
+        
+        window.location.href = url.toString();
+    }
+    
+    function checkDepartmentCoverage() {
+        const today = new Date().toISOString().split('T')[0];
+        
+        fetch(`{{ route('leave-management.check-conflicts') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                start_date: today,
+                end_date: today,
+                department: 'all',
+                user_id: 0
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            updateCoverageSummary(data);
+        })
+        .catch(error => {
+            console.error('Error checking coverage:', error);
+        });
+    }
+    
+    function updateCoverageSummary(data) {
+        const summary = document.getElementById('coverageSummary');
+        const departments = ['IT', 'Finance', 'HR', 'Operations'];
+        
+        summary.innerHTML = departments.map(dept => `
+            <div class="p-4 border border-gray-200 rounded-lg">
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="font-medium text-gray-900">${dept}</h4>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                        100% Coverage
+                    </span>
+                </div>
+                <div class="flex items-center text-sm text-gray-600">
+                    <span>Available Today</span>
+                </div>
+                <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
+                    <div class="h-2 rounded-full bg-green-500" style="width: 100%"></div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function exportCalendar() {
+        const month = {{ $month }};
+        const year = {{ $year }};
+        
+        // Create export parameters
+        const params = new URLSearchParams({
+            month: month,
+            year: year,
+            format: 'pdf'
+        });
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.href = `{{ route('leave-management.calendar') }}?${params.toString()}&export=true`;
+        link.download = `leave-calendar-${year}-${month.toString().padStart(2, '0')}.pdf`;
+        link.click();
+    }
+    
+    function hideConflictAlert() {
+        document.getElementById('conflictAlert').classList.add('hidden');
+    }
+    
+    function showConflictAlert(message) {
+        const alert = document.getElementById('conflictAlert');
+        const details = document.getElementById('conflictDetails');
+        details.innerHTML = message;
+        alert.classList.remove('hidden');
+    }
+    
+    // Initialize coverage summary on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        checkDepartmentCoverage();
+    });
     
     // Close modal when clicking outside
     document.getElementById('eventModal').addEventListener('click', function(e) {

@@ -3,28 +3,30 @@
 @section('title', 'HR Dashboard')
 
 @section('content')
-<div class="py-2 px-3 bg-gray-300 ">
-    <div class="flex items-center justify-between space-x-4">
-    <!-- Breadcrumbs -->
-    @include('partials.breadcrumbs', ['breadcrumbs' => [
-        ['label' => 'Dashboard', 'url' => route('dashb')]
-    ]])
-        <div class="bg-white rounded-lg shadow px-3 py-2 text-center">
-            <p class="text-xs mb-1 text-gray-600">Current Time</p>
-            <p id="current-time" class="text-xl mb-1 font-bold text-blue-600"></p>
-            <p id="current-date" class="text-xs mb-1 text-gray-500"></p>
-        </div>
-    </div>
-    
-    <!-- Header -->
-    <div class="mb-8">
-        <div class="flex items-center justify-between">
-           
-        </div>
-    </div>
+<div class="min-h-screen bg-gray-300">
+    <div class="py-6">
+        <div style="width: 100%; padding: 0 1rem;">
+            <div class="flex items-center justify-between space-x-4">
+                <!-- Breadcrumbs -->
+                @include('partials.breadcrumbs', ['breadcrumbs' => [
+                    ['label' => 'Dashboard', 'url' => route('dashb')]
+                ]])
+                <div class="bg-white rounded-lg shadow px-3 py-2 text-center">
+                    <p class="text-xs mb-1 text-gray-600">Current Time</p>
+                    <p id="current-time" class="text-xl mb-1 font-bold text-blue-600"></p>
+                    <p id="current-date" class="text-xs mb-1 text-gray-500"></p>
+                </div>
+            </div>
+            
+            <!-- Header -->
+            <div class="mb-8">
+                <div class="flex items-center justify-between">
+                   
+                </div>
+            </div>
 
-    <!-- Key Metrics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Key Metrics Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <!-- Total Employees -->
         <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
             <div class="flex items-center justify-between">
@@ -87,9 +89,9 @@
         </div>
     </div>
 
-    <!-- Today's Attendance Breakdown -->
-    @if(isset($attendanceStats))
-    <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+            <!-- Today's Attendance Breakdown -->
+            @if(isset($attendanceStats))
+            <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-semibold text-gray-900">Today's Attendance Overview</h3>
             <div class="text-sm text-gray-500">
@@ -151,11 +153,11 @@
             </a>
         </div>
     </div>
-    @endif
+            @endif
 
-    <!-- Quick Actions -->
-    <div class="bg-gray-100 rounded-2xl shadow-lg p-6 mb-8">
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <!-- Quick Actions -->
+            <div class="bg-gray-100 rounded-2xl shadow-lg p-6 mb-8">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <a href="{{ route('reports.index') }}" class="flex flex-col items-center border border-gray-400 p-4 rounded-lg group">
                 <div class="p-3 bg-green-600 rounded-full mb-3 group-hover:bg-green-700">
                     <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 32 32" xml:space="preserve">
@@ -165,7 +167,7 @@
                 <span class="text-sm font-medium text-black">View Reports</span>
             </a>
 
-            <a href="{{ route('leaveManagement') }}" class="flex flex-col items-center border border-gray-400 p-4 group">
+            <a href="{{ route('leave-management.admin-dashboard') }}" class="flex flex-col items-center border border-gray-400 p-4 group">
                 <div class="p-3 bg-yellow-600 rounded-full mb-3 group-hover:bg-yellow-700">
                     <svg width="30" height="30" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M15.6666 8L17.75 10.5L15.6666 8Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -194,11 +196,11 @@
                 </div>
                 <span class="text-sm font-medium text-black">Shift Requests</span>
             </a>
-        </div>
-    </div>
+                </div>
+            </div>
 
-    <!-- Dashboard Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- Dashboard Content Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         <!-- Recent Activities -->
         <div class="lg:col-span-2 rounded-2xl bg-gray-100 shadow-lg">
             <div class="px-6 py-4 border-b rounded-tr-2xl rounded-tl-2xl bg-gray-200 border-gray-200">
@@ -308,6 +310,7 @@
                 <div class="mt-6">
                     <a href="{{ route('leave-management.calendar') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium">View calendar →</a>
                 </div>
+            </div>
             </div>
         </div>
     </div>

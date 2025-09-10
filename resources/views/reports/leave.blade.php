@@ -15,15 +15,6 @@
         <div class="flex items-center justify-between">
             <div>
                 <h3 class="text-3xl font-bold text-gray-900">Leave Reports</h3>
-                <p class="text-gray-600 mt-2">Leave requests, balances, and trends analysis</p>
-            </div>
-            <div class="flex space-x-3">
-                <a href="{{ route('reports.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
-                    ← Back to Reports
-                </a>
-                <button onclick="window.print()" class="px-4 py-2 mr-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                    Print Report
-                </button>
             </div>
         </div>
     </div>

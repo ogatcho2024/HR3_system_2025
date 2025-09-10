@@ -3,7 +3,7 @@
 @section('title', 'Attendance Reports')
 
 @section('content')
-<div class="w-full p-3 sm:px-4">
+<div class="w-full p-3 sm:px-6 lg:px-8 max-w-full overflow-x-hidden">
 
     <!-- Breadcrumbs -->
     @include('partials.breadcrumbs', ['breadcrumbs' => [
@@ -13,12 +13,12 @@
 
     <!-- Header -->
     <div class="mb-8">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-                <h3 class="text-3xl font-bold text-gray-900">Attendance Reports</h3>
+                <h3 class="text-2xl lg:text-3xl font-bold text-gray-900">Attendance Reports</h3>
                 <p class="text-gray-600 mt-2">Timesheets, attendance tracking, and patterns analysis</p>
             </div>
-            <div class="flex space-x-3">
+            <div class="flex flex-wrap gap-3">
                 <a href="{{ route('reports.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
                     ← Back to Reports
                 </a>
@@ -223,7 +223,7 @@
     <!-- Filters -->
     <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
         <h4 class="text-lg font-semibold text-gray-900 mb-4">Filters</h4>
-        <form method="GET" action="{{ route('reports.attendance') }}" class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <form method="GET" action="{{ route('reports.attendance') }}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div>
                 <label for="start_date" class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
                 <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}" 

@@ -193,8 +193,8 @@
                 </li>
 
                 <!-- Leave Management -->
-                <li class="nav-item">
-                    <a href="{{ route('leaveManagement') }}" class="nav-link d-flex align-items-center">
+                <li class="nav-item has-treeview {{ request()->routeIs('leave-management.*') ? 'menu-open' : '' }}">
+                    <a href="#" class="nav-link {{ request()->routeIs('leave-management.*') ? 'active' : '' }} d-flex align-items-center">
                         <span class="nav-icon d-inline-flex align-items-center justify-content-center mr-2">
                             <svg fill="#ffffff" class="w-6 h-6" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" xml:space="preserve"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <g> <g> 
                                 <path d="M431.342,25.962h-95.078v-9.266c0-9.22-7.475-16.696-16.696-16.696H192.434c-9.22,0-16.696,7.475-16.696,16.696v9.266 H80.659c-9.22,0-16.696,7.475-16.696,16.696v452.647c0,9.22,7.475,16.696,16.696,16.696H431.34c9.22,0,16.696-7.475,16.696-16.696 V42.657C448.037,33.437,440.562,25.962,431.342,25.962z M209.129,33.391h93.743c0,6.696,0,11.813,0,18.533h-93.743 C209.129,45.22,209.129,40.112,209.129,33.391z M414.646,478.609L414.646,478.609H97.355V59.353h78.383v9.267 c0,9.22,7.475,16.696,16.696,16.696h127.134c9.22,0,16.696-7.475,16.696-16.696v-9.267h78.383V478.609z"></path> </g> </g> <g> <g> <path d="M374.46,98.208H137.54c-9.22,0-16.696,7.475-16.696,16.696v323.519c0,9.22,7.475,16.696,16.696,16.696H374.46 c9.22,0,16.696-7.475,16.696-16.696V114.904C391.155,105.683,383.68,98.208,374.46,98.208z M357.764,421.728H154.236V131.6 h203.528V421.728z"></path> </g> </g> <g> <g> <path d="M309.639,234.808c-6.52-6.52-17.092-6.52-23.611,0l-48.296,48.295l-11.758-11.758c-6.519-6.52-17.091-6.52-23.611,0 c-6.52,6.52-6.52,17.091,0,23.611l23.564,23.564c6.519,6.52,17.091,6.521,23.611,0l60.101-60.101 C316.159,251.898,316.159,241.328,309.639,234.808z"></path> </g> </g> </g>
@@ -205,31 +205,31 @@
                     </a>
                     <ul class="nav nav-treeview">
                         <li class="nav-item">
-                            <a href="{{ route('employee-management.dashboard', ['tab' => 'overview']) }}" class="nav-link {{ request()->get('tab') == 'overview' || (!request()->has('tab') && request()->routeIs('workScheduleShiftManagement')) ? 'active' : '' }}">
+                            <a href="{{ route('leave-management.admin-dashboard') }}" class="nav-link {{ request()->routeIs('leave-management.admin-dashboard') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Overview</p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ route('employee-management.requests') }}" class="nav-link {{ request()->routeIs('employee-management.requests') ? 'active' : '' }}">
+                            <a href="{{ route('leave-management.pending-requests') }}" class="nav-link {{ request()->routeIs('leave-management.pending-requests') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Pending Requests</p>
+                                <p>Leave Requests</p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ route('employee-management.employees') }}" class="nav-link {{ request()->routeIs('employee-management.employees') ? 'active' : '' }}">
+                            <a href="{{ route('leave-management.leave-balances') }}" class="nav-link {{ request()->routeIs('leave-management.leave-balances') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Leave Balances</p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ route('employee-management.employee-portal') }}" class="nav-link {{ request()->routeIs('employee-management.employee-portal') ? 'active' : '' }}">
+                            <a href="{{ route('leave-management.calendar') }}" class="nav-link {{ request()->routeIs('leave-management.calendar') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Leave Calendar</p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ route('employee-management.employee-portal') }}" class="nav-link {{ request()->routeIs('employee-management.employee-portal') ? 'active' : '' }}">
+                            <a href="{{ route('leave-management.reports') }}" class="nav-link {{ request()->routeIs('leave-management.reports') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Reports & Analytics</p>
                             </a>

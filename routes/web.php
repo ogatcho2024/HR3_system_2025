@@ -151,6 +151,9 @@ Route::middleware(['auth'])->group(function () {
         // Dashboard and Overview
         Route::get('/dashboard', [LeaveManagementController::class, 'index'])->name('dashboard');
         
+        // Admin Dashboard with comprehensive features
+        Route::get('/admin-dashboard', [LeaveManagementController::class, 'adminDashboard'])->name('admin-dashboard');
+        
         // Pending Requests Management
         Route::get('/pending-requests', [LeaveManagementController::class, 'pendingRequests'])->name('pending-requests');
         
@@ -162,11 +165,20 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/requests/{leaveRequest}/approve', [LeaveManagementController::class, 'approveRequest'])->name('requests.approve');
         Route::post('/requests/{leaveRequest}/reject', [LeaveManagementController::class, 'rejectRequest'])->name('requests.reject');
         
-        // Leave Balances
+        // Leave Balances Management
         Route::get('/leave-balances', [LeaveManagementController::class, 'leaveBalances'])->name('leave-balances');
+        Route::post('/leave-balances/adjust', [LeaveManagementController::class, 'adjustLeaveBalance'])->name('adjust-balance');
         
-        // Leave Calendar
+        // Leave Calendar with Conflict Detection
         Route::get('/calendar', [LeaveManagementController::class, 'calendar'])->name('calendar');
+        Route::post('/check-conflicts', [LeaveManagementController::class, 'checkLeaveConflicts'])->name('check-conflicts');
+        
+        // Reports and Analytics
+        Route::get('/reports', [LeaveManagementController::class, 'generateReport'])->name('reports');
+        Route::get('/export-report', [LeaveManagementController::class, 'exportReport'])->name('export-report');
+        
+        // Integration APIs
+        Route::get('/payroll-integration', [LeaveManagementController::class, 'getPayrollIntegrationData'])->name('payroll-integration');
     });
 });
 

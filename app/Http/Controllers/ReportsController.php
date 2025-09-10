@@ -397,7 +397,7 @@ class ReportsController extends Controller
                 ->whereYear('date', $month->year)
                 ->sum('hours_worked');
                 
-            $avgHours = $departmentEmployees > 0 ? round($totalHours / $departmentEmployees, 2) : 0;
+            $avgHours = $departmentEmployees > 0 && $totalHours > 0 ? round($totalHours / $departmentEmployees, 2) : 0;
             
             $stats[] = [
                 'department' => $department,
@@ -536,7 +536,8 @@ class ReportsController extends Controller
             ->whereYear('date', $month->year)
             ->sum('hours_worked');
             
-        if ($totalRegularHours === 0) {
+        // Ensure we're comparing as float and handle zero division case
+        if (floatval($totalRegularHours) <= 0) {
             return 100; // No overtime is good
         }
         

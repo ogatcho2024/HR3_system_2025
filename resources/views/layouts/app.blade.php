@@ -7,6 +7,7 @@
 
   <title>Cali</title>
   <link rel="icon" href="{{ asset('images/logo.png') }}" type="image/png">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
 
   {{-- Styles --}}
   @stack('styles')
