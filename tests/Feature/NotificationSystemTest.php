@@ -3,6 +3,9 @@
 use App\Models\User;
 use App\Models\Notification;
 use App\Services\NotificationService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 test('can create notification', function () {
     $user = User::factory()->create();
