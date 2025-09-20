@@ -10,12 +10,6 @@
         ['label' => 'Reports', 'url' => route('reports.index')],
     ]])
 
-    <!-- Header -->
-    <div class="mb-8">
-        <h3 class="text-3xl font-bold text-gray-900">Reports Dashboard</h3>
-        <p class="text-gray-600 mt-2">Generate and view comprehensive HR reports</p>
-    </div>
-
     <!-- Key Statistics Cards -->
     @if(isset($stats))
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -121,7 +115,7 @@
                 </div>
             </div>
             <div class="space-y-2">
-                <a href="{{ route('reports.attendance') }}" class="block w-full text-left px-4 py-2 bg-purple-50 text-purple-700 rounded hover:bg-purple-100 transition-colors">
+                <a href="{{ route('attendanceTimeTracking', ['tab' => 'reports']) }}" class="block w-full text-left px-4 py-2 bg-purple-50 text-purple-700 rounded hover:bg-purple-100 transition-colors">
                     View Attendance Report
                 </a>
             </div>

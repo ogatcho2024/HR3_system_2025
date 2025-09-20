@@ -267,7 +267,6 @@
                         </div>
                         <div class="flex space-x-2">
                             <button @click="openAssignModal()" class="px-2 py-1.5 bg-green-600 text-white text-xs sm:text-sm rounded-lg hover:bg-green-700 whitespace-nowrap">Assign Employee</button>
-                            <button class="ml-2 px-2 py-1.5 bg-blue-600 text-white text-xs sm:text-sm rounded-lg hover:bg-blue-700 whitespace-nowrap">Auto Schedule</button>
                         </div>
                     </div>
                 </div>
@@ -527,7 +526,7 @@
                                                 <button @click="editAssignment(assignment.id)" 
                                                         class="text-blue-600 hover:text-blue-900 text-xs md:text-sm">Edit</button>
                                                 <button @click="removeAssignment(assignment.id)" 
-                                                        class="text-red-600 hover:text-red-900 text-xs md:text-sm">Remove</button>
+                                                        class="text-red-600 hover:text-red-900 text-xs ml-2 md:text-sm">Remove</button>
                                             </div>
                                         </td>
                                     </tr>

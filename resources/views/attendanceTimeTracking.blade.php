@@ -353,7 +353,7 @@
             <!-- Enhanced Performance Dashboard -->
             <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 <!-- Today's Performance Summary -->
-                <div class="lg:col-span-1 xl:col-span-1 space-y-4">
+                <div class="lg:col-span-1 xl:col-span-1 shadow-lg p-6 space-y-4">
                     <h4 class="text-lg font-semibold text-gray-900 mb-4">Today's Performance</h4>
                     <div class="grid grid-cols-1 gap-4">
                         <div class="bg-blue-50 to-blue-100 rounded-lg p-4 border-l-4 border-blue-500">
@@ -423,223 +423,37 @@
                     </div>
                 </div>
 
-                <!-- Recent Clock Activities -->
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <h4 class="text-lg font-semibold text-gray-900">Recent Activities</h4>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                            <span class="text-xs text-gray-500">Live updates</span>
-                        </div>
-                    </div>
-                    <div class="space-y-3 max-h-80 overflow-y-auto bg-gray-50 rounded-lg p-4">
-                        <!-- Loading state -->
-                        <div x-show="activitiesLoading" class="flex items-center justify-center p-6">
-                            <div class="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent"></div>
-                            <span class="ml-2 text-sm text-gray-600">Loading activities...</span>
-                        </div>
-                        
-                        <!-- Recent Activities List -->
-                        <template x-for="activity in recentActivities" :key="activity.id">
-                            <div class="flex items-center space-x-3 p-3 bg-white rounded-lg shadow-sm">
-                                <div :class="{
-                                    'bg-green-100': activity.action === 'clock_in',
-                                    'bg-red-100': activity.action === 'clock_out',
-                                    'bg-blue-100': activity.action === 'break_start' || activity.action === 'break_end',
-                                    'bg-yellow-100': activity.action === 'manual_entry',
-                                    'bg-purple-100': activity.action === 'overtime_start' || activity.action === 'overtime_end'
-                                }" class="w-10 h-10 rounded-full flex items-center justify-center">
-                                    <!-- Clock In Icon -->
-                                    <template x-if="activity.action === 'clock_in'">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                                        </svg>
-                                    </template>
-                                    <!-- Clock Out Icon -->
-                                    <template x-if="activity.action === 'clock_out'">
-                                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                                        </svg>
-                                    </template>
-                                    <!-- Break Icons -->
-                                    <template x-if="activity.action === 'break_start' || activity.action === 'break_end'">
-                                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                    </template>
-                                    <!-- Manual Entry Icon -->
-                                    <template x-if="activity.action === 'manual_entry'">
-                                        <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                        </svg>
-                                    </template>
-                                    <!-- Overtime Icon -->
-                                    <template x-if="activity.action === 'overtime_start' || activity.action === 'overtime_end'">
-                                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                    </template>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="text-sm font-medium text-gray-900" x-text="activity.employee_name + ' - ' + activity.action_display"></p>
-                                    <p class="text-xs text-gray-500" x-text="activity.time_ago + ' • ' + activity.department"></p>
-                                </div>
-                                <div class="text-xs font-medium" :class="{
-                                    'text-green-600': activity.status === 'on_time' || activity.action === 'clock_in',
-                                    'text-yellow-600': activity.status === 'late',
-                                    'text-red-600': activity.action === 'clock_out',
-                                    'text-blue-600': activity.action === 'break_start' || activity.action === 'break_end',
-                                    'text-purple-600': activity.action === 'overtime_start' || activity.action === 'overtime_end',
-                                    'text-gray-600': activity.action === 'manual_entry'
-                                }" x-text="activity.status_display || activity.duration || 'Manual'"></div>
+                <!-- Today's Attendance Summary -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Today's Attendance Summary</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <span class="font-medium text-gray-900">On Time</span>
                             </div>
-                        </template>
-                        
-                        <!-- No activities message -->
-                        <div x-show="!activitiesLoading && recentActivities.length === 0" class="text-center py-8">
-                            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            <p class="text-gray-500 text-sm">No recent activities</p>
+                            <span class="text-lg font-bold text-green-600" x-text="overviewData.onTime || '0'">0</span>
                         </div>
-                    </div>
-                    
-                    <!-- View All Activities Button -->
-                    <div class="mt-4">
-                        <a href="{{ route('attendance.all-activities') }}" class="block w-full text-center bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg transition-colors text-sm font-medium">
-                            View All Activities →
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Department Performance Breakdown -->
-                <div class="lg:col-span-1 xl:col-span-1">
-                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Department Performance</h4>
-                    <!-- Loading state -->
-                    <div x-show="departmentLoading" class="flex items-center justify-center p-6">
-                        <div class="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent"></div>
-                        <span class="ml-2 text-sm text-gray-600">Loading department data...</span>
-                    </div>
-                    
-                    <div x-show="!departmentLoading" class="space-y-3">
-                        <template x-for="department in departmentData" :key="department.id">
-                            <div class="bg-white rounded-lg p-4 shadow-sm border">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-sm font-medium text-gray-700" x-text="department.name"></span>
-                                    <span class="text-sm font-bold" :class="{
-                                        'text-green-600': department.attendance_rate >= 95,
-                                        'text-yellow-600': department.attendance_rate >= 85 && department.attendance_rate < 95,
-                                        'text-red-600': department.attendance_rate < 85
-                                    }" x-text="department.attendance_rate + '%'"></span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="h-2 rounded-full transition-all duration-300" :class="{
-                                        'bg-green-500': department.attendance_rate >= 95,
-                                        'bg-yellow-500': department.attendance_rate >= 85 && department.attendance_rate < 95,
-                                        'bg-red-500': department.attendance_rate < 85
-                                    }" :style="'width: ' + department.attendance_rate + '%'"></div>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-1" x-text="department.present + '/' + department.total + ' present today'"></p>
+                        <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                <span class="font-medium text-gray-900">Late (5-15 min)</span>
                             </div>
-                        </template>
-                        
-                        <!-- No department data message -->
-                        <div x-show="departmentData.length === 0" class="text-center py-8">
-                            <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                            </svg>
-                            <p class="text-gray-500 text-sm">No department data available</p>
+                            <span class="text-lg font-bold text-yellow-600" x-text="overviewData.lateModerate || '0'">0</span>
                         </div>
-                    </div>
-                    
-                    <!-- Quick Actions -->
-                    <div class="mt-6 grid grid-cols-2 gap-3">
-                        <a href="{{ route('attendance.manual-entry') }}" class="bg-blue-600 text-white py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium text-center">
-                            Manual Entry
-                        </a>
-                        <a href="{{ route('reports.attendance') }}" class="bg-gray-600 text-white py-2 px-3 rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium text-center">
-                            Full Report
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Today's Summary -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Attendance Summary -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Today's Attendance Summary</h3>
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span class="font-medium text-gray-900">On Time</span>
+                        <div class="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
+                                <span class="font-medium text-gray-900">Very Late (15+ min)</span>
+                            </div>
+                            <span class="text-lg font-bold text-orange-600" x-text="overviewData.lateExtreme || '0'">0</span>
                         </div>
-                        <span class="text-lg font-bold text-green-600" x-text="overviewData.onTime || '0'">0</span>
-                    </div>
-                    <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                            <span class="font-medium text-gray-900">Late (5-15 min)</span>
-                        </div>
-                        <span class="text-lg font-bold text-yellow-600" x-text="overviewData.lateModerate || '0'">0</span>
-                    </div>
-                    <div class="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
-                            <span class="font-medium text-gray-900">Very Late (15+ min)</span>
-                        </div>
-                        <span class="text-lg font-bold text-orange-600" x-text="overviewData.lateExtreme || '0'">0</span>
-                    </div>
-                    <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                            <span class="font-medium text-gray-900">Absent</span>
-                        </div>
-                        <span class="text-lg font-bold text-red-600" x-text="overviewData.absent || '0'">0</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Alerts -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Alerts</h3>
-                <div class="space-y-4">
-                    <div class="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg">
-                        <div class="w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center mt-0.5">
-                            <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-gray-900">Late Arrival Alert</p>
-                            <p class="text-xs text-gray-600">John Smith clocked in 20 minutes late</p>
-                            <p class="text-xs text-gray-500 mt-1">5 minutes ago</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start space-x-3 p-3 bg-red-50 rounded-lg">
-                        <div class="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center mt-0.5">
-                            <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-gray-900">Absence Alert</p>
-                            <p class="text-xs text-gray-600">3 employees have not clocked in yet</p>
-                            <p class="text-xs text-gray-500 mt-1">15 minutes ago</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
-                        <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
-                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-gray-900">Break Reminder</p>
-                            <p class="text-xs text-gray-600">5 employees on extended break</p>
-                            <p class="text-xs text-gray-500 mt-1">20 minutes ago</p>
+                        <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                <span class="font-medium text-gray-900">Absent</span>
+                            </div>
+                            <span class="text-lg font-bold text-red-600" x-text="overviewData.absent || '0'">0</span>
                         </div>
                     </div>
                 </div>
