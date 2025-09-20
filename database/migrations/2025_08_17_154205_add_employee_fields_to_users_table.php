@@ -16,8 +16,7 @@ return new class extends Migration
             $table->string('photo')->nullable()->after('email');
             $table->string('account_type')->default('employee')->after('photo');
             $table->boolean('otp_status')->default(false)->after('account_type');
-            $table->string('phone')->nullable()->after('otp_status');
-            $table->string('position')->nullable()->after('phone');
+            $table->string('position')->nullable()->after('otp_status');
         });
     }
 
@@ -32,7 +31,6 @@ return new class extends Migration
                 'photo', 
                 'account_type',
                 'otp_status',
-                'phone',
                 'position'
             ]);
         });

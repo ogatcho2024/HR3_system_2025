@@ -51,7 +51,7 @@
                       <div class="content layout_padding2-top">
                           @foreach ($services as $service)
                               <div class="box job-card">
-                                  <h3>{{ $service->service_name }}</h3>
+                                  <!-- <h3>{{ $service->service_name }}</h3> -->
                                   <div class="job-details">
                                       <p><strong>Description:</strong> {{ $service->service_description }}</p>
                                       <p><strong>Price Range:</strong> {{ $service->service_price }}</p>
