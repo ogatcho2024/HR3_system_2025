@@ -359,14 +359,20 @@ class ReportsController extends Controller
         }
         
         // Get employees who have perfect attendance (present on all working days)
-        return Employee::active()
-            ->whereHas('user.attendances', function ($query) use ($month, $workingDays) {
-                $query->whereMonth('date', $month->month)
+        $perfectEmployees = Employee::active()
+            ->with('user')
+            ->get()
+            ->filter(function ($employee) use ($month, $workingDays) {
+                $attendanceCount = $employee->user->attendances()
+                    ->whereMonth('date', $month->month)
                     ->whereYear('date', $month->year)
                     ->where('status', 'present')
-                    ->havingRaw('COUNT(*) = ?', [$workingDays]);
-            })
-            ->count();
+                    ->count();
+                    
+                return $attendanceCount >= $workingDays;
+            });
+            
+        return $perfectEmployees->count();
     }
     
     /**
@@ -463,25 +469,58 @@ class ReportsController extends Controller
             ->whereYear('date', $month->year)
             ->sum('overtime_hours');
             
-        $avgClockInTime = Attendance::whereMonth('date', $month->month)
+        // SQLite-compatible way to calculate average times
+        $attendanceRecords = Attendance::whereMonth('date', $month->month)
             ->whereYear('date', $month->year)
             ->whereNotNull('clock_in_time')
-            ->selectRaw('AVG(TIME_TO_SEC(clock_in_time)) as avg_seconds')
-            ->first();
-            
-        $avgClockOutTime = Attendance::whereMonth('date', $month->month)
-            ->whereYear('date', $month->year)
             ->whereNotNull('clock_out_time')
-            ->selectRaw('AVG(TIME_TO_SEC(clock_out_time)) as avg_seconds')
-            ->first();
+            ->get(['clock_in_time', 'clock_out_time']);
+            
+        $avgClockInSeconds = null;
+        $avgClockOutSeconds = null;
+        
+        if ($attendanceRecords->count() > 0) {
+            $clockInTimes = $attendanceRecords->pluck('clock_in_time')
+                ->filter()
+                ->map(function ($time) {
+                    if (empty($time)) return 0;
+                    $parts = explode(':', $time);
+                    if (count($parts) < 2) return 0;
+                    $hours = intval($parts[0] ?? 0);
+                    $minutes = intval($parts[1] ?? 0);
+                    $seconds = intval($parts[2] ?? 0);
+                    return ($hours * 3600) + ($minutes * 60) + $seconds;
+                })
+                ->filter(function ($seconds) {
+                    return $seconds > 0;
+                });
+                
+            $clockOutTimes = $attendanceRecords->pluck('clock_out_time')
+                ->filter()
+                ->map(function ($time) {
+                    if (empty($time)) return 0;
+                    $parts = explode(':', $time);
+                    if (count($parts) < 2) return 0;
+                    $hours = intval($parts[0] ?? 0);
+                    $minutes = intval($parts[1] ?? 0);
+                    $seconds = intval($parts[2] ?? 0);
+                    return ($hours * 3600) + ($minutes * 60) + $seconds;
+                })
+                ->filter(function ($seconds) {
+                    return $seconds > 0;
+                });
+                
+            $avgClockInSeconds = $clockInTimes->count() > 0 ? $clockInTimes->avg() : null;
+            $avgClockOutSeconds = $clockOutTimes->count() > 0 ? $clockOutTimes->avg() : null;
+        }
             
         return [
             'total_hours' => round($totalHours, 2),
             'overtime_hours' => round($overtimeHours, 2),
-            'avg_clock_in' => $avgClockInTime && $avgClockInTime->avg_seconds ? 
-                gmdate('H:i', $avgClockInTime->avg_seconds) : '08:00',
-            'avg_clock_out' => $avgClockOutTime && $avgClockOutTime->avg_seconds ? 
-                gmdate('H:i', $avgClockOutTime->avg_seconds) : '17:00',
+            'avg_clock_in' => $avgClockInSeconds ? 
+                gmdate('H:i', $avgClockInSeconds) : '08:00',
+            'avg_clock_out' => $avgClockOutSeconds ? 
+                gmdate('H:i', $avgClockOutSeconds) : '17:00',
             'productivity_score' => $this->calculateProductivityScore($month)
         ];
     }

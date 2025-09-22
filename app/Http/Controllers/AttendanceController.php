@@ -12,7 +12,7 @@ use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
 
 class AttendanceController extends Controller
 {
@@ -1078,7 +1078,14 @@ class AttendanceController extends Controller
                 ]);
             }
             
+            // Configure PDF options for production
             $pdf = PDF::loadView('pdf.reports.daily', $data);
+            $pdf->setPaper('A4', 'portrait');
+            
+            // Set options to prevent remote resource loading issues
+            $pdf->getDomPDF()->getOptions()->setChroot(base_path());
+            $pdf->getDomPDF()->getOptions()->setIsRemoteEnabled(false);
+            
             $filename = 'Daily_Attendance_Report_' . $carbonDate->format('Y-m-d') . '.pdf';
             
             return $pdf->download($filename);
@@ -1170,7 +1177,14 @@ class AttendanceController extends Controller
                 'generatedAt' => now()
             ];
             
+            // Configure PDF options for production
             $pdf = PDF::loadView('pdf.reports.weekly', $data);
+            $pdf->setPaper('A4', 'portrait');
+            
+            // Set options to prevent remote resource loading issues
+            $pdf->getDomPDF()->getOptions()->setChroot(base_path());
+            $pdf->getDomPDF()->getOptions()->setIsRemoteEnabled(false);
+            
             $filename = 'Weekly_Attendance_Report_' . $startOfWeek->format('Y-m-d') . '_to_' . $endOfWeek->format('Y-m-d') . '.pdf';
             
             return $pdf->download($filename);
@@ -1286,7 +1300,14 @@ class AttendanceController extends Controller
                 'generatedAt' => now()
             ];
             
+            // Configure PDF options for production
             $pdf = PDF::loadView('pdf.reports.monthly', $data);
+            $pdf->setPaper('A4', 'portrait');
+            
+            // Set options to prevent remote resource loading issues
+            $pdf->getDomPDF()->getOptions()->setChroot(base_path());
+            $pdf->getDomPDF()->getOptions()->setIsRemoteEnabled(false);
+            
             $filename = 'Monthly_Attendance_Report_' . $carbonDate->format('Y-m') . '.pdf';
             
             return $pdf->download($filename);
@@ -1408,7 +1429,14 @@ class AttendanceController extends Controller
                 'generatedAt' => now()
             ];
             
+            // Configure PDF options for production
             $pdf = PDF::loadView('pdf.reports.yearly', $data);
+            $pdf->setPaper('A4', 'portrait');
+            
+            // Set options to prevent remote resource loading issues
+            $pdf->getDomPDF()->getOptions()->setChroot(base_path());
+            $pdf->getDomPDF()->getOptions()->setIsRemoteEnabled(false);
+            
             $filename = 'Yearly_Attendance_Report_' . $carbonDate->format('Y') . '.pdf';
             
             return $pdf->download($filename);
@@ -1442,7 +1470,14 @@ class AttendanceController extends Controller
                 'generatedAt' => now()
             ];
             
+            // Configure PDF options for production
             $pdf = PDF::loadView('pdf.reports.daily', $data);
+            $pdf->setPaper('A4', 'portrait');
+            
+            // Set options to prevent remote resource loading issues
+            $pdf->getDomPDF()->getOptions()->setChroot(base_path());
+            $pdf->getDomPDF()->getOptions()->setIsRemoteEnabled(false);
+            
             return $pdf->download('debug-daily-report.pdf');
             
         } catch (\Exception $e) {

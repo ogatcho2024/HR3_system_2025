@@ -11,7 +11,7 @@ return [
     | in dompdf_config.inc.php. You can also override the entire config file.
     |
     */
-    'show_warnings' => false,   // Throw an Exception on warnings from dompdf
+    'show_warnings' => true,   // Show warnings for debugging PDF issues
 
     'public_path' => null,  // Override the public path if needed
 
@@ -78,7 +78,7 @@ return [
          * direct class use like:
          * $dompdf = new DOMPDF();  $dompdf->load_html($htmldata); $dompdf->render(); $pdfdata = $dompdf->output();
          */
-        'chroot' => realpath(base_path()),
+        'chroot' => realpath(base_path()) ?: base_path(),
 
         /**
          * Protocol whitelist
