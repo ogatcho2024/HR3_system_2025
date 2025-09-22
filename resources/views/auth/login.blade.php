@@ -12,18 +12,18 @@
 
 <section class="relative w-full min-h-screen flex justify-center items-center p-4">
     <!-- Background -->
-    <div class="absolute inset-0 bg-[url('/images/login2.jpg')] bg-cover bg-center filter z-0"></div>
+    <div class="absolute inset-0 bg-[url('images/login2.jpg')] bg-cover bg-center filter z-0"></div>
 
     <!-- Main Container -->
-    <div class="relative z-10 bg-slate-200 shadow-md w-full max-w-5xl min-h-96 rounded-lg flex flex-col md:flex-row overflow-hidden">
+    <div class="relative z-10 bg-slate-200/50 shadow-md w-full max-w-5xl min-h-96 rounded-lg flex flex-col md:flex-row overflow-hidden">
         
         <!-- Left Image Side -->
-        <div class="w-full md:w-1/2 bg-white flex justify-center items-center p-4 md:rounded-l-lg">
+        <div class="w-full md:w-1/2 bg-white flex bg-white/30 backdrop-blur-md justify-center items-center p-4 md:rounded-l-lg">
             <img class="rounded-md w-full h-60 md:h-full object-cover shadow-md" src="{{ asset('images/logo2.png') }}" alt="Logo">
         </div>
 
         <!-- Right Form Side -->
-        <div class="w-full md:w-1/2 p-6 flex flex-col justify-center">
+        <div class="w-full md:w-1/2 p-6 flex bg-white/30 backdrop-blur-md flex-col justify-center">
 
             {{-- Show Google login error --}}
             @if ($errors->has('msg'))
