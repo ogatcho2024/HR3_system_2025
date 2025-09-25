@@ -282,14 +282,11 @@ class TimesheetController extends Controller
     /**
      * Approve a timesheet
      */
-    public function approveTimesheet(Timesheet $timesheet): JsonResponse
+    public function approveTimesheet(Timesheet $timesheet)
     {
         try {
             if ($timesheet->status !== 'submitted') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Only submitted timesheets can be approved'
-                ], 422);
+                return back()->with('error', 'Only submitted timesheets can be approved');
             }
             
             $timesheet->update([
@@ -298,31 +295,21 @@ class TimesheetController extends Controller
                 'approved_by' => Auth::id() ?? 1
             ]);
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Timesheet approved successfully',
-                'timesheet' => $timesheet->fresh()
-            ]);
+            return back()->with('success', 'Timesheet approved successfully!');
             
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to approve timesheet: ' . $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Failed to approve timesheet: ' . $e->getMessage());
         }
     }
     
     /**
      * Reject a timesheet
      */
-    public function rejectTimesheet(Request $request, Timesheet $timesheet): JsonResponse
+    public function rejectTimesheet(Request $request, Timesheet $timesheet)
     {
         try {
             if ($timesheet->status !== 'submitted') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Only submitted timesheets can be rejected'
-                ], 422);
+                return back()->with('error', 'Only submitted timesheets can be rejected');
             }
             
             $timesheet->update([
@@ -332,17 +319,10 @@ class TimesheetController extends Controller
                 'approved_by' => Auth::id() ?? 1
             ]);
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Timesheet rejected successfully',
-                'timesheet' => $timesheet->fresh()
-            ]);
+            return back()->with('success', 'Timesheet rejected successfully!');
             
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to reject timesheet: ' . $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Failed to reject timesheet: ' . $e->getMessage());
         }
     }
     

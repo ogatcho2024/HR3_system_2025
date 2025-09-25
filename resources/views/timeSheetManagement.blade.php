@@ -10,6 +10,21 @@
       </div>  
     </header>
 
+    <!-- Flash Messages -->
+    @if(session('success'))
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong class="font-bold">Success!</strong>
+            <span class="block sm:inline">{{ session('success') }}</span>
+        </div>
+    @endif
+    
+    @if(session('error'))
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong class="font-bold">Error!</strong>
+            <span class="block sm:inline">{{ session('error') }}</span>
+        </div>
+    @endif
+
     <main x-data="hrTimesheetApp()" x-init="init()" class="space-y-6">
 
       <!-- Quick Stats Overview -->
@@ -942,69 +957,60 @@
       },
       
       async approveTimesheet(id) {
-        if (!confirm('Approve this timesheet?')) {
-          return;
-        }
+        if (!confirm('Approve this timesheet?')) return;
         
-        try {
-          const response = await fetch(`/timesheets/${id}/approve`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-          });
-          
-          const result = await response.json();
-          
-          if (result.success) {
-            // Remove from pending approvals list
-            this.pendingApprovals = this.pendingApprovals.filter(a => a.id !== id);
-            // Update stats
-            this.stats.pendingApprovals = Math.max(0, this.stats.pendingApprovals - 1);
-            alert('Timesheet approved successfully!');
-          } else {
-            alert('Error: ' + result.message);
-          }
-        } catch (error) {
-          console.error('Error approving timesheet:', error);
-          alert('An error occurred while approving the timesheet.');
-        }
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{{ url('/timesheets') }}/${id}/approve`;
+        
+        // Add CSRF token
+        const csrfField = document.createElement('input');
+        csrfField.type = 'hidden';
+        csrfField.name = '_token';
+        csrfField.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        form.appendChild(csrfField);
+        
+        // Add method override for PATCH
+        const methodField = document.createElement('input');
+        methodField.type = 'hidden';
+        methodField.name = '_method';
+        methodField.value = 'PATCH';
+        form.appendChild(methodField);
+        
+        document.body.appendChild(form);
+        form.submit();
       },
       
       async rejectTimesheet(id) {
-        const reason = prompt('Reason for rejection:');
-        if (!reason) {
-          return;
-        }
+        if (!confirm('Reject this timesheet?')) return;
         
-        try {
-          const response = await fetch(`/timesheets/${id}/reject`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({ reason: reason })
-          });
-          
-          const result = await response.json();
-          
-          if (result.success) {
-            // Remove from pending approvals list
-            this.pendingApprovals = this.pendingApprovals.filter(a => a.id !== id);
-            // Update stats
-            this.stats.pendingApprovals = Math.max(0, this.stats.pendingApprovals - 1);
-            alert('Timesheet rejected successfully!');
-          } else {
-            alert('Error: ' + result.message);
-          }
-        } catch (error) {
-          console.error('Error rejecting timesheet:', error);
-          alert('An error occurred while rejecting the timesheet.');
-        }
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{{ url('/timesheets') }}/${id}/reject`;
+        
+        // Add CSRF token
+        const csrfField = document.createElement('input');
+        csrfField.type = 'hidden';
+        csrfField.name = '_token';
+        csrfField.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        form.appendChild(csrfField);
+        
+        // Add method override for PATCH
+        const methodField = document.createElement('input');
+        methodField.type = 'hidden';
+        methodField.name = '_method';
+        methodField.value = 'PATCH';
+        form.appendChild(methodField);
+        
+        // Add reason field
+        const reasonField = document.createElement('input');
+        reasonField.type = 'hidden';
+        reasonField.name = 'reason';
+        reasonField.value = 'Rejected by manager';
+        form.appendChild(reasonField);
+        
+        document.body.appendChild(form);
+        form.submit();
       },
       
       viewTimesheetDetails(id) {
