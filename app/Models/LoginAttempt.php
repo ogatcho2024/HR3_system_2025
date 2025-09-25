@@ -28,14 +28,20 @@ class LoginAttempt extends Model
      */
     public static function isBlocked($email, $ipAddress)
     {
-        $attempt = self::where(function ($query) use ($email, $ipAddress) {
-            $query->where('email', $email)
-                  ->orWhere('ip_address', $ipAddress);
-        })
-        ->where('blocked_until', '>', now())
-        ->first();
+        try {
+            $attempt = self::where(function ($query) use ($email, $ipAddress) {
+                $query->where('email', $email)
+                      ->orWhere('ip_address', $ipAddress);
+            })
+            ->where('blocked_until', '>', now())
+            ->first();
 
-        return $attempt !== null;
+            return $attempt !== null;
+        } catch (\Exception $e) {
+            // If table doesn't exist, return false (no blocking)
+            \Log::warning('login_attempts table not found: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -43,20 +49,25 @@ class LoginAttempt extends Model
      */
     public static function getBlockTimeRemaining($email, $ipAddress)
     {
-        $attempt = self::where(function ($query) use ($email, $ipAddress) {
-            $query->where('email', $email)
-                  ->orWhere('ip_address', $ipAddress);
-        })
-        ->where('blocked_until', '>', now())
-        ->first();
+        try {
+            $attempt = self::where(function ($query) use ($email, $ipAddress) {
+                $query->where('email', $email)
+                      ->orWhere('ip_address', $ipAddress);
+            })
+            ->where('blocked_until', '>', now())
+            ->first();
 
-        if ($attempt) {
-            $seconds = now()->diffInSeconds($attempt->blocked_until);
-            $minutes = ceil($seconds / 60);
-            return max(1, $minutes); // Always show at least 1 minute if blocked
+            if ($attempt) {
+                $seconds = now()->diffInSeconds($attempt->blocked_until);
+                $minutes = ceil($seconds / 60);
+                return max(1, $minutes); // Always show at least 1 minute if blocked
+            }
+
+            return 0;
+        } catch (\Exception $e) {
+            // If table doesn't exist, return 0 (no blocking time)
+            return 0;
         }
-
-        return 0;
     }
 
     /**
@@ -64,18 +75,23 @@ class LoginAttempt extends Model
      */
     public static function getBlockTimeRemainingSeconds($email, $ipAddress)
     {
-        $attempt = self::where(function ($query) use ($email, $ipAddress) {
-            $query->where('email', $email)
-                  ->orWhere('ip_address', $ipAddress);
-        })
-        ->where('blocked_until', '>', now())
-        ->first();
+        try {
+            $attempt = self::where(function ($query) use ($email, $ipAddress) {
+                $query->where('email', $email)
+                      ->orWhere('ip_address', $ipAddress);
+            })
+            ->where('blocked_until', '>', now())
+            ->first();
 
-        if ($attempt) {
-            return max(0, now()->diffInSeconds($attempt->blocked_until));
+            if ($attempt) {
+                return max(0, now()->diffInSeconds($attempt->blocked_until));
+            }
+
+            return 0;
+        } catch (\Exception $e) {
+            // If table doesn't exist, return 0 (no blocking time)
+            return 0;
         }
-
-        return 0;
     }
 
     /**
@@ -83,38 +99,43 @@ class LoginAttempt extends Model
      */
     public static function recordFailedAttempt($email, $ipAddress)
     {
-        $maxAttempts = config('auth.login_attempts.max_attempts', 3);
-        $blockDuration = config('auth.login_attempts.block_duration', 5); // minutes
+        try {
+            $maxAttempts = config('auth.login_attempts.max_attempts', 3);
+            $blockDuration = config('auth.login_attempts.block_duration', 5); // minutes
 
-        // Find existing attempt record
-        $attempt = self::where('email', $email)
-                      ->orWhere('ip_address', $ipAddress)
-                      ->first();
+            // Find existing attempt record
+            $attempt = self::where('email', $email)
+                          ->orWhere('ip_address', $ipAddress)
+                          ->first();
 
-        if ($attempt) {
-            // If more than 15 minutes have passed since last attempt, reset counter
-            if ($attempt->last_attempt->diffInMinutes(now()) > 15) {
-                $attempt->attempts = 1;
+            if ($attempt) {
+                // If more than 15 minutes have passed since last attempt, reset counter
+                if ($attempt->last_attempt->diffInMinutes(now()) > 15) {
+                    $attempt->attempts = 1;
+                } else {
+                    $attempt->attempts++;
+                }
+                
+                $attempt->last_attempt = now();
+                
+                // Block if exceeded max attempts
+                if ($attempt->attempts >= $maxAttempts) {
+                    $attempt->blocked_until = now()->addMinutes($blockDuration);
+                }
+                
+                $attempt->save();
             } else {
-                $attempt->attempts++;
+                // Create new attempt record
+                self::create([
+                    'email' => $email,
+                    'ip_address' => $ipAddress,
+                    'attempts' => 1,
+                    'last_attempt' => now()
+                ]);
             }
-            
-            $attempt->last_attempt = now();
-            
-            // Block if exceeded max attempts
-            if ($attempt->attempts >= $maxAttempts) {
-                $attempt->blocked_until = now()->addMinutes($blockDuration);
-            }
-            
-            $attempt->save();
-        } else {
-            // Create new attempt record
-            self::create([
-                'email' => $email,
-                'ip_address' => $ipAddress,
-                'attempts' => 1,
-                'last_attempt' => now()
-            ]);
+        } catch (\Exception $e) {
+            // If table doesn't exist, log the error but don't break the application
+            \Log::warning('Could not record login attempt - table may not exist: ' . $e->getMessage());
         }
     }
 
@@ -123,9 +144,14 @@ class LoginAttempt extends Model
      */
     public static function clearAttempts($email, $ipAddress)
     {
-        self::where('email', $email)
-            ->orWhere('ip_address', $ipAddress)
-            ->delete();
+        try {
+            self::where('email', $email)
+                ->orWhere('ip_address', $ipAddress)
+                ->delete();
+        } catch (\Exception $e) {
+            // If table doesn't exist, just continue silently
+            \Log::warning('Could not clear login attempts - table may not exist: ' . $e->getMessage());
+        }
     }
 
     /**

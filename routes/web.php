@@ -1,6 +1,15 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+
+// Include migration routes for production deployment
+require __DIR__.'/migration.php';
+
+// Admin migration routes for login rate limiting
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/migration-status', [\App\Http\Controllers\MigrationController::class, 'showStatus'])->name('migration.status');
+    Route::post('/migration-create', [\App\Http\Controllers\MigrationController::class, 'createTable'])->name('migration.create');
+});
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\GoogleController;
