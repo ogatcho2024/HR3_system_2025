@@ -112,4 +112,21 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Login Attempts Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Here you may configure the login rate limiting settings. This includes
+    | the maximum number of failed attempts before blocking, and the duration
+    | of the block in minutes.
+    |
+    */
+
+    'login_attempts' => [
+        'max_attempts' => env('LOGIN_MAX_ATTEMPTS', 3),
+        'block_duration' => env('LOGIN_BLOCK_DURATION', 5), // minutes
+        'reset_timeout' => env('LOGIN_RESET_TIMEOUT', 15), // minutes
+    ],
+
 ];

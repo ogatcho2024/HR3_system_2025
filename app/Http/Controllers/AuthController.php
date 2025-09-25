@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use App\Models\User;
 use App\Models\Employee;
 use App\Models\Attendance;
+use App\Models\LoginAttempt;
 
 class AuthController extends Controller
 {
@@ -63,15 +65,48 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $email = $request->email;
+        $ipAddress = $request->ip();
+        
+        // Check if request is throttled (from middleware)
+        $isThrottled = $request->input('_is_throttled', false);
+        $throttleTime = $request->input('_throttle_time', 0);
 
+        $user = User::where('email', $email)->first();
+
+        // If user doesn't exist
         if (!$user) {
+            // If already throttled, show throttle message instead of specific error
+            if ($isThrottled) {
+                return back()->withErrors([
+                    'throttle' => "Account temporarily locked due to multiple failed attempts. Please try again in {$throttleTime} minutes."
+                ])->withInput($request->only('email'));
+            }
+            
+            // Record failed attempt for non-existent email
+            LoginAttempt::recordFailedAttempt($email, $ipAddress);
+            RateLimiter::hit('login-attempts:' . $ipAddress . ':' . $email, 300); // 5 minutes
+            
             return back()->withErrors(['email' => 'Email is not registered!'])->withInput();
         }
 
+        // If password is wrong
         if (!Hash::check($request->password, $user->password)) {
+            // If already throttled, show throttle message instead of specific error
+            if ($isThrottled) {
+                return back()->withErrors([
+                    'throttle' => "Account temporarily locked due to multiple failed attempts. Please try again in {$throttleTime} minutes."
+                ])->withInput($request->only('email'));
+            }
+            
+            // Record failed attempt for wrong password
+            LoginAttempt::recordFailedAttempt($email, $ipAddress);
+            RateLimiter::hit('login-attempts:' . $ipAddress . ':' . $email, 300); // 5 minutes
+            
             return back()->withErrors(['password' => 'Incorrect password!'])->withInput();
         }
+        
+        // Login successful - even if throttled, correct credentials should work
 
         session([
             'email' => $user->email,
@@ -87,6 +122,10 @@ class AuthController extends Controller
             return redirect('login')->with('acc_banned', true);
         }*/
 
+        // Clear login attempts on successful login
+        LoginAttempt::clearAttempts($email, $ipAddress);
+        RateLimiter::clear('login-attempts:' . $ipAddress . ':' . $email);
+        
         Auth::login($user);
         
         // Role-based redirection
@@ -97,6 +136,30 @@ class AuthController extends Controller
             // Regular employees go to employee dashboard
             return redirect()->route('employee.dashboard')->with('success', 'Welcome back!');
         }
+    }
+
+    /**
+     * Get remaining block time for AJAX requests
+     */
+    public function getBlockTime(Request $request)
+    {
+        $email = $request->input('email');
+        $ipAddress = $request->ip();
+        
+        if (LoginAttempt::isBlocked($email, $ipAddress)) {
+            $seconds = LoginAttempt::getBlockTimeRemainingSeconds($email, $ipAddress);
+            return response()->json([
+                'blocked' => true,
+                'seconds_remaining' => $seconds,
+                'minutes_remaining' => ceil($seconds / 60)
+            ]);
+        }
+        
+        return response()->json([
+            'blocked' => false,
+            'seconds_remaining' => 0,
+            'minutes_remaining' => 0
+        ]);
     }
 
     public function logout(Request $request)

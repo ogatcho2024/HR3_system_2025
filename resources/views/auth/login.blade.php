@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" href="{{ asset('images/logo.png') }}" type="image/png">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link href="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.css" rel="stylesheet" />
@@ -30,6 +31,77 @@
                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-xs text-center">
                     {{ $errors->first('msg') }}
                 </div>
+            @endif
+
+            {{-- Show rate limiting error --}}
+            @if ($errors->has('throttle'))
+                <div id="throttleError" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-xs text-center">
+                    <div class="flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <span id="throttleMessage">Too many login attempts. Please try again in <strong id="countdown">5</strong> minutes.</span>
+                    </div>
+                    <div class="mt-2 text-xs opacity-75">
+                        Time remaining: <span id="timeDisplay" class="font-mono">05:00</span>
+                    </div>
+                </div>
+
+                <script>
+                let countdownSeconds = 300; // Default 5 minutes in seconds
+                
+                // Get actual remaining time from server
+                fetch('{{ route('login.block-time') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        email: '{{ old('email') }}'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.blocked) {
+                        countdownSeconds = Math.max(1, data.seconds_remaining);
+                        // Disable login button
+                        document.getElementById('loginButton').disabled = true;
+                        document.getElementById('loginButtonText').textContent = 'Account Locked';
+                        updateCountdown();
+                    } else {
+                        // Not blocked, hide error
+                        document.getElementById('throttleError').style.display = 'none';
+                        // Enable login button
+                        document.getElementById('loginButton').disabled = false;
+                        document.getElementById('loginButtonText').textContent = 'Sign In';
+                    }
+                })
+                .catch(error => {
+                    console.log('Error checking block time, using default countdown');
+                    updateCountdown();
+                });
+                
+                function updateCountdown() {
+                    if (countdownSeconds <= 0) {
+                        document.getElementById('throttleError').style.display = 'none';
+                        // Re-enable login button
+                        document.getElementById('loginButton').disabled = false;
+                        document.getElementById('loginButtonText').textContent = 'Sign In';
+                        return;
+                    }
+                    
+                    const minutes = Math.floor(countdownSeconds / 60);
+                    const seconds = countdownSeconds % 60;
+                    
+                    document.getElementById('countdown').textContent = Math.max(1, minutes);
+                    document.getElementById('timeDisplay').textContent = 
+                        String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+                    
+                    countdownSeconds--;
+                    setTimeout(updateCountdown, 1000);
+                }
+                </script>
             @endif
 
             @if(session('acc_banned'))
@@ -94,9 +166,9 @@
                     <a href="#" class="opacity-60 text-gray-900 font-semibold">Forgot Password?</a>
                 </div>
 
-                <button type="submit"
-                    class="w-full text-white bg-gray-900 hover:bg-gray-950 focus:ring-4 focus:ring-orange-300 font-medium rounded-lg text-sm px-5 py-2.5 mt-3">
-                    Sign In
+                <button type="submit" id="loginButton"
+                    class="w-full text-white bg-gray-900 hover:bg-gray-950 focus:ring-4 focus:ring-orange-300 font-medium rounded-lg text-sm px-5 py-2.5 mt-3 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span id="loginButtonText">Sign In</span>
                 </button>
 
                 <div class="flex items-center my-4">

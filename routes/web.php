@@ -70,7 +70,8 @@ Route::view('/attendanceTimeTracking', 'attendanceTimeTracking')->name('attendan
 
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
+Route::post('/login', [AuthController::class, 'login'])->middleware('login.throttle')->name('login.submit');
+Route::post('/login/block-time', [AuthController::class, 'getBlockTime'])->name('login.block-time');
 
 Route::get('/register', [RegisterController::class, 'showRegisterForm'])->name('register');
 Route::post('/register', [RegisterController::class, 'register'])->name('register.submit');
