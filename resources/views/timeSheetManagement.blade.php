@@ -123,60 +123,6 @@
             </div>
           </div>
         </div>
-        
-        <!-- Quick Actions -->
-        <div class="bg-white rounded-2xl p-6 shadow">
-          <h3 class="text-lg font-semibold mb-4">Quick Actions</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button @click="bulkApproveAll()" class="bg-green-500 hover:bg-green-600 text-white p-4 rounded-lg text-center transition-colors">
-              <svg class="w-6 h-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <div class="font-medium">Bulk Approve</div>
-              <div class="text-xs opacity-80">Approve all pending</div>
-            </button>
-            <button @click="generatePayrollReport()" class="bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-lg text-center transition-colors">
-              <svg class="w-6 h-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-              </svg>
-              <div class="font-medium">Payroll Report</div>
-              <div class="text-xs opacity-80">Generate for current period</div>
-            </button>
-            <button @click="sendReminders()" class="bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-lg text-center transition-colors">
-              <svg class="w-6 h-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4 19h9a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-              </svg>
-              <div class="font-medium">Send Reminders</div>
-              <div class="text-xs opacity-80">To overdue employees</div>
-            </button>
-            <button @click="auditTimesheets()" class="bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-lg text-center transition-colors">
-              <svg class="w-6 h-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-              </svg>
-              <div class="font-medium">Run Audit</div>
-              <div class="text-xs opacity-80">Check for issues</div>
-            </button>
-          </div>
-        </div>
-        
-        <!-- Recent Activity -->
-        <div class="bg-gray-200 rounded-2xl p-6 shadow">
-          <h3 class="text-lg font-semibold mb-4">Recent Activity</h3>
-          <div class="space-y-3">
-            <template x-for="activity in recentActivity" :key="activity.id">
-              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div class="flex items-center gap-3">
-                  <div class="w-2 h-2 rounded-full" :class="getActivityColor(activity.type)"></div>
-                  <div>
-                    <div class="font-medium" x-text="activity.message"></div>
-                    <div class="text-sm text-gray-500" x-text="activity.timestamp"></div>
-                  </div>
-                </div>
-                <button @click="viewActivityDetails(activity.id)" class="text-blue-600 hover:text-blue-800 text-sm">View</button>
-              </div>
-            </template>
-          </div>
-        </div>
       </div>
 
       <!-- Monthly View -->
@@ -312,60 +258,85 @@
 
       <!-- Timesheets Approvals Tab -->
       <div x-show="activeTab === 'approvals'" class="space-y-6">
-        <!-- Bulk Actions -->
-        <div class="bg-white rounded-2xl p-6 shadow">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold">Pending Approvals</h3>
-            <div class="flex gap-2">
-              <input type="checkbox" x-model="selectAllApprovals" @change="toggleSelectAll()" class="mr-2">
-              <label class="text-sm text-gray-600 mr-4">Select All</label>
-              <button @click="bulkApprove()" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">Bulk Approve</button>
-              <button @click="bulkReject()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">Bulk Reject</button>
+        <!-- Pending Approvals Table -->
+        <div class="bg-white rounded-2xl shadow overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-gray-900">Pending Approvals</h3>
+              <div class="flex items-center gap-3">
+                <label class="flex items-center text-sm text-gray-600">
+                  <input type="checkbox" x-model="selectAllApprovals" @change="toggleSelectAll()" class="mr-2 rounded">
+                  Select All
+                </label>
+                <button @click="bulkApprove()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                  Bulk Approve
+                </button>
+                <button @click="bulkReject()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                  Bulk Reject
+                </button>
+              </div>
             </div>
           </div>
-          <div class="space-y-4">
-            <template x-for="approval in pendingApprovals" :key="approval.id">
-              <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                <div class="flex items-start justify-between">
-                  <div class="flex items-center gap-3">
-                    <input type="checkbox" x-model="approval.selected" class="mt-1">
-                    <div class="flex-1">
-                      <div class="flex items-center gap-2 mb-2">
-                        <div class="font-medium text-lg" x-text="approval.employee"></div>
-                        <span class="px-2 py-1 rounded-full text-xs" :class="getPriorityClass(approval.priority)" x-text="approval.priority"></span>
+          
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="w-12 px-4 py-3 text-left">
+                    <span class="sr-only">Select</span>
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Overtime</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <template x-for="approval in pendingApprovals" :key="approval.id">
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-4">
+                      <input type="checkbox" x-model="approval.selected" class="rounded">
+                    </td>
+                    <td class="px-4 py-4">
+                      <div class="flex flex-col">
+                        <div class="text-sm font-medium text-gray-900" x-text="approval.employee"></div>
+                        <div class="text-sm text-gray-500" x-text="approval.department"></div>
                       </div>
-                      <div class="text-sm text-gray-600 mb-2">
-                        <div x-text="approval.department + ' Department'"></div>
-                        <div x-text="'Week: ' + approval.weekRange"></div>
-                        <div x-text="'Submitted: ' + approval.submittedAt"></div>
+                    </td>
+                    <td class="px-4 py-4 text-sm text-gray-900" x-text="approval.work_date"></td>
+                    <td class="px-4 py-4 text-sm text-gray-900" x-text="approval.project_name"></td>
+                    <td class="px-4 py-4 text-center text-sm text-gray-900" x-text="approval.totalHours"></td>
+                    <td class="px-4 py-4 text-center text-sm text-orange-600 font-medium" x-text="approval.overtimeHours"></td>
+                    <td class="px-4 py-4 text-center">
+                      <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getPriorityClass(approval.priority)" x-text="approval.priority"></span>
+                    </td>
+                    <td class="px-4 py-4 text-center text-sm text-gray-500" x-text="approval.submittedAt"></td>
+                    <td class="px-4 py-4 text-center">
+                      <div class="flex items-center justify-center gap-2">
+                        <button @click="approveTimesheet(approval.id)" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs font-medium">
+                          Approve
+                        </button>
+                        <button @click="rejectTimesheet(approval.id)" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-medium">
+                          Reject
+                        </button>
                       </div>
-                      <div class="flex items-center gap-4 text-sm">
-                        <span class="text-green-600"><strong x-text="approval.totalHours"></strong> total hours</span>
-                        <span class="text-orange-600" x-show="approval.overtimeHours > 0"><strong x-text="approval.overtimeHours"></strong> overtime</span>
-                        <span class="text-blue-600"><strong x-text="approval.projectCount"></strong> projects</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex gap-2 ml-4">
-                    <button @click="viewTimesheetDetails(approval.id)" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
-                      View Details
-                    </button>
-                    <button @click="approveTimesheet(approval.id)" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
-                      Approve
-                    </button>
-                    <button @click="rejectTimesheet(approval.id)" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </template>
-            <div x-show="pendingApprovals.length === 0" class="text-center text-gray-500 py-8">
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+            
+            <!-- Empty state -->
+            <div x-show="pendingApprovals.length === 0" class="text-center py-12">
               <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
-              <p class="text-lg font-medium">All caught up!</p>
-              <p class="text-sm">No pending timesheet approvals at the moment.</p>
+              <h3 class="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
+              <p class="text-sm text-gray-500">No pending timesheet approvals at the moment.</p>
             </div>
           </div>
         </div>
@@ -614,26 +585,9 @@
       },
       
       // HR Overview Stats
-      stats: {
-        pendingApprovals: 12,
-        totalEmployees: 45,
-        overtimeHours: 128,
-        weeklyHours: 1800
-      },
+      stats: @json($stats),
       
-      overviewStats: {
-        submitted: 38,
-        pending: 12,
-        overdue: 5
-      },
-      
-      // Recent Activity
-      recentActivity: [
-        { id: 1, type: 'approval', message: 'John Doe submitted timesheet for approval', timestamp: '2 minutes ago' },
-        { id: 2, type: 'rejection', message: 'Jane Smith timesheet rejected - incomplete hours', timestamp: '15 minutes ago' },
-        { id: 3, type: 'approval', message: 'Mike Johnson timesheet approved', timestamp: '1 hour ago' },
-        { id: 4, type: 'submission', message: 'Sarah Wilson submitted weekly timesheet', timestamp: '2 hours ago' }
-      ],
+      overviewStats: @json($overviewStats),
       
       // Reports
       reportFromDate: '',
@@ -642,32 +596,7 @@
       reportResults: [],
       
       // Approvals
-      pendingApprovals: [
-        {
-          id: 1,
-          employee: 'John Doe',
-          department: 'Engineering',
-          weekRange: 'Jan 8 - Jan 14, 2024',
-          totalHours: 40,
-          overtimeHours: 5,
-          projectCount: 3,
-          priority: 'High',
-          submittedAt: '2 hours ago',
-          selected: false
-        },
-        {
-          id: 2,
-          employee: 'Jane Smith',
-          department: 'Marketing',
-          weekRange: 'Jan 8 - Jan 14, 2024',
-          totalHours: 37.5,
-          overtimeHours: 0,
-          projectCount: 2,
-          priority: 'Medium',
-          submittedAt: '1 day ago',
-          selected: false
-        }
-      ],
+      pendingApprovals: @json($pendingApprovals),
       
       selectAllApprovals: false,
       
@@ -795,7 +724,7 @@
         this.generateWeekDays();
         this.loadWeeklyTimesheet();
         this.loadMonthlyData();
-        this.loadPendingApprovals();
+        // this.loadPendingApprovals(); // Removed - data comes from backend via @json($pendingApprovals)
         
         // Set up employee timesheets date range and load data
         this.setCurrentWeekDateRange();
@@ -1012,18 +941,69 @@
         // Implement export functionality
       },
       
-      approveTimesheet(id) {
-        if (confirm('Approve this timesheet?')) {
-          this.pendingApprovals = this.pendingApprovals.filter(a => a.id !== id);
-          console.log('Timesheet approved:', id);
+      async approveTimesheet(id) {
+        if (!confirm('Approve this timesheet?')) {
+          return;
+        }
+        
+        try {
+          const response = await fetch(`/timesheets/${id}/approve`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            // Remove from pending approvals list
+            this.pendingApprovals = this.pendingApprovals.filter(a => a.id !== id);
+            // Update stats
+            this.stats.pendingApprovals = Math.max(0, this.stats.pendingApprovals - 1);
+            alert('Timesheet approved successfully!');
+          } else {
+            alert('Error: ' + result.message);
+          }
+        } catch (error) {
+          console.error('Error approving timesheet:', error);
+          alert('An error occurred while approving the timesheet.');
         }
       },
       
-      rejectTimesheet(id) {
+      async rejectTimesheet(id) {
         const reason = prompt('Reason for rejection:');
-        if (reason) {
-          this.pendingApprovals = this.pendingApprovals.filter(a => a.id !== id);
-          console.log('Timesheet rejected:', id, reason);
+        if (!reason) {
+          return;
+        }
+        
+        try {
+          const response = await fetch(`/timesheets/${id}/reject`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ reason: reason })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            // Remove from pending approvals list
+            this.pendingApprovals = this.pendingApprovals.filter(a => a.id !== id);
+            // Update stats
+            this.stats.pendingApprovals = Math.max(0, this.stats.pendingApprovals - 1);
+            alert('Timesheet rejected successfully!');
+          } else {
+            alert('Error: ' + result.message);
+          }
+        } catch (error) {
+          console.error('Error rejecting timesheet:', error);
+          alert('An error occurred while rejecting the timesheet.');
         }
       },
       
@@ -1062,7 +1042,9 @@
         console.log('Refreshing HR data...');
         this.loadWeeklyTimesheet();
         this.loadMonthlyData();
-        this.loadPendingApprovals();
+        // this.loadPendingApprovals(); // Removed - data comes from backend
+        // For real refresh, we should reload the page or make API call to get fresh data
+        location.reload(); // Simple solution to get fresh backend data
       },
 
       exportAllTimesheets() {
@@ -1110,28 +1092,91 @@
         });
       },
 
-      bulkApprove() {
+      async bulkApprove() {
         const selected = this.pendingApprovals.filter(a => a.selected);
         if (selected.length === 0) {
           alert('Please select timesheets to approve');
           return;
         }
-        if (confirm(`Approve ${selected.length} selected timesheets?`)) {
-          this.pendingApprovals = this.pendingApprovals.filter(a => !a.selected);
-          this.stats.pendingApprovals -= selected.length;
+        
+        if (!confirm(`Approve ${selected.length} selected timesheets?`)) {
+          return;
+        }
+        
+        try {
+          const response = await fetch('/timesheets/bulk-approve', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+              timesheet_ids: selected.map(a => a.id)
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            // Remove approved timesheets from the list
+            this.pendingApprovals = this.pendingApprovals.filter(a => !a.selected);
+            // Update stats
+            this.stats.pendingApprovals = Math.max(0, this.stats.pendingApprovals - result.approved_count);
+            // Reset selection
+            this.selectAllApprovals = false;
+            alert(`Successfully approved ${result.approved_count} timesheets!`);
+          } else {
+            alert('Error: ' + result.message);
+          }
+        } catch (error) {
+          console.error('Error bulk approving timesheets:', error);
+          alert('An error occurred while approving the timesheets.');
         }
       },
 
-      bulkReject() {
+      async bulkReject() {
         const selected = this.pendingApprovals.filter(a => a.selected);
         if (selected.length === 0) {
           alert('Please select timesheets to reject');
           return;
         }
+        
         const reason = prompt('Reason for bulk rejection:');
-        if (reason) {
-          this.pendingApprovals = this.pendingApprovals.filter(a => !a.selected);
-          this.stats.pendingApprovals -= selected.length;
+        if (!reason) {
+          return;
+        }
+        
+        try {
+          const response = await fetch('/timesheets/bulk-reject', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+              timesheet_ids: selected.map(a => a.id),
+              reason: reason
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            // Remove rejected timesheets from the list
+            this.pendingApprovals = this.pendingApprovals.filter(a => !a.selected);
+            // Update stats
+            this.stats.pendingApprovals = Math.max(0, this.stats.pendingApprovals - result.rejected_count);
+            // Reset selection
+            this.selectAllApprovals = false;
+            alert(`Successfully rejected ${result.rejected_count} timesheets!`);
+          } else {
+            alert('Error: ' + result.message);
+          }
+        } catch (error) {
+          console.error('Error bulk rejecting timesheets:', error);
+          alert('An error occurred while rejecting the timesheets.');
         }
       },
 

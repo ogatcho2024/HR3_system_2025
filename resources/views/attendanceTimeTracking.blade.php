@@ -637,19 +637,19 @@
             <!-- Quick Stats -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white text-center">
-                    <div class="text-2xl font-bold" x-text="attendanceData.clockedIn">142</div>
+                    <div class="text-2xl font-bold" x-text="attendanceData.clockedIn || 0"></div>
                     <div class="text-sm text-green-200">Currently Clocked In</div>
                 </div>
                 <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-4 text-white text-center">
-                    <div class="text-2xl font-bold" x-text="attendanceData.clockedOut">8</div>
+                    <div class="text-2xl font-bold" x-text="attendanceData.clockedOut || 0"></div>
                     <div class="text-sm text-red-200">Clocked Out Today</div>
                 </div>
                 <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white text-center">
-                    <div class="text-2xl font-bold" x-text="attendanceData.onBreak">12</div>
+                    <div class="text-2xl font-bold" x-text="attendanceData.onBreak || 0"></div>
                     <div class="text-sm text-blue-200">On Break</div>
                 </div>
                 <div class="bg-yellow-500 to-yellow-600 rounded-lg p-4 text-white text-center">
-                    <div class="text-2xl font-bold" x-text="attendanceData.totalEmployees">150</div>
+                    <div class="text-2xl font-bold" x-text="attendanceData.totalEmployees || 0"></div>
                     <div class="text-sm text-yellow-200">Total Employees</div>
                 </div>
             </div>

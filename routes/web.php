@@ -63,7 +63,7 @@ Route::prefix('shift-management/api')->name('shift-management.api.')->group(func
     Route::get('calendar-data', [ShiftManagementController::class, 'getShiftCalendarDataApi'])->name('calendar-data');
 });
 Route::view('/employeeSelfService', 'employeeSelfService')->name('employeeSelfService');
-Route::view('/timeSheetManagement', 'timeSheetManagement')->name('timeSheetManagement');
+Route::get('/timeSheetManagement', [\App\Http\Controllers\TimesheetController::class, 'managementDashboard'])->name('timeSheetManagement');
 Route::view('/leaveManagement', 'leaveManagement')->name('leaveManagement');
 Route::view('/attendanceTimeTracking', 'attendanceTimeTracking')->name('attendanceTimeTracking');
 
@@ -350,6 +350,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/stats', [\App\Http\Controllers\TimesheetController::class, 'getTimesheetStats'])->name('stats');
         Route::put('/{timesheet}', [\App\Http\Controllers\TimesheetController::class, 'updateTimesheet'])->name('update');
         Route::delete('/{timesheet}', [\App\Http\Controllers\TimesheetController::class, 'deleteTimesheet'])->name('delete');
+        
+        // Approval/Rejection routes
+        Route::patch('/{timesheet}/approve', [\App\Http\Controllers\TimesheetController::class, 'approveTimesheet'])->name('approve');
+        Route::patch('/{timesheet}/reject', [\App\Http\Controllers\TimesheetController::class, 'rejectTimesheet'])->name('reject');
+        Route::post('/bulk-approve', [\App\Http\Controllers\TimesheetController::class, 'bulkApproveTimesheets'])->name('bulk-approve');
+        Route::post('/bulk-reject', [\App\Http\Controllers\TimesheetController::class, 'bulkRejectTimesheets'])->name('bulk-reject');
     });
 });
 
