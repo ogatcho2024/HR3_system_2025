@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ShiftTemplate;
 use App\Models\ShiftAssignment;
+use App\Models\ShiftRequest;
 use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ class ShiftManagementController extends Controller
             'total_shifts' => $shiftTemplates->count(),
             'active_shifts' => $shiftTemplates->where('status', 'active')->count(),
             'total_assigned_employees' => $shiftTemplates->sum('assigned_employees_count'),
-            'pending_requests' => 0, // This would come from a requests table
+            'pending_requests' => ShiftRequest::pending()->count(),
             'coverage_rate' => $this->calculateCoverageRate($shiftTemplates),
         ];
         
@@ -50,8 +51,11 @@ class ShiftManagementController extends Controller
         $currentWeekStart = Carbon::now()->startOfWeek();
         $currentWeekEnd = Carbon::now()->endOfWeek();
         $shiftCalendarData = $this->getShiftCalendarData($currentWeekStart, $currentWeekEnd);
+        
+        // Get pending shift requests
+        $pendingShiftRequests = $this->getPendingShiftRequests();
             
-        return view('workScheduleShiftManagement', compact('shiftTemplates', 'activeTab', 'stats', 'recentActivities', 'employeeAssignments', 'shiftCalendarData'));
+        return view('workScheduleShiftManagement', compact('shiftTemplates', 'activeTab', 'stats', 'recentActivities', 'employeeAssignments', 'shiftCalendarData', 'pendingShiftRequests'));
     }
 
     /**
@@ -996,5 +1000,148 @@ class ShiftManagementController extends Controller
         $colors = ['blue', 'green', 'purple', 'red', 'indigo', 'pink', 'yellow', 'teal', 'orange', 'cyan'];
         $colorIndex = abs(crc32($name)) % count($colors);
         return $colors[$colorIndex];
+    }
+    
+    /**
+     * Get pending shift requests with user and employee details
+     */
+    private function getPendingShiftRequests()
+    {
+        try {
+            $pendingRequests = ShiftRequest::with(['user', 'user.employee', 'swapWithUser'])
+                ->pending()
+                ->orderBy('created_at', 'desc')
+                ->limit(10) // Limit to latest 10 pending requests
+                ->get()
+                ->map(function ($request) {
+                    $user = $request->user;
+                    $employee = $user->employee ?? null;
+                    
+                    return [
+                        'id' => $request->id,
+                        'user' => [
+                            'id' => $user->id,
+                            'name' => $user->name,
+                            'email' => $user->email,
+                            'initials' => $this->getInitials($user->name),
+                            'avatar_color' => $this->getAvatarColor($user->name),
+                            'department' => $employee->department ?? 'No Department'
+                        ],
+                        'request_type' => ucfirst(str_replace('_', ' ', $request->request_type)),
+                        'requested_date' => $request->requested_date->format('M j, Y'),
+                        'current_start_time' => $request->current_start_time ? $request->current_start_time : null,
+                        'current_end_time' => $request->current_end_time ? $request->current_end_time : null,
+                        'requested_start_time' => $request->requested_start_time ? $request->requested_start_time : null,
+                        'requested_end_time' => $request->requested_end_time ? $request->requested_end_time : null,
+                        'swap_with_user' => $request->swapWithUser ? [
+                            'id' => $request->swapWithUser->id,
+                            'name' => $request->swapWithUser->name
+                        ] : null,
+                        'reason' => $request->reason,
+                        'status' => $request->status,
+                        'status_badge_color' => $request->status_badge_color,
+                        'created_at' => $request->created_at->diffForHumans(),
+                        'readable_request' => $this->formatShiftRequestDescription($request)
+                    ];
+                });
+                
+            return $pendingRequests->toArray();
+        } catch (\Exception $e) {
+            Log::error('Error fetching pending shift requests: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * Format shift request into readable description
+     */
+    private function formatShiftRequestDescription($request)
+    {
+        switch ($request->request_type) {
+            case 'swap':
+                if ($request->swapWithUser) {
+                    return "Swap shift with <span class=\"font-medium\">{$request->swapWithUser->name}</span>";
+                }
+                return "Swap shift request";
+                
+            case 'cover':
+                return "Request shift coverage";
+                
+            case 'overtime':
+                return "Request for <span class=\"font-medium\">Overtime</span>";
+                
+            case 'schedule_change':
+                if ($request->current_start_time && $request->requested_start_time) {
+                    $currentTime = date('g:i A', strtotime($request->current_start_time));
+                    $requestedTime = date('g:i A', strtotime($request->requested_start_time));
+                    return "Change from <span class=\"font-medium\">{$currentTime}</span> to <span class=\"font-medium\">{$requestedTime}</span>";
+                }
+                return "Schedule change request";
+                
+            default:
+                return ucfirst(str_replace('_', ' ', $request->request_type)) . " request";
+        }
+    }
+    
+    /**
+     * Approve a shift request
+     */
+    public function approveShiftRequest(Request $request, $id)
+    {
+        try {
+            $shiftRequest = ShiftRequest::find($id);
+            
+            if (!$shiftRequest) {
+                return back()->with('error', 'Shift request not found');
+            }
+            
+            if ($shiftRequest->status !== 'pending') {
+                return back()->with('error', 'This request has already been processed');
+            }
+            
+            $shiftRequest->update([
+                'status' => 'approved',
+                'approved_by' => auth()->id() ?? 1,
+                'approved_at' => now(),
+                'manager_comments' => $request->input('comments', 'Approved')
+            ]);
+            
+            return back()->with('success', 'Shift request approved successfully!');
+            
+        } catch (\Exception $e) {
+            Log::error('Error approving shift request: ' . $e->getMessage());
+            return back()->with('error', 'Error approving shift request. Please try again.');
+        }
+    }
+    
+    /**
+     * Reject a shift request
+     */
+    public function rejectShiftRequest(Request $request, $id)
+    {
+        try {
+            $shiftRequest = ShiftRequest::find($id);
+            
+            if (!$shiftRequest) {
+                return back()->with('error', 'Shift request not found');
+            }
+            
+            if ($shiftRequest->status !== 'pending') {
+                return back()->with('error', 'This request has already been processed');
+            }
+            
+            $shiftRequest->update([
+                'status' => 'rejected',
+                'approved_by' => auth()->id() ?? 1,
+                'approved_at' => now(),
+                'manager_comments' => $request->input('comments', 'Rejected')
+            ]);
+            
+            return back()->with('success', 'Shift request rejected successfully!');
+            
+        } catch (\Exception $e) {
+            Log::error('Error rejecting shift request: ' . $e->getMessage());
+            return back()->with('error', 'Error rejecting shift request. Please try again.');
+        }
     }
 }

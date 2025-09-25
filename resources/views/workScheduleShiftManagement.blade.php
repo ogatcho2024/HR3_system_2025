@@ -115,7 +115,7 @@
                     </svg>
                     <div class="text-left">
                         <div class="font-medium text-gray-900">Review Requests</div>
-                        <div class="text-sm text-gray-600">7 pending</div>
+                        <div class="text-sm text-gray-600">{{ $stats['pending_requests'] }} pending</div>
                     </div>
                 </button>
 
@@ -579,60 +579,80 @@
         </div>
     </div>
 
-    <!-- Schedule Requests Tab -->
+    <!-- Shift Requests Tab -->
     <div x-show="activeTab === 'requests'" class="space-y-6">
         <div class="bg-white rounded-lg shadow-lg">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">Pending Schedule Requests</h3>
+                <h3 class="text-lg font-semibold text-gray-900">Pending Shift Requests</h3>
             </div>
-            <div class="p-6">
-                <div class="space-y-4">
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <div class="flex items-start justify-between">
-                            <div class="flex items-start space-x-3">
-                                <div class="flex-shrink-0 h-10 w-10">
-                                    <div class="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">MD</div>
-                                </div>
-                                <div>
-                                    <h4 class="text-sm font-medium text-gray-900">Mike Davis</h4>
-                                    <p class="text-sm text-gray-600">IT Department</p>
-                                    <div class="mt-2">
-                                        <p class="text-xs text-gray-500">Requested: Aug 20, 2025</p>
-                                        <p class="text-sm text-gray-900 mt-1">Change from <span class="font-medium">Morning Shift</span> to <span class="font-medium">Evening Shift</span></p>
-                                        <p class="text-xs text-gray-600 mt-1">Reason: Personal schedule conflict</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="flex space-x-2">
-                                <button class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Approve</button>
-                                <button class="px-4 py-2 ml-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700">Reject</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <div class="flex items-start justify-between">
-                            <div class="flex items-start space-x-3">
-                                <div class="flex-shrink-0 h-10 w-10">
-                                    <div class="h-10 w-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-medium">EB</div>
-                                </div>
-                                <div>
-                                    <h4 class="text-sm font-medium text-gray-900">Emily Brown</h4>
-                                    <p class="text-sm text-gray-600">Finance Department</p>
-                                    <div class="mt-2">
-                                        <p class="text-xs text-gray-500">Requested: Aug 19, 2025</p>
-                                        <p class="text-sm text-gray-900 mt-1">Request for <span class="font-medium">Overtime</span> on Weekend</p>
-                                        <p class="text-xs text-gray-600 mt-1">Reason: Project deadline approaching</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="flex space-x-2">
-                                <button class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Approve</button>
-                                <button class="px-4 py-2 ml-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700">Reject</button>
-                            </div>
-                        </div>
-                    </div>
+            
+            <!-- Success/Error Messages -->
+            @if(session('success'))
+                <div class="mx-6 mt-4 p-4 bg-green-100 border border-green-300 text-green-700 rounded">
+                    {{ session('success') }}
                 </div>
+            @endif
+            
+            @if(session('error'))
+                <div class="mx-6 mt-4 p-4 bg-red-100 border border-red-300 text-red-700 rounded">
+                    {{ session('error') }}
+                </div>
+            @endif
+            <div class="p-6">
+                @if(count($pendingShiftRequests) > 0)
+                    <div class="space-y-4">
+                        @foreach($pendingShiftRequests as $request)
+                            <div class="border border-gray-200 rounded-lg p-4">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex items-start space-x-3">
+                                        <div class="flex-shrink-0 h-10 w-10">
+                                            <div class="h-10 w-10 rounded-full bg-{{ $request['user']['avatar_color'] }}-500 flex items-center justify-center text-white font-medium">{{ $request['user']['initials'] }}</div>
+                                        </div>
+                                        <div class="flex-1">
+                                            <h4 class="text-sm font-medium text-gray-900">{{ $request['user']['name'] }}</h4>
+                                            <p class="text-sm text-gray-600">{{ $request['user']['department'] }}</p>
+                                            <div class="mt-2">
+                                                <p class="text-xs text-gray-500">Requested: {{ $request['created_at'] }}</p>
+                                                <p class="text-sm text-gray-900 mt-1">{!! $request['readable_request'] !!}</p>
+                                                @if($request['requested_date'])
+                                                    <p class="text-xs text-gray-600 mt-1">Date: {{ $request['requested_date'] }}</p>
+                                                @endif
+                                                <p class="text-xs text-gray-600 mt-1">Reason: {{ $request['reason'] }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col space-y-2">
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $request['status_badge_color'] }}">{{ ucfirst($request['status']) }}</span>
+                                        @if($request['status'] === 'pending')
+                                            <div class="flex space-x-2">
+                                                <form method="POST" action="{{ route('shift-management.api.shift-requests.approve', $request['id']) }}" style="display: inline;">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="hidden" name="comments" value="Approved">
+                                                    <button type="submit" class="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700" onclick="return confirm('Are you sure you want to approve this request?')">Approve</button>
+                                                </form>
+                                                <form method="POST" action="{{ route('shift-management.api.shift-requests.reject', $request['id']) }}" style="display: inline;">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="hidden" name="comments" value="Rejected">
+                                                    <button type="submit" class="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700" onclick="return confirm('Are you sure you want to reject this request?')">Reject</button>
+                                                </form>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="text-center py-12">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">No pending shift requests</h3>
+                        <p class="mt-1 text-sm text-gray-500">All shift requests have been processed or no requests have been submitted yet.</p>
+                    </div>
+                @endif
             </div>
         </div>
     </div>

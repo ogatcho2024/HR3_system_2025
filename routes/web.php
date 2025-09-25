@@ -364,7 +364,11 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/api/templates/{id}', [ShiftManagementController::class, 'destroy'])->name('api.templates.destroy');
         Route::patch('/api/templates/{id}/toggle-status', [ShiftManagementController::class, 'toggleStatus'])->name('api.templates.toggle-status');
         
-        // Shift calendar API endpoints
-        Route::get('/api/calendar-data', [ShiftManagementController::class, 'getShiftCalendarDataApi'])->name('api.calendar-data');
+    // Shift calendar API endpoints
+    Route::get('/api/calendar-data', [ShiftManagementController::class, 'getShiftCalendarDataApi'])->name('api.calendar-data');
+    
+    // Shift request API endpoints
+    Route::patch('/api/shift-requests/{id}/approve', [ShiftManagementController::class, 'approveShiftRequest'])->name('api.shift-requests.approve');
+    Route::patch('/api/shift-requests/{id}/reject', [ShiftManagementController::class, 'rejectShiftRequest'])->name('api.shift-requests.reject');
     });
 });
