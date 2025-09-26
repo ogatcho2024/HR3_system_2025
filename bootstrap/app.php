@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'login.throttle' => \App\Http\Middleware\LoginThrottleMiddleware::class,
             'cors' => \App\Http\Middleware\CorsMiddleware::class,
+            'simple.api.auth' => \App\Http\Middleware\SimpleApiAuth::class,
         ]);
         
         // Add CORS middleware to API routes

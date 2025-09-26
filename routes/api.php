@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\SimpleAuthController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\EmployeeSyncController;
 use Illuminate\Http\Request;
@@ -25,19 +26,27 @@ Route::options('/{any}', function () {
         ->header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization, X-Request-With');
 })->where('any', '.*');
 
+// Test route
+Route::get('/test', function () {
+    return response()->json([
+        'success' => true,
+        'message' => 'API is working!',
+        'timestamp' => now()->toISOString()
+    ]);
+});
+
 // Mobile App Authentication Routes
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [SimpleAuthController::class, 'login']);
     
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/user', [AuthController::class, 'user']);
-        Route::post('/logout', [AuthController::class, 'logout']);
-        Route::post('/refresh', [AuthController::class, 'refresh']);
+    Route::middleware('simple.api.auth')->group(function () {
+        Route::get('/user', [SimpleAuthController::class, 'user']);
+        Route::post('/logout', [SimpleAuthController::class, 'logout']);
     });
 });
 
 // Mobile App Employee Routes
-Route::prefix('employee')->middleware('auth:sanctum')->group(function () {
+Route::prefix('employee')->middleware('simple.api.auth')->group(function () {
     // Clock in/out
     Route::post('/clock-in', [EmployeeController::class, 'clockIn']);
     Route::post('/clock-out', [EmployeeController::class, 'clockOut']);
@@ -47,12 +56,12 @@ Route::prefix('employee')->middleware('auth:sanctum')->group(function () {
     Route::get('/attendance', [EmployeeController::class, 'getAttendance']);
     
     // Profile
-    Route::put('/profile', [AuthController::class, 'updateProfile']);
+    Route::put('/profile', [SimpleAuthController::class, 'updateProfile']);
 });
 
 // Legacy route for compatibility
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+Route::middleware('simple.api.auth')->get('/user', function (Request $request) {
+    return $request->attributes->get('authenticated_user');
 });
 
 // Employee Sync API Routes (for external microservice integration)
@@ -69,11 +78,11 @@ Route::prefix('employee-sync')->group(function () {
     
     // Get sync status for monitoring
     Route::get('/status', [EmployeeSyncController::class, 'getSyncStatus'])
-        ->middleware('auth:sanctum')
+        ->middleware('simple.api.auth')
         ->name('employee-sync.status');
     
     // Retry failed syncs
     Route::post('/retry-failed', [EmployeeSyncController::class, 'retryFailedSyncs'])
-        ->middleware('auth:sanctum')
+        ->middleware('simple.api.auth')
         ->name('employee-sync.retry-failed');
 });
