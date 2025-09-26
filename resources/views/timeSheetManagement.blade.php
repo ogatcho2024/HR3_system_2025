@@ -615,15 +615,10 @@
       
       selectAllApprovals: false,
       
-      // Employee Management (legacy)
+      // Employee Management (legacy) - Now uses real data from employeeTimesheets
       employeeFilter: 'all',
       employeeSearch: '',
-      employees: [
-        { id: 1, name: 'John Doe', initials: 'JD', position: 'Senior Developer', department: 'Engineering', weeklyHours: 40, status: 'Submitted', lastSubmission: '2 hours ago' },
-        { id: 2, name: 'Jane Smith', initials: 'JS', position: 'Marketing Manager', department: 'Marketing', weeklyHours: 37.5, status: 'Pending', lastSubmission: '1 day ago' },
-        { id: 3, name: 'Mike Johnson', initials: 'MJ', position: 'Sales Rep', department: 'Sales', weeklyHours: 35, status: 'Approved', lastSubmission: '3 days ago' },
-        { id: 4, name: 'Sarah Wilson', initials: 'SW', position: 'HR Specialist', department: 'HR', weeklyHours: 40, status: 'Draft', lastSubmission: '5 days ago' }
-      ],
+      employees: [], // This is now populated from real data in employeeTimesheets
       
       // New Employee Timesheets Data
       employeeTimesheets: [],
@@ -1035,11 +1030,29 @@
 
       // HR-specific functions
       get filteredEmployees() {
-        return this.employees.filter(emp => {
-          const matchesFilter = this.employeeFilter === 'all' || emp.department.toLowerCase() === this.employeeFilter;
+        // Create unique employee list from timesheets data
+        const uniqueEmployees = [];
+        const seenEmployeeIds = new Set();
+        
+        this.employeeTimesheets.forEach(timesheet => {
+          if (!seenEmployeeIds.has(timesheet.employee_id)) {
+            seenEmployeeIds.add(timesheet.employee_id);
+            uniqueEmployees.push({
+              id: timesheet.employee_id,
+              name: timesheet.employee,
+              department: timesheet.department,
+              position: timesheet.position,
+              status: timesheet.status,
+              lastSubmission: timesheet.date
+            });
+          }
+        });
+        
+        return uniqueEmployees.filter(emp => {
+          const matchesFilter = this.employeeFilter === 'all' || emp.department.toLowerCase() === this.employeeFilter.toLowerCase();
           const matchesSearch = this.employeeSearch === '' || 
                                 emp.name.toLowerCase().includes(this.employeeSearch.toLowerCase()) ||
-                                emp.position.toLowerCase().includes(this.employeeSearch.toLowerCase());
+                                (emp.position && emp.position.toLowerCase().includes(this.employeeSearch.toLowerCase()));
           return matchesFilter && matchesSearch;
         });
       },
@@ -1277,6 +1290,10 @@
           if (result.success) {
             this.employeeTimesheets = result.data;
             this.availableDepartments = result.departments;
+            
+            // Update legacy employees array for backward compatibility
+            this.updateEmployeesFromTimesheets();
+            
             this.loadTimesheetStats();
           } else {
             console.error('Failed to load employee timesheets:', result.message);
@@ -1364,6 +1381,50 @@
         
         this.timesheetDateRange.start = startOfWeek.toISOString().split('T')[0];
         this.timesheetDateRange.end = endOfWeek.toISOString().split('T')[0];
+      },
+      
+      updateEmployeesFromTimesheets() {
+        // Create unique employee list from timesheets data
+        const uniqueEmployees = [];
+        const seenEmployeeIds = new Set();
+        
+        this.employeeTimesheets.forEach(timesheet => {
+          if (timesheet.employee_id && !seenEmployeeIds.has(timesheet.employee_id)) {
+            seenEmployeeIds.add(timesheet.employee_id);
+            
+            // Calculate total hours for this employee
+            const employeeTimesheets = this.employeeTimesheets.filter(t => t.employee_id === timesheet.employee_id);
+            const totalHours = employeeTimesheets.reduce((sum, t) => sum + parseFloat(t.total_hours || 0), 0);
+            
+            // Find most recent submission
+            const sortedTimesheets = employeeTimesheets.sort((a, b) => new Date(b.date) - new Date(a.date));
+            const lastSubmission = sortedTimesheets.length > 0 ? 
+              new Date(sortedTimesheets[0].date).toLocaleDateString() : 'No submissions';
+            
+            uniqueEmployees.push({
+              id: timesheet.employee_id,
+              name: timesheet.employee,
+              initials: this.getInitials(timesheet.employee),
+              position: timesheet.position || 'No Position',
+              department: timesheet.department || 'No Department',
+              weeklyHours: totalHours,
+              status: this.capitalizeFirst(timesheet.status),
+              lastSubmission: lastSubmission
+            });
+          }
+        });
+        
+        this.employees = uniqueEmployees;
+      },
+      
+      getInitials(fullName) {
+        if (!fullName) return 'NA';
+        return fullName.split(' ').map(name => name.charAt(0)).join('').toUpperCase().slice(0, 2);
+      },
+      
+      capitalizeFirst(str) {
+        if (!str) return 'Draft';
+        return str.charAt(0).toUpperCase() + str.slice(1);
       }
     }
   }

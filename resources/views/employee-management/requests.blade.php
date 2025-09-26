@@ -120,18 +120,18 @@
                                                     <img class="h-10 w-10 rounded-full" src="{{ asset('storage/' . $request->user->photo) }}" alt="">
                                                 @else
                                                     <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                                        <span class="text-sm font-medium text-gray-700">{{ substr($request->user->name, 0, 1) }}</span>
+                                                        <span class="text-sm font-medium text-gray-700">{{ e(substr($request->user->name, 0, 1)) }}</span>
                                                     </div>
                                                 @endif
                                             </div>
                                             <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900">{{ $request->user->name }} {{ $request->user->lastname }}</div>
-                                                <div class="text-sm text-gray-500">{{ $request->user->email }}</div>
+                                                <div class="text-sm font-medium text-gray-900">{{ e($request->user->name) }} {{ e($request->user->lastname) }}</div>
+                                                <div class="text-sm text-gray-500">{{ e($request->user->email) }}</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">{{ ucfirst(str_replace('_', ' ', $request->leave_type)) }}</div>
+                                        <div class="text-sm text-gray-900">{{ e(ucfirst(str_replace('_', ' ', $request->leave_type))) }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">{{ $request->days_requested }} day{{ $request->days_requested > 1 ? 's' : '' }}</div>
@@ -192,12 +192,12 @@
                                                     <img class="h-10 w-10 rounded-full" src="{{ asset('storage/' . $request->user->photo) }}" alt="">
                                                 @else
                                                     <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                                        <span class="text-sm font-medium text-gray-700">{{ substr($request->user->name, 0, 1) }}</span>
+                                                        <span class="text-sm font-medium text-gray-700">{{ e(substr($request->user->name, 0, 1)) }}</span>
                                                     </div>
                                                 @endif
                                             </div>
                                             <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900">{{ $request->user->name }} {{ $request->user->lastname }}</div>
+                                                <div class="text-sm font-medium text-gray-900">{{ e($request->user->name) }} {{ e($request->user->lastname) }}</div>
                                                 <div class="text-sm text-gray-500">{{ $request->user->email }}</div>
                                             </div>
                                         </div>
@@ -359,7 +359,7 @@
                                         <div class="text-sm text-gray-900">{{ ucfirst(str_replace('_', ' ', $request->request_type)) }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">{{ $request->request_date->format('M j, Y') }}</div>
+                                        <div class="text-sm text-gray-900">{{ $request->request_date ? $request->request_date->format('M j, Y') : 'N/A' }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
@@ -430,7 +430,7 @@
                                         <div class="text-sm text-gray-900">{{ ucfirst(str_replace('_', ' ', $request->request_type)) }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">{{ $request->request_date->format('M j, Y') }}</div>
+                                        <div class="text-sm text-gray-900">{{ $request->request_date ? $request->request_date->format('M j, Y') : 'N/A' }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -504,7 +504,7 @@
                                         <div class="text-sm text-gray-900">{{ ucfirst(str_replace('_', ' ', $request->request_type)) }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">{{ $request->request_date->format('M j, Y') }}</div>
+                                        <div class="text-sm text-gray-900">{{ $request->request_date ? $request->request_date->format('M j, Y') : 'N/A' }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">

@@ -200,8 +200,8 @@
             <tbody>
                 @foreach($attendances as $attendance)
                 <tr>
-                    <td>{{ $attendance->user->name }}</td>
-                    <td>{{ $attendance->user->employee->department ?? 'No Department' }}</td>
+                    <td>{{ $attendance->user ? $attendance->user->name : 'Unknown Employee' }}</td>
+                    <td>{{ ($attendance->user && $attendance->user->employee) ? ($attendance->user->employee->department ?? 'No Department') : 'No Department' }}</td>
                     <td>{{ $attendance->clock_in_time ?? '-' }}</td>
                     <td>{{ $attendance->clock_out_time ?? '-' }}</td>
                     <td>
@@ -215,7 +215,7 @@
                     </td>
                     <td>{{ $attendance->hours_worked ? number_format($attendance->hours_worked, 1) : '-' }}</td>
                     <td class="status-{{ $attendance->status }}">
-                        {{ ucfirst(str_replace('_', ' ', $attendance->status)) }}
+                        {{ ucfirst(str_replace('_', ' ', $attendance->status ?? 'unknown')) }}
                     </td>
                 </tr>
                 @endforeach

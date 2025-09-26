@@ -1024,17 +1024,41 @@ class AttendanceController extends Controller
             $carbonDate = Carbon::parse($date);
             $totalEmployees = Employee::active()->count();
             
-            // Check if we have any employees
+            // Check if we have any employees - if not, create a basic report
             if ($totalEmployees === 0) {
-                return response()->json([
-                    'error' => 'No active employees found in the system.'
-                ], 400);
+                // Create a minimal report for empty data
+                $data = [
+                    'date' => $carbonDate,
+                    'totalEmployees' => 0,
+                    'present' => 0,
+                    'late' => 0,
+                    'absent' => 0,
+                    'onBreak' => 0,
+                    'totalHours' => 0,
+                    'overtimeHours' => 0,
+                    'attendanceRate' => 0,
+                    'attendances' => collect([]),
+                    'departmentStats' => collect([]),
+                    'generatedAt' => now()
+                ];
+                
+                $pdf = PDF::loadView('pdf.reports.daily-simple', $data);
+                $pdf->setPaper('A4', 'portrait');
+                
+                $dompdf = $pdf->getDomPDF();
+                $dompdf->getOptions()->setChroot(realpath(base_path()));
+                $dompdf->getOptions()->setIsRemoteEnabled(false);
+                $dompdf->getOptions()->setDefaultFont('Arial');
+                
+                $filename = 'daily-report-' . $carbonDate->format('Y-m-d') . '.pdf';
+                return $pdf->download($filename);
             }
             
-            // Get daily attendance data
+            // Get daily attendance data - only include records with valid users
             $todayAttendance = Attendance::with(['user.employee'])
                 ->where('date', $date)
-                ->orderBy('clock_in_time')
+                ->whereHas('user') // Ensure user relationship exists
+                ->orderByRaw('clock_in_time IS NULL, clock_in_time ASC')
                 ->get();
             
             // Calculate statistics
@@ -1045,15 +1069,31 @@ class AttendanceController extends Controller
             $totalHours = $todayAttendance->sum('hours_worked') ?: 0;
             $overtimeHours = $todayAttendance->sum('overtime_hours') ?: 0;
             
-            // Simplified department stats to avoid complex groupBy issues
-            $departmentStats = collect([
-                [
-                    'name' => 'IT Department',
-                    'present' => $present,
-                    'total' => $totalEmployees,
-                    'rate' => $totalEmployees > 0 ? round(($present / $totalEmployees) * 100, 1) : 0
-                ]
-            ]);
+            // Calculate dynamic department stats
+            $departmentStats = Employee::active()
+                ->whereNotNull('department')
+                ->get()
+                ->groupBy('department')
+                ->map(function ($employees, $department) use ($date) {
+                    $totalInDept = $employees->count();
+                    $presentInDept = Attendance::where('date', $date)
+                        ->whereHas('user.employee', function ($query) use ($department) {
+                            $query->where('department', $department);
+                        })
+                        ->whereIn('status', ['present', 'late', 'on_break'])
+                        ->count();
+                    
+                    $rate = $totalInDept > 0 ? round(($presentInDept / $totalInDept) * 100, 1) : 0;
+                    
+                    return [
+                        'name' => $department,
+                        'present' => $presentInDept,
+                        'total' => $totalInDept,
+                        'rate' => $rate
+                    ];
+                })
+                ->sortByDesc('rate')
+                ->values();
             
             $data = [
                 'date' => $carbonDate,
@@ -1074,19 +1114,30 @@ class AttendanceController extends Controller
             if ($request->has('debug')) {
                 return response()->json([
                     'data' => $data,
+                    'attendance_count' => $todayAttendance->count(),
+                    'department_count' => $departmentStats->count(),
                     'message' => 'Data structure looks good. PDF generation should work.'
                 ]);
             }
             
-            // Configure PDF options for production
-            $pdf = PDF::loadView('pdf.reports.daily', $data);
+            // Ensure we have safe data for PDF generation
+            if (!$data['date'] || !$data['generatedAt']) {
+                throw new \Exception('Invalid date data for PDF generation');
+            }
+            
+            // Configure PDF options for production - use simple template for testing
+            $pdf = PDF::loadView('pdf.reports.daily-simple', $data);
             $pdf->setPaper('A4', 'portrait');
             
-            // Set options to prevent remote resource loading issues
-            $pdf->getDomPDF()->getOptions()->setChroot(base_path());
-            $pdf->getDomPDF()->getOptions()->setIsRemoteEnabled(false);
+            // Set DomPDF options to fix common issues
+            $dompdf = $pdf->getDomPDF();
+            $dompdf->getOptions()->setChroot(realpath(base_path()));
+            $dompdf->getOptions()->setIsRemoteEnabled(false);
+            $dompdf->getOptions()->setIsHtml5ParserEnabled(true);
+            $dompdf->getOptions()->setIsPhpEnabled(false);
+            $dompdf->getOptions()->setDefaultFont('Arial');
             
-            $filename = 'Daily_Attendance_Report_' . $carbonDate->format('Y-m-d') . '.pdf';
+            $filename = 'daily-report-' . $carbonDate->format('Y-m-d') . '.pdf';
             
             return $pdf->download($filename);
             
@@ -1181,11 +1232,15 @@ class AttendanceController extends Controller
             $pdf = PDF::loadView('pdf.reports.weekly', $data);
             $pdf->setPaper('A4', 'portrait');
             
-            // Set options to prevent remote resource loading issues
-            $pdf->getDomPDF()->getOptions()->setChroot(base_path());
-            $pdf->getDomPDF()->getOptions()->setIsRemoteEnabled(false);
+            // Set DomPDF options to fix common issues
+            $dompdf = $pdf->getDomPDF();
+            $dompdf->getOptions()->setChroot(realpath(base_path()));
+            $dompdf->getOptions()->setIsRemoteEnabled(false);
+            $dompdf->getOptions()->setIsHtml5ParserEnabled(true);
+            $dompdf->getOptions()->setIsPhpEnabled(false);
+            $dompdf->getOptions()->setDefaultFont('Arial');
             
-            $filename = 'Weekly_Attendance_Report_' . $startOfWeek->format('Y-m-d') . '_to_' . $endOfWeek->format('Y-m-d') . '.pdf';
+            $filename = 'weekly-report-' . $startOfWeek->format('Y-m-d') . '-to-' . $endOfWeek->format('Y-m-d') . '.pdf';
             
             return $pdf->download($filename);
             
@@ -1304,11 +1359,15 @@ class AttendanceController extends Controller
             $pdf = PDF::loadView('pdf.reports.monthly', $data);
             $pdf->setPaper('A4', 'portrait');
             
-            // Set options to prevent remote resource loading issues
-            $pdf->getDomPDF()->getOptions()->setChroot(base_path());
-            $pdf->getDomPDF()->getOptions()->setIsRemoteEnabled(false);
+            // Set DomPDF options to fix common issues
+            $dompdf = $pdf->getDomPDF();
+            $dompdf->getOptions()->setChroot(realpath(base_path()));
+            $dompdf->getOptions()->setIsRemoteEnabled(false);
+            $dompdf->getOptions()->setIsHtml5ParserEnabled(true);
+            $dompdf->getOptions()->setIsPhpEnabled(false);
+            $dompdf->getOptions()->setDefaultFont('Arial');
             
-            $filename = 'Monthly_Attendance_Report_' . $carbonDate->format('Y-m') . '.pdf';
+            $filename = 'monthly-report-' . $carbonDate->format('Y-m') . '.pdf';
             
             return $pdf->download($filename);
             
@@ -1433,11 +1492,15 @@ class AttendanceController extends Controller
             $pdf = PDF::loadView('pdf.reports.yearly', $data);
             $pdf->setPaper('A4', 'portrait');
             
-            // Set options to prevent remote resource loading issues
-            $pdf->getDomPDF()->getOptions()->setChroot(base_path());
-            $pdf->getDomPDF()->getOptions()->setIsRemoteEnabled(false);
+            // Set DomPDF options to fix common issues
+            $dompdf = $pdf->getDomPDF();
+            $dompdf->getOptions()->setChroot(realpath(base_path()));
+            $dompdf->getOptions()->setIsRemoteEnabled(false);
+            $dompdf->getOptions()->setIsHtml5ParserEnabled(true);
+            $dompdf->getOptions()->setIsPhpEnabled(false);
+            $dompdf->getOptions()->setDefaultFont('Arial');
             
-            $filename = 'Yearly_Attendance_Report_' . $carbonDate->format('Y') . '.pdf';
+            $filename = 'yearly-report-' . $carbonDate->format('Y') . '.pdf';
             
             return $pdf->download($filename);
             
@@ -1474,9 +1537,13 @@ class AttendanceController extends Controller
             $pdf = PDF::loadView('pdf.reports.daily', $data);
             $pdf->setPaper('A4', 'portrait');
             
-            // Set options to prevent remote resource loading issues
-            $pdf->getDomPDF()->getOptions()->setChroot(base_path());
-            $pdf->getDomPDF()->getOptions()->setIsRemoteEnabled(false);
+            // Set DomPDF options to fix common issues
+            $dompdf = $pdf->getDomPDF();
+            $dompdf->getOptions()->setChroot(realpath(base_path()));
+            $dompdf->getOptions()->setIsRemoteEnabled(false);
+            $dompdf->getOptions()->setIsHtml5ParserEnabled(true);
+            $dompdf->getOptions()->setIsPhpEnabled(false);
+            $dompdf->getOptions()->setDefaultFont('Arial');
             
             return $pdf->download('debug-daily-report.pdf');
             

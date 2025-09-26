@@ -3,9 +3,9 @@
 @section('title', 'Employees')
 
 @section('content')
-<div class="bg-gray-300">
-    <div class="py-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="bg-gray-300 min-h-full flex flex-col">
+    <div class="flex-1 py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col">
         
         <!-- Breadcrumbs -->
             @include('partials.breadcrumbs', ['breadcrumbs' => [
@@ -585,5 +585,7 @@
         transform: scale(1);
     }
 </style>
+
+
 
 @endsection

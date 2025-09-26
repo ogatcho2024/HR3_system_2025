@@ -349,6 +349,11 @@ Route::middleware(['auth'])->group(function () {
         
         // Debug PDF Route
         Route::get('/debug-pdf', [\App\Http\Controllers\AttendanceController::class, 'debugPDF'])->name('debug-pdf');
+        
+        // Test Daily PDF Data Route
+        Route::get('/test-daily-data', function() {
+            return redirect()->to('/attendance/export-daily-pdf?debug=1');
+        })->name('test-daily-data');
     });
 });
 

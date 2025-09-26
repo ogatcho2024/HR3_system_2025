@@ -108,7 +108,7 @@
                         <li class="nav-item">
                             <a href="{{ route('workScheduleShiftManagement', ['tab' => 'requests']) }}" class="nav-link {{ request()->get('tab') == 'requests' ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Schedule Requests</p>
+                                <p>Shift Requests</p>
                             </a>
                         </li>
                     </ul>
