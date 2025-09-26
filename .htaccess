@@ -1,4 +1,20 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    
+    # Redirect Trailing Slashes If Not A Folder
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+    
+    # Don't redirect if already in public folder
+    RewriteCond %{REQUEST_URI} !^/public/
+    
+    # Don't redirect if file exists in root
+    RewriteCond %{REQUEST_FILENAME} !-f
+    
+    # Don't redirect if directory exists in root
+    RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # Redirect everything else to public folder
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
