@@ -96,9 +96,6 @@
                 </svg>
                 Refresh
               </button>
-              <button @click="exportAllTimesheets()" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm">
-                Export All
-              </button>
             </div>
           </div>
           
