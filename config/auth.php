@@ -129,4 +129,23 @@ return [
         'reset_timeout' => env('LOGIN_RESET_TIMEOUT', 15), // minutes
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Password Policy Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Here you may configure the password policy settings. This includes
+    | minimum length requirements and character type requirements for
+    | strong password security.
+    |
+    */
+
+    'password_policy' => [
+        'min_length' => env('PASSWORD_MIN_LENGTH', 8),
+        'require_uppercase' => env('PASSWORD_REQUIRE_UPPERCASE', true),
+        'require_lowercase' => env('PASSWORD_REQUIRE_LOWERCASE', true),
+        'require_number' => env('PASSWORD_REQUIRE_NUMBER', true),
+        'require_special_char' => env('PASSWORD_REQUIRE_SPECIAL_CHAR', true),
+    ],
+
 ];

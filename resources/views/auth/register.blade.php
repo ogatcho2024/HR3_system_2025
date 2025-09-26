@@ -106,6 +106,46 @@
                                 class="peer-focus:font-medium absolute text-xs text-blue-950 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:text-blue-950 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6">
                                 Password
                             </label>
+                            
+                            <!-- Password Strength Indicator -->
+                            <div id="passwordStrength" class="mt-2 hidden">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                        <div id="strengthBar" class="h-2 rounded-full transition-all duration-300" style="width: 0%;"></div>
+                                    </div>
+                                    <span id="strengthText" class="text-xs font-medium">Very Weak</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Password Requirements -->
+                            <div id="passwordRequirements" class="mt-2 text-xs text-gray-600 space-y-1 hidden">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div id="req-length" class="flex items-center gap-1">
+                                        <span class="w-4 h-4 rounded-full bg-gray-300 flex items-center justify-center text-white text-xs">✗</span>
+                                        <span>8+ characters</span>
+                                    </div>
+                                    <div id="req-uppercase" class="flex items-center gap-1">
+                                        <span class="w-4 h-4 rounded-full bg-gray-300 flex items-center justify-center text-white text-xs">✗</span>
+                                        <span>Uppercase letter</span>
+                                    </div>
+                                    <div id="req-lowercase" class="flex items-center gap-1">
+                                        <span class="w-4 h-4 rounded-full bg-gray-300 flex items-center justify-center text-white text-xs">✗</span>
+                                        <span>Lowercase letter</span>
+                                    </div>
+                                    <div id="req-number" class="flex items-center gap-1">
+                                        <span class="w-4 h-4 rounded-full bg-gray-300 flex items-center justify-center text-white text-xs">✗</span>
+                                        <span>Number</span>
+                                    </div>
+                                    <div id="req-special" class="flex items-center gap-1" style="grid-column: 1 / -1;">
+                                        <span class="w-4 h-4 rounded-full bg-gray-300 flex items-center justify-center text-white text-xs">✗</span>
+                                        <span>Special character (!@#$%^&*)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            @error('password')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
 
                         <div class="relative z-0 w-full mb-5 group">
@@ -180,7 +220,13 @@
         document.addEventListener('DOMContentLoaded', function () {
             const inputFile = document.getElementById('inputFile');
             const profilePreview = document.getElementById('profilePreview');
+            const passwordInput = document.getElementById('password');
+            const strengthIndicator = document.getElementById('passwordStrength');
+            const requirementsIndicator = document.getElementById('passwordRequirements');
+            const strengthBar = document.getElementById('strengthBar');
+            const strengthText = document.getElementById('strengthText');
 
+            // File upload handling
             inputFile.addEventListener('change', function () {
                 if (this.files && this.files[0]) {
                     const file = this.files[0];
@@ -204,6 +250,86 @@
                     reader.readAsDataURL(file);
                 }
             });
+
+            // Password strength validation
+            passwordInput.addEventListener('input', function () {
+                const password = this.value;
+                
+                if (password.length > 0) {
+                    strengthIndicator.classList.remove('hidden');
+                    requirementsIndicator.classList.remove('hidden');
+                    checkPasswordStrength(password);
+                } else {
+                    strengthIndicator.classList.add('hidden');
+                    requirementsIndicator.classList.add('hidden');
+                }
+            });
+
+            function checkPasswordStrength(password) {
+                let score = 0;
+                const requirements = {
+                    length: password.length >= 8,
+                    uppercase: /[A-Z]/.test(password),
+                    lowercase: /[a-z]/.test(password),
+                    number: /[0-9]/.test(password),
+                    special: /[^A-Za-z0-9]/.test(password)
+                };
+
+                // Calculate score
+                if (requirements.length) score++;
+                if (requirements.uppercase) score++;
+                if (requirements.lowercase) score++;
+                if (requirements.number) score++;
+                if (requirements.special) score++;
+                if (password.length >= 12) score++; // Bonus for longer passwords
+
+                // Update requirements indicators
+                updateRequirement('req-length', requirements.length);
+                updateRequirement('req-uppercase', requirements.uppercase);
+                updateRequirement('req-lowercase', requirements.lowercase);
+                updateRequirement('req-number', requirements.number);
+                updateRequirement('req-special', requirements.special);
+
+                // Update strength bar and text
+                updateStrengthIndicator(Math.min(score, 5));
+            }
+
+            function updateRequirement(elementId, met) {
+                const element = document.getElementById(elementId);
+                const icon = element.querySelector('span');
+                
+                if (met) {
+                    icon.classList.remove('bg-gray-300');
+                    icon.classList.add('bg-green-500');
+                    icon.textContent = '✓';
+                    element.classList.remove('text-gray-600');
+                    element.classList.add('text-green-600');
+                } else {
+                    icon.classList.remove('bg-green-500');
+                    icon.classList.add('bg-gray-300');
+                    icon.textContent = '✗';
+                    element.classList.remove('text-green-600');
+                    element.classList.add('text-gray-600');
+                }
+            }
+
+            function updateStrengthIndicator(score) {
+                const colors = {
+                    0: { bg: 'bg-red-500', text: 'Very Weak', width: '20%' },
+                    1: { bg: 'bg-red-400', text: 'Very Weak', width: '20%' },
+                    2: { bg: 'bg-orange-500', text: 'Weak', width: '40%' },
+                    3: { bg: 'bg-yellow-500', text: 'Fair', width: '60%' },
+                    4: { bg: 'bg-blue-500', text: 'Good', width: '80%' },
+                    5: { bg: 'bg-green-500', text: 'Strong', width: '100%' }
+                };
+
+                const config = colors[score] || colors[0];
+                
+                strengthBar.className = `h-2 rounded-full transition-all duration-300 ${config.bg}`;
+                strengthBar.style.width = config.width;
+                strengthText.textContent = config.text;
+                strengthText.className = `text-xs font-medium ${config.bg.replace('bg-', 'text-')}`;
+            }
         });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>

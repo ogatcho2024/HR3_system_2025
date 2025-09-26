@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Rules\StrongPassword;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -29,7 +30,16 @@ class RegisterController extends Controller
             'name' => 'required|string|max:255',
             'lastname' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:6',
+            'password' => [
+                'required',
+                new StrongPassword(
+                    config('auth.password_policy.min_length', 8),
+                    config('auth.password_policy.require_uppercase', true),
+                    config('auth.password_policy.require_lowercase', true),
+                    config('auth.password_policy.require_number', true),
+                    config('auth.password_policy.require_special_char', true)
+                )
+            ],
             'phone' => 'required|string|max:20',
             'position' => 'required|string|max:100',
             'account_type' => 'required|in:1,2',
