@@ -3,7 +3,7 @@
 @section('title', 'Leave Reports & Analytics')
 
 @section('content')
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gray-300">
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <!-- Header -->
@@ -24,7 +24,7 @@
             <!-- Quick Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 <!-- Total Requests -->
-                <div class="bg-white rounded-lg shadow p-6">
+                <div class="bg-white rounded-xl shadow p-6">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-gray-600">Total Requests</p>
@@ -44,7 +44,7 @@
                 </div>
 
                 <!-- Pending Requests -->
-                <div class="bg-white rounded-lg shadow p-6">
+                <div class="bg-white rounded-xl shadow p-6">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-gray-600">Pending Requests</p>
@@ -64,7 +64,7 @@
                 </div>
 
                 <!-- Approved Requests -->
-                <div class="bg-white rounded-lg shadow p-6">
+                <div class="bg-white rounded-xl shadow p-6">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-gray-600">Approved Requests</p>
@@ -84,7 +84,7 @@
                 </div>
 
                 <!-- Rejected Requests -->
-                <div class="bg-white rounded-lg shadow p-6">
+                <div class="bg-white rounded-xl shadow p-6">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-gray-600">Rejected Requests</p>
@@ -104,56 +104,20 @@
                 </div>
             </div>
 
-            <!-- Report Filters Section -->
-            <div class="bg-white rounded-lg shadow-lg mb-8">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-900">Report Filters</h3>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div>
-                            <label for="date_from" class="block text-sm font-medium text-gray-700">Date From</label>
-                            <input type="date" id="date_from" name="date_from" value="{{ now()->startOfYear()->format('Y-m-d') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-                        
-                        <div>
-                            <label for="date_to" class="block text-sm font-medium text-gray-700">Date To</label>
-                            <input type="date" id="date_to" name="date_to" value="{{ now()->format('Y-m-d') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-                        
-                        <div>
-                            <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
-                            <select id="status" name="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">All Statuses</option>
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
-                            </select>
-                        </div>
-                        
-                        <div class="flex items-end">
-                            <button type="button" onclick="generateReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium">
-                                Generate Report
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Recent Leave Requests Table -->
-            <div class="bg-white rounded-lg shadow-lg">
+            <div class="bg-white rounded-xl shadow-lg">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-lg font-medium text-gray-900">Recent Leave Requests</h3>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                        <thead class="bg-gray">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Applied</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase tracking-wider">Employee</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase tracking-wider">Leave Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase tracking-wider">Duration</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase tracking-wider">Date Applied</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -222,7 +186,7 @@
             </div>
 
             <!-- Report Summary -->
-            <div class="mt-8 bg-white rounded-lg shadow p-6">
+            <div class="mt-8 bg-white rounded-xl shadow p-6">
                 <h4 class="text-lg font-medium text-gray-900 mb-4">Analytics Summary</h4>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     @php

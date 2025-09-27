@@ -12,76 +12,66 @@
                     ['label' => 'Dashboard', 'url' => route('dashb')]
                 ]])
             </div>
-            
-            <!-- Header -->
-            <div class="mb-8">
-                <div class="flex items-center justify-between">
-                   
-                </div>
-            </div>
 
             <!-- Key Metrics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <!-- Total Employees -->
-        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-blue-100 text-sm">Total Employees</p>
-                    <p class="text-3xl font-bold">{{ $totalEmployees ?? '150' }}</p>
-                    <p class="text-blue-200 text-xs mt-1">+5 this month</p>
-                </div>
-                <div class="p-3 bg-blue-400 rounded-full">
-                    <svg fill="#000000" width="40px" height="40px" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
-                        <title>employee_solid</title>
-                        <g id="aad88ad3-6d51-4184-9840-f392d18dd002" data-name="Layer 3">
-                        <circle cx="16.86" cy="9.73" r="6.46"/>
-                        <rect x="21" y="28" width="7" height="1.4"/>
-                        <path d="M15,30v3a1,1,0,0,0,1,1H33a1,1,0,0,0,1-1V23a1,1,0,0,0-1-1H26V20.53a1,1,0,0,0-2,0V22H22V18.42A32.12,32.12,0,0,0,16.86,18a26,26,0,0,0-11,2.39,3.28,3.28,0,0,0-1.88,3V30Zm17,2H17V24h7v.42a1,1,0,0,0,2,0V24h6Z"/>
-                        </g>
-                    </svg>
+            <!-- Total Employees -->
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-blue-100 text-sm">Total Employees</p>
+                        <p class="text-3xl font-bold">{{ $totalEmployees ?? '0' }}</p>
+                    </div>
+                    <div class="p-3 bg-blue-400 rounded-full">
+                        <svg fill="#000000" width="40px" height="40px" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+                            <title>employee_solid</title>
+                            <g id="aad88ad3-6d51-4184-9840-f392d18dd002" data-name="Layer 3">
+                            <circle cx="16.86" cy="9.73" r="6.46"/>
+                            <rect x="21" y="28" width="7" height="1.4"/>
+                            <path d="M15,30v3a1,1,0,0,0,1,1H33a1,1,0,0,0,1-1V23a1,1,0,0,0-1-1H26V20.53a1,1,0,0,0-2,0V22H22V18.42A32.12,32.12,0,0,0,16.86,18a26,26,0,0,0-11,2.39,3.28,3.28,0,0,0-1.88,3V30Zm17,2H17V24h7v.42a1,1,0,0,0,2,0V24h6Z"/>
+                            </g>
+                        </svg>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Active Leave Requests -->
-        <div class="bg-yellow-500 rounded-2xl shadow-lg p-6 text-white">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-white-100 text-sm">Pending Requests</p>
-                    <p class="text-3xl font-bold">{{ $pendingRequests ?? '24' }}</p>
-                    <p class="text-white-200 text-xs mt-1">Needs approval</p>
-                </div>
-                <div class="p-3 bg-yellow-400 rounded-full">
-                    <svg width="40px" height="40px" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" clip-rule="evenodd" d="M15.6666 8L17.75 10.5L15.6666 8Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path fill-rule="evenodd" clip-rule="evenodd" d="M15.6666 13L17.75 10.5L15.6666 13Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M16.5 10.5L10 10.5" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
-                        <line x1="4" y1="3.5" x2="13" y2="3.5" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
-                        <line x1="4" y1="17.5" x2="13" y2="17.5" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M13 3.5V7.5" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M13 13.5V17.5" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M4 3.5L4 17.5" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
+            <!-- Active Leave Requests -->
+            <div class="bg-yellow-500 rounded-2xl shadow-lg p-6 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white-100 text-sm">Pending Requests</p>
+                        <p class="text-3xl font-bold">{{ $pendingRequests ?? '0' }}</p>
+                    </div>
+                    <div class="p-3 bg-yellow-400 rounded-full">
+                        <svg width="40px" height="40px" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M15.6666 8L17.75 10.5L15.6666 8Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M15.6666 13L17.75 10.5L15.6666 13Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M16.5 10.5L10 10.5" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="4" y1="3.5" x2="13" y2="3.5" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="4" y1="17.5" x2="13" y2="17.5" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M13 3.5V7.5" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M13 13.5V17.5" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M4 3.5L4 17.5" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Today's Attendance -->
-        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-green-100 text-sm">Attendance</p>
-                    <p class="text-3xl font-bold">{{ $todayAttendance }}</p>
-                    <p class="text-green-200 text-xs mt-1">{{ $attendancePercentage }}% present</p>
-                </div>
-                <div class="p-3 bg-green-400 rounded-full">
-                    <svg width="40px" height="40px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" mirror-in-rtl="true">
-                        <path fill="#494c4e" d="M7 11c-1.1 0-2-.9-2-2V8c0-1.1.9-2 2-2s2 .9 2 2v1c0 1.1-.9 2-2 2zm-2 6.993L9 18c.55 0 1-.45 1-1v-2c0-1.65-1.35-3-3-3s-3 1.35-3 3v2c0 .552.448.993 1 .993zM19 18h-6c-.553 0-1-.447-1-1s.447-1 1-1h6c.553 0 1 .447 1 1s-.447 1-1 1zm0-4h-6c-.553 0-1-.448-1-1s.447-1 1-1h6c.553 0 1 .448 1 1s-.447 1-1 1zm0-4h-6c-.553 0-1-.448-1-1s.447-1 1-1h6c.553 0 1 .448 1 1s-.447 1-1 1z"/>
-                        <path fill="#494c4e" d="M22 2H2C.9 2 0 2.9 0 4v16c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 17.5c0 .28-.22.5-.5.5h-19c-.28 0-.5-.22-.5.5v-15c0-.28.22-.5.5-.5h19c.28 0 .5.22.5.5v15z"/>
-                    </svg>
+            <!-- Today's Attendance -->
+            <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-green-100 text-sm">Attendance</p>
+                        <p class="text-3xl font-bold">{{ $todayAttendance ?? '0' }}</p>
+                    </div>
+                    <div class="p-3 bg-green-400 rounded-full">
+                        <svg width="40px" height="40px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" mirror-in-rtl="true">
+                            <path fill="#494c4e" d="M7 11c-1.1 0-2-.9-2-2V8c0-1.1.9-2 2-2s2 .9 2 2v1c0 1.1-.9 2-2 2zm-2 6.993L9 18c.55 0 1-.45 1-1v-2c0-1.65-1.35-3-3-3s-3 1.35-3 3v2c0 .552.448.993 1 .993zM19 18h-6c-.553 0-1-.447-1-1s.447-1 1-1h6c.553 0 1 .447 1 1s-.447 1-1 1zm0-4h-6c-.553 0-1-.448-1-1s.447-1 1-1h6c.553 0 1 .448 1 1s-.447 1-1 1zm0-4h-6c-.553 0-1-.448-1-1s.447-1 1-1h6c.553 0 1 .448 1 1s-.447 1-1 1z"/>
+                            <path fill="#494c4e" d="M22 2H2C.9 2 0 2.9 0 4v16c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 17.5c0 .28-.22.5-.5.5h-19c-.28 0-.5-.22-.5.5v-15c0-.28.22-.5.5-.5h19c.28 0 .5.22.5.5v15z"/>
+                        </svg>
+                    </div>
                 </div>
             </div>
-        </div>
     </div>
 
             <!-- Today's Attendance Breakdown -->

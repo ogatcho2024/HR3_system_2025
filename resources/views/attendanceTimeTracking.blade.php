@@ -47,8 +47,8 @@
                     onBreak: data.data.onBreak,
                     todayAbsent: data.data.absent,
                     overtimeToday: data.data.weeklyOvertime,
-                    clockedIn: data.data.present + data.data.late + data.data.onBreak,
-                    clockedOut: data.data.totalEmployees - (data.data.present + data.data.late + data.data.onBreak + data.data.absent),
+                    clockedIn: data.data.clockedInToday || 0,
+                    clockedOut: data.data.clockedOutToday || 0,
                     totalEmployees: data.data.totalEmployees,
                     avgCheckIn: data.data.avgCheckIn,
                     lateThreshold: 15
@@ -109,14 +109,18 @@
             
             // Update attendance data with real stats for clock in/out tab
             if (activeTab === 'clockinout' || activeTab === 'realtime') {
+                // For consistency, also load overview data to get real clock in/out counts
+                const overviewResponse = await fetch(getApiBaseUrl() + '/attendance/overview-data');
+                const overviewData = await overviewResponse.json();
+                
                 attendanceData = {
                     todayPresent: data.stats.present,
                     todayLate: data.stats.late,
                     onBreak: data.stats.break,
                     todayAbsent: data.stats.absent,
                     overtimeToday: 24, // Keep this as sample for now
-                    clockedIn: data.stats.present + data.stats.late + data.stats.break,
-                    clockedOut: 8, // Keep this as sample for now
+                    clockedIn: overviewData.success ? (overviewData.data.clockedInToday || 0) : 0,
+                    clockedOut: overviewData.success ? (overviewData.data.clockedOutToday || 0) : 0,
                     totalEmployees: data.stats.total,
                     avgCheckIn: '08:24', // Keep this as sample for now
                     lateThreshold: 15
@@ -196,8 +200,8 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-green-100 text-lg">Present Today</p>
-                        <p class="text-2xl font-bold" x-text="attendanceData.todayPresent"></p>
-                        <p class="text-green-200 text-xs mt-0.5">94.7% attendance</p>
+                        <p class="text-2xl font-bold" x-text="attendanceData.todayPresent || 0"></p>
+                        <p class="text-green-200 text-xs mt-0.5">Present employees</p>
                     </div>
                     <div class="p-2 bg-green-400 rounded-full">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,8 +216,8 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-white-100 text-lg">Late Arrivals</p>
-                        <p class="text-2xl font-bold" x-text="attendanceData.todayLate">8</p>
-                        <p class="text-white-200 text-xs mt-0.5">5.3% of present</p>
+                        <p class="text-2xl font-bold" x-text="attendanceData.todayLate || 0"></p>
+                        <p class="text-white-200 text-xs mt-0.5">Late employees</p>
                     </div>
                     <div class="p-2 bg-yellow-400 rounded-full">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -228,8 +232,8 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-blue-100 text-lg">On Break</p>
-                        <p class="text-2xl font-bold" x-text="attendanceData.onBreak">12</p>
-                        <p class="text-blue-200 text-xs mt-0.5">8.0% of present</p>
+                        <p class="text-2xl font-bold" x-text="attendanceData.onBreak || 0"></p>
+                        <p class="text-blue-200 text-xs mt-0.5">On break employees</p>
                     </div>
                     <div class="p-2 bg-blue-400 rounded-full">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -244,8 +248,8 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-red-100 text-lg">Absent Today</p>
-                        <p class="text-2xl font-bold" x-text="attendanceData.todayAbsent">8</p>
-                        <p class="text-red-200 text-xs mt-0.5">5.3% of workforce</p>
+                        <p class="text-2xl font-bold" x-text="attendanceData.todayAbsent || 0"></p>
+                        <p class="text-red-200 text-xs mt-0.5">Absent employees</p>
                     </div>
                     <div class="p-2 bg-red-400 rounded-full">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -260,8 +264,8 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-orange-100 text-lg">Overtime Today</p>
-                        <p class="text-2xl font-bold" x-text="attendanceData.overtimeToday">24</p>
-                        <p class="text-orange-200 text-xs mt-0.5">Extra hours worked</p>
+                        <p class="text-2xl font-bold" x-text="attendanceData.overtimeToday || 0"></p>
+                        <p class="text-orange-200 text-xs mt-0.5">Overtime hours</p>
                     </div>
                     <div class="p-2 bg-orange-400 rounded-full">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -276,8 +280,8 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-purple-100 text-lg">Total Employees</p>
-                        <p class="text-2xl font-bold" x-text="attendanceData.totalEmployees">150</p>
-                        <p class="text-purple-200 text-xs mt-0.5">Active workforce</p>
+                        <p class="text-2xl font-bold" x-text="attendanceData.totalEmployees || 0"></p>
+                        <p class="text-purple-200 text-xs mt-0.5">Company workforce</p>
                     </div>
                     <div class="p-2 bg-purple-400 rounded-full">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -306,7 +310,7 @@
                             <p class="text-green-100 text-lg">Clocked In</p>
                         </div>
                     </div>
-                    <div class="text-4xl font-bold mb-2" x-text="attendanceData.clockedIn">142</div>
+                    <div class="text-4xl font-bold mb-2" x-text="attendanceData.clockedIn || 0"></div>
                     <div class="text-xs text-green-200">Currently working</div>
                 </div>
 
@@ -322,7 +326,7 @@
                             <p class="text-red-100 text-lg">Clocked Out</p>
                         </div>
                     </div>
-                    <div class="text-4xl font-bold mb-2" x-text="attendanceData.clockedOut">8</div>
+                    <div class="text-4xl font-bold mb-2" x-text="attendanceData.clockedOut || 0"></div>
                     <div class="text-xs text-red-200">Ended shift today</div>
                 </div>
 

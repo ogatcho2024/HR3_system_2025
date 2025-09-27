@@ -798,6 +798,17 @@ class AttendanceController extends Controller
                 return $minutesLate > 15;
             })->count();
             
+            // Calculate real clock in/out counts from database
+            $clockedInToday = Attendance::where('date', $today)
+                ->whereNotNull('clock_in_time')
+                ->whereNull('clock_out_time') // Still working (haven't clocked out yet)
+                ->count();
+            
+            $clockedOutToday = Attendance::where('date', $today)
+                ->whereNotNull('clock_in_time')
+                ->whereNotNull('clock_out_time') // Finished work (clocked out)
+                ->count();
+            
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -819,7 +830,10 @@ class AttendanceController extends Controller
                     // Additional breakdown for Today's Summary
                     'onTime' => $onTimeEmployees,
                     'lateModerate' => $lateModerate, // 5-15 min late
-                    'lateExtreme' => $lateExtreme    // 15+ min late
+                    'lateExtreme' => $lateExtreme,    // 15+ min late
+                    // Real clock in/out counts
+                    'clockedInToday' => $clockedInToday,
+                    'clockedOutToday' => $clockedOutToday
                 ]
             ]);
         } catch (\Exception $e) {

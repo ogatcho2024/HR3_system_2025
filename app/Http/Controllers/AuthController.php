@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Models\Employee;
 use App\Models\Attendance;
 use App\Models\LoginAttempt;
+use App\Models\LeaveRequest;
+use App\Models\ShiftRequest;
 
 class AuthController extends Controller
 {
@@ -25,16 +27,15 @@ class AuthController extends Controller
         // Get total employees count
         $totalEmployees = Employee::active()->count();
         
-        // Get today's attendance statistics
+        // Get today's attendance statistics (total who clocked in today)
         $todayAttendance = Attendance::where('date', $today)
             ->whereIn('status', ['present', 'late'])
             ->count();
             
-        // Get pending leave requests count (assuming there's a leave_requests table)
-        $pendingLeaves = \App\Models\LeaveRequest::where('status', 'pending')->count() ?? 24;
-        
-        // Get open positions count (can be a static value or from a positions table)
-        $openPositions = 8; // Static for now, can be made dynamic
+        // Get pending requests count from both leave_requests and shift_requests tables
+        $pendingLeaveRequests = LeaveRequest::where('status', 'pending')->count();
+        $pendingShiftRequests = ShiftRequest::where('status', 'pending')->count();
+        $pendingRequests = $pendingLeaveRequests + $pendingShiftRequests;
         
         // Get detailed attendance breakdown for today
         $attendanceStats = [
@@ -51,8 +52,7 @@ class AuthController extends Controller
         return view('dashb', compact(
             'totalEmployees',
             'todayAttendance', 
-            'pendingLeaves',
-            'openPositions',
+            'pendingRequests',
             'attendanceStats',
             'attendancePercentage'
         ));
