@@ -11,11 +11,6 @@
                 @include('partials.breadcrumbs', ['breadcrumbs' => [
                     ['label' => 'Dashboard', 'url' => route('dashb')]
                 ]])
-                <div class="bg-white rounded-lg shadow px-3 py-2 text-center">
-                    <p class="text-xs mb-1 text-gray-600">Current Time</p>
-                    <p id="current-time" class="text-xl mb-1 font-bold text-blue-600"></p>
-                    <p id="current-date" class="text-xs mb-1 text-gray-500"></p>
-                </div>
             </div>
             
             <!-- Header -->
