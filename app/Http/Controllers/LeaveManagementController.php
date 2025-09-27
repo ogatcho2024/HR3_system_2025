@@ -14,6 +14,7 @@ use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
 
 class LeaveManagementController extends Controller
 {
@@ -551,54 +552,76 @@ class LeaveManagementController extends Controller
         $leaveRequests = $query->get();
         
         // Generate different report structures based on type
+        $reportData = collect();
+        
         switch ($reportType) {
             case 'employee':
-                $reportData = $leaveRequests->groupBy('user_id')->map(function($requests, $userId) {
-                    $user = $requests->first()->user;
-                    return [
-                        'employee' => $user,
-                        'total_requests' => $requests->count(),
-                        'total_days' => $requests->sum('days_requested'),
-                        'approved' => $requests->where('status', 'approved')->count(),
-                        'pending' => $requests->where('status', 'pending')->count(),
-                        'rejected' => $requests->where('status', 'rejected')->count(),
-                        'requests' => $requests,
-                    ];
-                });
+                if ($leaveRequests->isNotEmpty()) {
+                    $reportData = $leaveRequests->groupBy('user_id')->map(function($requests, $userId) {
+                        $user = $requests->first()->user;
+                        return [
+                            'employee' => $user,
+                            'total_requests' => $requests->count(),
+                            'total_days' => $requests->sum('days_requested'),
+                            'approved' => $requests->where('status', 'approved')->count(),
+                            'pending' => $requests->where('status', 'pending')->count(),
+                            'rejected' => $requests->where('status', 'rejected')->count(),
+                            'requests' => $requests,
+                        ];
+                    });
+                }
                 break;
                 
             case 'department':
-                $reportData = $leaveRequests->groupBy('user.employee.department')->map(function($requests, $dept) {
-                    return [
-                        'department' => $dept,
-                        'total_requests' => $requests->count(),
-                        'total_days' => $requests->sum('days_requested'),
-                        'approved' => $requests->where('status', 'approved')->count(),
-                        'pending' => $requests->where('status', 'pending')->count(),
-                        'rejected' => $requests->where('status', 'rejected')->count(),
-                        'employees' => $requests->groupBy('user_id')->count(),
-                    ];
-                });
+                if ($leaveRequests->isNotEmpty()) {
+                    $reportData = $leaveRequests->filter(function($request) {
+                        return $request->user && $request->user->employee && $request->user->employee->department;
+                    })->groupBy('user.employee.department')->map(function($requests, $dept) {
+                        return [
+                            'department' => $dept,
+                            'total_requests' => $requests->count(),
+                            'total_days' => $requests->sum('days_requested'),
+                            'approved' => $requests->where('status', 'approved')->count(),
+                            'pending' => $requests->where('status', 'pending')->count(),
+                            'rejected' => $requests->where('status', 'rejected')->count(),
+                            'employees' => $requests->groupBy('user_id')->count(),
+                        ];
+                    });
+                }
                 break;
                 
             case 'leave_type':
-                $reportData = $leaveRequests->groupBy('leave_type')->map(function($requests, $type) {
-                    return [
-                        'leave_type' => $type,
-                        'total_requests' => $requests->count(),
-                        'total_days' => $requests->sum('days_requested'),
-                        'approved' => $requests->where('status', 'approved')->count(),
-                        'pending' => $requests->where('status', 'pending')->count(),
-                        'rejected' => $requests->where('status', 'rejected')->count(),
-                        'average_duration' => round($requests->avg('days_requested'), 1),
-                    ];
-                });
+                if ($leaveRequests->isNotEmpty()) {
+                    $reportData = $leaveRequests->groupBy('leave_type')->map(function($requests, $type) {
+                        return [
+                            'leave_type' => $type,
+                            'total_requests' => $requests->count(),
+                            'total_days' => $requests->sum('days_requested'),
+                            'approved' => $requests->where('status', 'approved')->count(),
+                            'pending' => $requests->where('status', 'pending')->count(),
+                            'rejected' => $requests->where('status', 'rejected')->count(),
+                            'average_duration' => round($requests->avg('days_requested'), 1),
+                        ];
+                    });
+                }
                 break;
         }
         
-        // Get filter options
-        $departments = Employee::select('department')->distinct()->pluck('department');
-        $leaveTypes = LeaveRequest::select('leave_type')->distinct()->pluck('leave_type');
+        // Get filter options with null-safe queries
+        $departments = Employee::whereNotNull('department')
+            ->select('department')
+            ->distinct()
+            ->pluck('department')
+            ->filter()
+            ->values();
+            
+        $leaveTypes = LeaveRequest::whereNotNull('leave_type')
+            ->select('leave_type')
+            ->distinct()
+            ->pluck('leave_type')
+            ->filter()
+            ->values();
+            
         $employees = User::whereHas('employee')->with('employee')->get();
         
         return view('admin.leave-management.reports', compact(
@@ -613,6 +636,111 @@ class LeaveManagementController extends Controller
             'leaveType',
             'employeeId'
         ));
+    }
+    
+    /**
+     * Display simple reports and analytics page.
+     */
+    public function reportsAnalytics(): View
+    {
+        return view('admin.leave-management.reports-analytics');
+    }
+    
+    /**
+     * Export leave reports to PDF.
+     */
+    public function exportLeaveReportsPDF(Request $request)
+    {
+        try {
+            // Get filter parameters
+            $dateFrom = $request->input('date_from', now()->startOfYear()->format('Y-m-d'));
+            $dateTo = $request->input('date_to', now()->format('Y-m-d'));
+            $status = $request->input('status');
+        
+        // Build query for leave requests
+        $query = LeaveRequest::with(['user'])
+            ->whereBetween('created_at', [$dateFrom, $dateTo]);
+            
+        if ($status) {
+            $query->where('status', $status);
+        }
+        
+        $recentRequests = $query->orderBy('created_at', 'desc')
+            ->limit(100) // Limit to 100 records for PDF performance
+            ->get();
+            
+        // Calculate statistics
+        $totalRequests = $recentRequests->count();
+        $pendingRequests = $recentRequests->where('status', 'pending')->count();
+        $approvedRequests = $recentRequests->where('status', 'approved')->count();
+        $rejectedRequests = $recentRequests->where('status', 'rejected')->count();
+        
+        $totalDays = $recentRequests->sum('days_requested') ?? 0;
+        $avgDays = $totalRequests > 0 ? round($totalDays / $totalRequests, 1) : 0;
+        $approvalRate = $totalRequests > 0 ? round(($approvedRequests / $totalRequests) * 100, 1) : 0;
+        
+        // Create date range string
+        $dateRange = now()->parse($dateFrom)->format('M j, Y') . ' - ' . now()->parse($dateTo)->format('M j, Y');
+        
+        // Get department breakdown (optional)
+        $departmentBreakdown = collect();
+        try {
+            $departmentBreakdown = LeaveRequest::with(['user.employee'])
+                ->whereBetween('created_at', [$dateFrom, $dateTo])
+                ->get()
+                ->filter(function($request) {
+                    return $request->user && $request->user->employee && $request->user->employee->department;
+                })
+                ->groupBy('user.employee.department')
+                ->map(function($requests, $dept) {
+                    return (object) [
+                        'department' => $dept,
+                        'total_requests' => $requests->count(),
+                        'approved' => $requests->where('status', 'approved')->count(),
+                        'pending' => $requests->where('status', 'pending')->count(),
+                        'rejected' => $requests->where('status', 'rejected')->count(),
+                        'total_days' => $requests->sum('days_requested'),
+                    ];
+                });
+        } catch (\Exception $e) {
+            // If department data fails, continue without it
+            $departmentBreakdown = collect();
+        }
+        
+        // Prepare data for PDF
+        $data = [
+            'totalRequests' => $totalRequests,
+            'pendingRequests' => $pendingRequests,
+            'approvedRequests' => $approvedRequests,
+            'rejectedRequests' => $rejectedRequests,
+            'totalDays' => $totalDays,
+            'avgDays' => $avgDays,
+            'approvalRate' => $approvalRate,
+            'recentRequests' => $recentRequests,
+            'dateRange' => $dateRange,
+            'departmentBreakdown' => $departmentBreakdown,
+        ];
+        
+        // Generate PDF
+        $pdf = PDF::loadView('pdf.leave-reports', $data);
+        
+        // Set paper size and orientation
+        $pdf->setPaper('A4', 'portrait');
+        
+        // Generate filename
+        $filename = 'leave-reports-' . now()->format('Y-m-d-H-i-s') . '.pdf';
+        
+        // Return PDF download
+        return $pdf->download($filename);
+        
+        } catch (\Exception $e) {
+            // Log the error
+            \Log::error('PDF Export Error: ' . $e->getMessage());
+            
+            // Return error response
+            return response('PDF Generation Error: ' . $e->getMessage() . '. Please try again or contact support.', 500)
+                ->header('Content-Type', 'text/plain');
+        }
     }
     
     /**

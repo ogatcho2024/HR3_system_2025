@@ -185,7 +185,9 @@ Route::middleware(['auth'])->group(function () {
         
         // Reports and Analytics
         Route::get('/reports', [LeaveManagementController::class, 'generateReport'])->name('reports');
+        Route::get('/reports-analytics', [LeaveManagementController::class, 'reportsAnalytics'])->name('reports-analytics');
         Route::get('/export-report', [LeaveManagementController::class, 'exportReport'])->name('export-report');
+        Route::get('/export-pdf', [LeaveManagementController::class, 'exportLeaveReportsPDF'])->name('export-pdf');
         
         // Integration APIs
         Route::get('/payroll-integration', [LeaveManagementController::class, 'getPayrollIntegrationData'])->name('payroll-integration');

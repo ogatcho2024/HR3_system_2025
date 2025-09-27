@@ -334,25 +334,61 @@ function clearFilters() {
     });
 }
 
-function exportReport(format = 'pdf') {
+async function exportReport(format = 'pdf') {
     const urlParams = new URLSearchParams(window.location.search);
-    urlParams.set('format', format);
     
-    fetch(`{{ route('leave-management.export-report') }}?${urlParams.toString()}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.download_url) {
-                // Simulate file download
-                const link = document.createElement('a');
-                link.href = data.download_url;
-                link.download = `leave-report-${format}-${new Date().getTime()}`;
-                link.click();
+    if (format === 'pdf') {
+        try {
+            // Use the dedicated PDF export route with proper error handling
+            const pdfUrl = `{{ route('leave-management.export-pdf') }}?${urlParams.toString()}`;
+            const response = await fetch(pdfUrl);
+            
+            if (response.ok) {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/pdf')) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'leave-management-report-' + new Date().toISOString().split('T')[0] + '.pdf';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    const errorText = await response.text();
+                    console.error('PDF Error Response:', errorText);
+                    alert('Failed to generate PDF: ' + errorText);
+                }
+            } else {
+                const errorText = await response.text();
+                console.error('HTTP Error:', response.status, errorText);
+                alert('Failed to generate PDF report. HTTP ' + response.status + ': ' + errorText);
             }
-            alert(data.message);
-        })
-        .catch(error => {
-            alert('Error exporting report: ' + error.message);
-        });
+        } catch (error) {
+            console.error('Error downloading PDF:', error);
+            alert('Error downloading PDF: ' + error.message);
+        }
+    } else {
+        // Use the generic export route for other formats
+        urlParams.set('format', format);
+        
+        fetch(`{{ route('leave-management.export-report') }}?${urlParams.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.download_url) {
+                    // Simulate file download
+                    const link = document.createElement('a');
+                    link.href = data.download_url;
+                    link.download = `leave-report-${format}-${new Date().getTime()}`;
+                    link.click();
+                }
+                alert(data.message);
+            })
+            .catch(error => {
+                alert('Error exporting report: ' + error.message);
+            });
+    }
 }
 
 // Print styles

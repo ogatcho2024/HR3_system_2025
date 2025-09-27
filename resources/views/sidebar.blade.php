@@ -229,24 +229,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ route('leave-management.reports') }}" class="nav-link {{ request()->routeIs('leave-management.reports') ? 'active' : '' }}">
+                            <a href="{{ route('leave-management.reports-analytics') }}" class="nav-link {{ request()->routeIs('leave-management.reports-analytics') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Reports & Analytics</p>
                             </a>
                         </li>
                     </ul>
-                </li>
-
-                <!-- Notifications -->
-                <li class="nav-item">
-                    <a href="{{ route('notifications.index') }}" class="nav-link d-flex align-items-center {{ request()->routeIs('notifications.*') ? 'active' : '' }}">
-                        <span class="nav-icon d-inline-flex align-items-center justify-content-center mr-2">
-                            <svg class="w-6 h-6" fill="#ffffff" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 19V20H3V19L5 17V11C5 7.9 7.03 5.17 10 4.29C10 4.19 10 4.1 10 4C10 2.9 10.9 2 12 2S14 2.9 14 4C14 4.1 14 4.19 14 4.29C16.97 5.17 19 7.9 19 11V17L21 19ZM7 19H17V18.08L16 17.08V11C16 8.24 14.5 6.5 12 6.5S8 8.24 8 11V17.08L7 18.08V19ZM12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22Z"/>
-                            </svg>
-                        </span>
-                        <span class="nav-text flex-fill text-truncate">Notifications</span>
-                    </a>
                 </li>
 
                 <!-- Logout -->

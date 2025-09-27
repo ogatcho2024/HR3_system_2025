@@ -18,8 +18,8 @@ class EmployeeController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'latitude' => 'required|numeric',
-                'longitude' => 'required|numeric',
+                'latitude' => 'nullable|numeric',
+                'longitude' => 'nullable|numeric', 
                 'address' => 'nullable|string',
                 'timestamp' => 'nullable|date'
             ]);
@@ -32,14 +32,32 @@ class EmployeeController extends Controller
                 ], 422);
             }
 
-            $user = $request->user();
+            // Get user from token (using our custom authentication)
+            $token = $request->header('Authorization');
+            if ($token && str_starts_with($token, 'Bearer ')) {
+                $tokenValue = substr($token, 7);
+                $apiToken = \App\Models\ApiToken::where('token', $tokenValue)->with('user')->first();
+                if (!$apiToken || $apiToken->isExpired()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unauthorized'
+                    ], 401);
+                }
+                $user = $apiToken->user;
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token required'
+                ], 401);
+            }
+
             $now = $request->timestamp ? Carbon::parse($request->timestamp) : Carbon::now();
 
             // Check if already clocked in today
             $existingAttendance = Attendance::where('user_id', $user->id)
                 ->whereDate('date', $now->toDateString())
-                ->whereNotNull('clock_in')
-                ->whereNull('clock_out')
+                ->whereNotNull('clock_in_time')
+                ->whereNull('clock_out_time')
                 ->first();
 
             if ($existingAttendance) {
@@ -53,11 +71,9 @@ class EmployeeController extends Controller
             $attendance = Attendance::create([
                 'user_id' => $user->id,
                 'date' => $now->toDateString(),
-                'clock_in' => $now->toTimeString(),
-                'clock_in_latitude' => $request->latitude,
-                'clock_in_longitude' => $request->longitude,
-                'clock_in_address' => $request->address,
-                'status' => 'present'
+                'clock_in_time' => $now->format('H:i:s'),
+                'status' => 'present',
+                'created_by' => $user->id
             ]);
 
             return response()->json([
@@ -66,8 +82,8 @@ class EmployeeController extends Controller
                 'data' => [
                     'id' => $attendance->id,
                     'date' => $attendance->date,
-                    'clock_in' => $attendance->clock_in,
-                    'location' => $request->address,
+                    'clock_in_time' => $attendance->clock_in_time,
+                    'status' => $attendance->status,
                     'timestamp' => $now->toISOString()
                 ]
             ], 200);
@@ -75,8 +91,7 @@ class EmployeeController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Server error',
-                'error' => $e->getMessage()
+                'message' => 'Clock in failed: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -88,8 +103,8 @@ class EmployeeController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'latitude' => 'required|numeric',
-                'longitude' => 'required|numeric',
+                'latitude' => 'nullable|numeric',
+                'longitude' => 'nullable|numeric',
                 'address' => 'nullable|string',
                 'timestamp' => 'nullable|date'
             ]);
@@ -102,14 +117,32 @@ class EmployeeController extends Controller
                 ], 422);
             }
 
-            $user = $request->user();
+            // Get user from token (using our custom authentication)
+            $token = $request->header('Authorization');
+            if ($token && str_starts_with($token, 'Bearer ')) {
+                $tokenValue = substr($token, 7);
+                $apiToken = \App\Models\ApiToken::where('token', $tokenValue)->with('user')->first();
+                if (!$apiToken || $apiToken->isExpired()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unauthorized'
+                    ], 401);
+                }
+                $user = $apiToken->user;
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token required'
+                ], 401);
+            }
+
             $now = $request->timestamp ? Carbon::parse($request->timestamp) : Carbon::now();
 
             // Find today's attendance record
             $attendance = Attendance::where('user_id', $user->id)
                 ->whereDate('date', $now->toDateString())
-                ->whereNotNull('clock_in')
-                ->whereNull('clock_out')
+                ->whereNotNull('clock_in_time')
+                ->whereNull('clock_out_time')
                 ->first();
 
             if (!$attendance) {
@@ -119,17 +152,13 @@ class EmployeeController extends Controller
                 ], 400);
             }
 
-            // Calculate hours worked
-            $clockIn = Carbon::parse($attendance->date . ' ' . $attendance->clock_in);
-            $clockOut = $now;
-            $hoursWorked = $clockIn->diffInHours($clockOut, true);
+            // Calculate hours worked using the model's method
+            $attendance->clock_out_time = $now->format('H:i:s');
+            $hoursWorked = $attendance->calculateHours();
 
             // Update attendance record
             $attendance->update([
-                'clock_out' => $now->toTimeString(),
-                'clock_out_latitude' => $request->latitude,
-                'clock_out_longitude' => $request->longitude,
-                'clock_out_address' => $request->address,
+                'clock_out_time' => $now->format('H:i:s'),
                 'hours_worked' => $hoursWorked
             ]);
 
@@ -139,10 +168,10 @@ class EmployeeController extends Controller
                 'data' => [
                     'id' => $attendance->id,
                     'date' => $attendance->date,
-                    'clock_in' => $attendance->clock_in,
-                    'clock_out' => $attendance->clock_out,
+                    'clock_in_time' => $attendance->clock_in_time,
+                    'clock_out_time' => $attendance->clock_out_time,
                     'hours_worked' => $hoursWorked,
-                    'location' => $request->address,
+                    'status' => $attendance->status,
                     'timestamp' => $now->toISOString()
                 ]
             ], 200);
@@ -150,8 +179,7 @@ class EmployeeController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Server error',
-                'error' => $e->getMessage()
+                'message' => 'Clock out failed: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -162,7 +190,25 @@ class EmployeeController extends Controller
     public function getAttendance(Request $request)
     {
         try {
-            $user = $request->user();
+            // Get user from token (using our custom authentication)
+            $token = $request->header('Authorization');
+            if ($token && str_starts_with($token, 'Bearer ')) {
+                $tokenValue = substr($token, 7);
+                $apiToken = \App\Models\ApiToken::where('token', $tokenValue)->with('user')->first();
+                if (!$apiToken || $apiToken->isExpired()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unauthorized'
+                    ], 401);
+                }
+                $user = $apiToken->user;
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token required'
+                ], 401);
+            }
+
             $period = $request->get('period', 'monthly');
             $startDate = $request->get('start_date');
             $endDate = $request->get('end_date');
@@ -195,12 +241,12 @@ class EmployeeController extends Controller
                     return [
                         'id' => $attendance->id,
                         'date' => $attendance->date,
-                        'clock_in' => $attendance->clock_in,
-                        'clock_out' => $attendance->clock_out,
+                        'clock_in_time' => $attendance->clock_in_time,
+                        'clock_out_time' => $attendance->clock_out_time,
                         'hours_worked' => $attendance->hours_worked,
+                        'overtime_hours' => $attendance->overtime_hours,
                         'status' => $attendance->status,
-                        'clock_in_address' => $attendance->clock_in_address,
-                        'clock_out_address' => $attendance->clock_out_address,
+                        'notes' => $attendance->notes,
                     ];
                 })
             ], 200);
@@ -208,8 +254,7 @@ class EmployeeController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Server error',
-                'error' => $e->getMessage()
+                'message' => 'Get attendance failed: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -220,24 +265,45 @@ class EmployeeController extends Controller
     public function getClockStatus(Request $request)
     {
         try {
-            $user = $request->user();
+            // Get user from token (using our custom authentication)
+            $token = $request->header('Authorization');
+            if ($token && str_starts_with($token, 'Bearer ')) {
+                $tokenValue = substr($token, 7);
+                $apiToken = \App\Models\ApiToken::where('token', $tokenValue)->with('user')->first();
+                if (!$apiToken || $apiToken->isExpired()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unauthorized'
+                    ], 401);
+                }
+                $user = $apiToken->user;
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token required'
+                ], 401);
+            }
+
             $today = Carbon::now()->toDateString();
 
             $attendance = Attendance::where('user_id', $user->id)
                 ->whereDate('date', $today)
                 ->first();
 
-            $isCurrentlyClockedIn = $attendance && $attendance->clock_in && !$attendance->clock_out;
+            $isCurrentlyClockedIn = $attendance && $attendance->clock_in_time && !$attendance->clock_out_time;
 
             return response()->json([
                 'success' => true,
                 'data' => [
                     'is_clocked_in' => $isCurrentlyClockedIn,
-                    'last_clock_time' => $attendance ? ($attendance->clock_out ?: $attendance->clock_in) : null,
+                    'last_clock_time' => $attendance ? ($attendance->clock_out_time ?: $attendance->clock_in_time) : null,
                     'today_attendance' => $attendance ? [
-                        'clock_in' => $attendance->clock_in,
-                        'clock_out' => $attendance->clock_out,
+                        'id' => $attendance->id,
+                        'date' => $attendance->date,
+                        'clock_in_time' => $attendance->clock_in_time,
+                        'clock_out_time' => $attendance->clock_out_time,
                         'hours_worked' => $attendance->hours_worked,
+                        'status' => $attendance->status
                     ] : null
                 ]
             ], 200);
@@ -245,8 +311,7 @@ class EmployeeController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Server error',
-                'error' => $e->getMessage()
+                'message' => 'Get status failed: ' . $e->getMessage()
             ], 500);
         }
     }

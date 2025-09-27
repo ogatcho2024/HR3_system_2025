@@ -53,10 +53,13 @@ class SimpleAuthController extends Controller
                     'user' => [
                         'id' => $user->id,
                         'name' => $user->name,
+                        'first_name' => $user->name, // Split name for Flutter compatibility
+                        'last_name' => $user->lastname ?? '', // Use lastname field if available
                         'email' => $user->email,
                         'employee_id' => $user->employee_id ?? null,
                         'department' => $user->department ?? null,
                         'position' => $user->position ?? null,
+                        'phone_number' => $user->phone ?? null,
                         'phone' => $user->phone ?? null,
                         'address' => $user->address ?? null,
                     ],
@@ -99,10 +102,13 @@ class SimpleAuthController extends Controller
                     'user' => [
                         'id' => $user->id,
                         'name' => $user->name,
+                        'first_name' => $user->name,
+                        'last_name' => $user->lastname ?? '',
                         'email' => $user->email,
                         'employee_id' => $user->employee_id ?? null,
                         'department' => $user->department ?? null,
                         'position' => $user->position ?? null,
+                        'phone_number' => $user->phone ?? null,
                         'phone' => $user->phone ?? null,
                         'address' => $user->address ?? null,
                     ]
@@ -173,10 +179,13 @@ class SimpleAuthController extends Controller
                     'user' => [
                         'id' => $user->id,
                         'name' => $user->name,
+                        'first_name' => $user->name,
+                        'last_name' => $user->lastname ?? '',
                         'email' => $user->email,
                         'employee_id' => $user->employee_id ?? null,
                         'department' => $user->department ?? null,
                         'position' => $user->position ?? null,
+                        'phone_number' => $user->phone ?? null,
                         'phone' => $user->phone ?? null,
                         'address' => $user->address ?? null,
                     ]
