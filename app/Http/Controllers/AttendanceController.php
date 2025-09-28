@@ -51,14 +51,26 @@ class AttendanceController extends Controller
      */
     public function create(): View
     {
-        $employees = User::all();
+        $employees = Employee::with('user')
+            ->active()
+            ->get()
+            ->map(function ($employee) {
+                return (object) [
+                    'id' => $employee->user_id, // Use user_id for the form
+                    'name' => $employee->user->name ?? 'Unknown',
+                    'employee_id' => $employee->employee_id,
+                    'department' => $employee->department,
+                    'position' => $employee->position
+                ];
+            });
+            
         return view('attendance.create', compact('employees'));
     }
 
     /**
      * Store new attendance record
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request)
     {
         $validatedData = $request->validate([
             'user_id' => 'required|exists:users,id',
@@ -73,16 +85,58 @@ class AttendanceController extends Controller
 
         $validatedData['created_by'] = Auth::id();
         
-        // Calculate hours worked if clock in/out times are provided
-        if (!empty($validatedData['clock_in_time']) && !empty($validatedData['clock_out_time'])) {
-            $attendance = new Attendance($validatedData);
-            $validatedData['hours_worked'] = $attendance->calculateHours();
-        }
+        // Check if entry already exists for this user and date
+        $existingEntry = Attendance::where('user_id', $validatedData['user_id'])
+            ->whereDate('date', $validatedData['date'])
+            ->first();
+            
+        if ($existingEntry) {
+            // Update existing record instead of failing
+            // Merge new data with existing data (don't overwrite with null values)
+            $updateData = [];
+            foreach ($validatedData as $key => $value) {
+                if ($value !== null && $value !== '') {
+                    $updateData[$key] = $value;
+                }
+            }
+            
+            // Calculate hours worked if both times are available
+            $clockIn = $updateData['clock_in_time'] ?? $existingEntry->clock_in_time;
+            $clockOut = $updateData['clock_out_time'] ?? $existingEntry->clock_out_time;
+            
+            if ($clockIn && $clockOut) {
+                $tempAttendance = new Attendance([
+                    'clock_in_time' => $clockIn,
+                    'clock_out_time' => $clockOut
+                ]);
+                $updateData['hours_worked'] = $tempAttendance->calculateHours();
+            }
+            
+            $existingEntry->update($updateData);
+            $attendance = $existingEntry->refresh();
+            
+        } else {
+            // Create new record
+            // Calculate hours worked if clock in/out times are provided
+            if (!empty($validatedData['clock_in_time']) && !empty($validatedData['clock_out_time'])) {
+                $attendance = new Attendance($validatedData);
+                $validatedData['hours_worked'] = $attendance->calculateHours();
+            }
 
-        $attendance = Attendance::create($validatedData);
+            $attendance = Attendance::create($validatedData);
+        }
         
         // Sync to timesheet
         $this->syncAttendanceToTimesheet($attendance);
+
+        // Return JSON response for AJAX requests
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Attendance record created successfully!',
+                'data' => $attendance->load('user')
+            ]);
+        }
 
         return redirect()->route('attendanceTimeTracking')
             ->with('success', 'Attendance record created successfully!');
@@ -93,50 +147,137 @@ class AttendanceController extends Controller
      */
     public function edit(Attendance $attendance): View
     {
-        $employees = User::all();
+        $employees = Employee::with('user')
+            ->active()
+            ->get()
+            ->map(function ($employee) {
+                return (object) [
+                    'id' => $employee->user_id, // Use user_id for the form
+                    'name' => $employee->user->name ?? 'Unknown',
+                    'employee_id' => $employee->employee_id,
+                    'department' => $employee->department,
+                    'position' => $employee->position
+                ];
+            });
+            
         return view('attendance.edit', compact('attendance', 'employees'));
     }
 
     /**
      * Update attendance record
      */
-    public function update(Request $request, Attendance $attendance): RedirectResponse
+    public function update(Request $request, Attendance $attendance)
     {
-        $validatedData = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'date' => 'required|date',
-            'clock_in_time' => 'nullable|date_format:H:i',
-            'clock_out_time' => 'nullable|date_format:H:i',
-            'break_start' => 'nullable|date_format:H:i',
-            'break_end' => 'nullable|date_format:H:i',
-            'status' => 'required|in:present,late,absent,on_break',
-            'notes' => 'nullable|string|max:500',
-        ]);
+        try {
+            // For JSON requests (AJAX), only validate the fields that can be updated
+            if ($request->expectsJson()) {
+                $validatedData = $request->validate([
+                    'time_start' => 'nullable|date_format:H:i',
+                    'time_end' => 'nullable|date_format:H:i', 
+                    'status' => 'nullable|in:draft,submitted,approved,rejected,present,late,absent,on_break',
+                    'notes' => 'nullable|string|max:500',
+                ]);
+                
+                // Map frontend field names to database field names
+                $updateData = [];
+                if (isset($validatedData['time_start'])) {
+                    $updateData['clock_in_time'] = $validatedData['time_start'];
+                }
+                if (isset($validatedData['time_end'])) {
+                    $updateData['clock_out_time'] = $validatedData['time_end'];
+                }
+                // Remove status update since the column doesn't exist in attendances table
+                // if (isset($validatedData['status'])) {
+                //     $updateData['status'] = $validatedData['status'];
+                // }
+                if (isset($validatedData['notes'])) {
+                    $updateData['notes'] = $validatedData['notes'];
+                }
+                
+            } else {
+                // For form-based requests, validate all fields
+                $validatedData = $request->validate([
+                    'user_id' => 'required|exists:users,id',
+                    'date' => 'required|date',
+                    'clock_in_time' => 'nullable|date_format:H:i',
+                    'clock_out_time' => 'nullable|date_format:H:i',
+                    'break_start' => 'nullable|date_format:H:i',
+                    'break_end' => 'nullable|date_format:H:i',
+                    'status' => 'required|in:present,late,absent,on_break',
+                    'notes' => 'nullable|string|max:500',
+                ]);
+                $updateData = $validatedData;
+            }
 
-        // Calculate hours worked if clock in/out times are provided
-        if (!empty($validatedData['clock_in_time']) && !empty($validatedData['clock_out_time'])) {
-            $attendanceModel = new Attendance($validatedData);
-            $validatedData['hours_worked'] = $attendanceModel->calculateHours();
+            // Calculate hours worked if both clock in and out times are provided
+            if (!empty($updateData['clock_in_time']) && !empty($updateData['clock_out_time'])) {
+                // Use the current attendance model but temporarily set the new times
+                $tempAttendance = new Attendance([
+                    'clock_in_time' => $updateData['clock_in_time'],
+                    'clock_out_time' => $updateData['clock_out_time']
+                ]);
+                $updateData['hours_worked'] = $tempAttendance->calculateHours();
+            }
+
+            $attendance->update($updateData);
+            
+            // Sync to timesheet
+            $this->syncAttendanceToTimesheet($attendance->refresh());
+
+            // Return JSON response for AJAX requests
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Attendance record updated successfully!',
+                    'data' => $attendance->load('user')
+                ]);
+            }
+
+            return redirect()->route('attendanceTimeTracking')
+                ->with('success', 'Attendance record updated successfully!');
+                
+        } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update attendance record: ' . $e->getMessage()
+                ], 500);
+            }
+            
+            return redirect()->back()
+                ->with('error', 'Failed to update attendance record: ' . $e->getMessage());
         }
-
-        $attendance->update($validatedData);
-        
-        // Sync to timesheet
-        $this->syncAttendanceToTimesheet($attendance->refresh());
-
-        return redirect()->route('attendanceTimeTracking')
-            ->with('success', 'Attendance record updated successfully!');
     }
 
     /**
      * Delete attendance record
      */
-    public function destroy(Attendance $attendance): RedirectResponse
+    public function destroy(Attendance $attendance)
     {
-        $attendance->delete();
+        try {
+            $attendance->delete();
+            
+            // Return JSON for AJAX requests
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Attendance record deleted successfully!'
+                ]);
+            }
 
-        return redirect()->route('attendanceTimeTracking')
-            ->with('success', 'Attendance record deleted successfully!');
+            return redirect()->route('attendanceTimeTracking')
+                ->with('success', 'Attendance record deleted successfully!');
+        } catch (\Exception $e) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to delete attendance record: ' . $e->getMessage()
+                ], 500);
+            }
+            
+            return redirect()->back()
+                ->with('error', 'Failed to delete attendance record: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -259,76 +400,119 @@ class AttendanceController extends Controller
      */
     public function getRealTimeData(Request $request)
     {
-        $today = now()->toDateString();
-        
-        // Get all employees with their today's attendance status
-        $employees = \App\Models\Employee::with(['user'])
-            ->active()
-            ->get()
-            ->map(function ($employee) use ($today) {
-                // Get today's attendance record
-                $todayAttendance = Attendance::where('user_id', $employee->user_id)
-                    ->where('date', $today)
-                    ->first();
-                
-                // Determine status and other details
-                if (!$todayAttendance) {
-                    $status = 'absent';
-                    $checkIn = null;
-                    $hoursWorked = null;
-                } else {
-                    $status = $todayAttendance->status === 'on_break' ? 'break' : $todayAttendance->status;
-                    $checkIn = $todayAttendance->clock_in_time;
-                    $hoursWorked = $todayAttendance->hours_worked;
-                }
-                
-                // Generate initials for avatar
-                $nameParts = explode(' ', $employee->user->name);
-                $initials = '';
-                foreach ($nameParts as $part) {
-                    $initials .= strtoupper(substr($part, 0, 1));
-                }
-                if (strlen($initials) > 2) {
-                    $initials = substr($initials, 0, 2);
-                }
-                
-                // Assign colors based on hash of name for consistency
-                $colors = ['blue', 'green', 'purple', 'red', 'indigo', 'pink', 'yellow', 'teal', 'orange', 'cyan'];
-                $colorIndex = abs(crc32($employee->user->name)) % count($colors);
-                
-                return [
-                    'id' => $employee->id,
-                    'user_id' => $employee->user_id,
-                    'name' => $employee->user->name,
-                    'position' => $employee->position ?? 'No Position',
-                    'department' => $employee->department ?? 'No Department',
-                    'status' => $status,
-                    'checkIn' => $checkIn ? \Carbon\Carbon::createFromTimeString($checkIn)->format('H:i') : null,
-                    'hours' => $hoursWorked ? number_format($hoursWorked, 1) : null,
-                    'avatar' => $initials,
-                    'color' => $colors[$colorIndex]
-                ];
-            });
+        try {
+            $today = now()->toDateString();
             
-        // Calculate statistics
-        $stats = [
-            'total' => $employees->count(),
-            'present' => $employees->where('status', 'present')->count(),
-            'late' => $employees->where('status', 'late')->count(),
-            'absent' => $employees->where('status', 'absent')->count(),
-            'break' => $employees->where('status', 'break')->count(),
-        ];
-        
-        // Filter by status if requested
-        if ($request->filled('status') && $request->status !== 'all') {
-            $filterStatus = $request->status === 'break' ? 'break' : $request->status;
-            $employees = $employees->where('status', $filterStatus);
+            // Get all employees with their today's attendance status
+            $employees = \App\Models\Employee::with(['user'])
+                ->active()
+                ->get()
+                ->map(function ($employee) use ($today) {
+                    try {
+                        // Skip if no user relationship
+                        if (!$employee->user) {
+                            return null;
+                        }
+                        
+                        // Get today's attendance record
+                        $todayAttendance = Attendance::where('user_id', $employee->user_id)
+                            ->whereDate('date', $today)
+                            ->first();
+                        
+                        // Determine status and other details
+                        if (!$todayAttendance) {
+                            $status = 'absent';
+                            $checkIn = null;
+                            $hoursWorked = null;
+                        } else {
+                            $status = $todayAttendance->status === 'on_break' ? 'break' : $todayAttendance->status;
+                            $checkIn = $todayAttendance->clock_in_time;
+                            $hoursWorked = $todayAttendance->hours_worked;
+                        }
+                        
+                        // Generate initials for avatar
+                        $name = $employee->user->name ?? 'Unknown';
+                        $nameParts = explode(' ', $name);
+                        $initials = '';
+                        foreach ($nameParts as $part) {
+                            if (!empty($part)) {
+                                $initials .= strtoupper(substr($part, 0, 1));
+                            }
+                        }
+                        if (strlen($initials) > 2) {
+                            $initials = substr($initials, 0, 2);
+                        }
+                        if (empty($initials)) {
+                            $initials = 'U';
+                        }
+                        
+                        // Assign colors based on hash of name for consistency
+                        $colors = ['blue', 'green', 'purple', 'red', 'indigo', 'pink', 'yellow', 'teal', 'orange', 'cyan'];
+                        $colorIndex = abs(crc32($name)) % count($colors);
+                        
+                        return [
+                            'id' => $employee->id,
+                            'user_id' => $employee->user_id,
+                            'name' => $name,
+                            'position' => $employee->position ?? 'No Position',
+                            'department' => $employee->department ?? 'No Department',
+                            'status' => $status,
+                            'checkIn' => $checkIn ? \Carbon\Carbon::parse($checkIn)->format('H:i') : null,
+                            'hours' => $hoursWorked ? number_format($hoursWorked, 1) : null,
+                            'avatar' => $initials,
+                            'color' => $colors[$colorIndex]
+                        ];
+                    } catch (\Exception $e) {
+                        // Skip this employee if there's an error
+                        \Log::error('Error processing employee ' . $employee->id . ': ' . $e->getMessage());
+                        return null;
+                    }
+                })
+                ->filter(); // Remove null values
+                
+            // Calculate statistics
+            $stats = [
+                'total' => $employees->count(),
+                // Present includes both 'present' status and employees on break (who are still working)
+                'present' => $employees->whereIn('status', ['present', 'break'])->count(),
+                'late' => $employees->where('status', 'late')->count(),
+                'absent' => $employees->where('status', 'absent')->count(),
+                'break' => $employees->where('status', 'break')->count(),
+            ];
+            
+            // Filter by status if requested
+            if ($request->filled('status') && $request->status !== 'all') {
+                if ($request->status === 'present') {
+                    // Present filter should include both 'present' and 'break' employees
+                    $employees = $employees->whereIn('status', ['present', 'break']);
+                } elseif ($request->status === 'break') {
+                    // Break filter shows only employees currently on break
+                    $employees = $employees->where('status', 'break');
+                } else {
+                    // Other filters (late, absent) work as normal
+                    $employees = $employees->where('status', $request->status);
+                }
+            }
+            
+            return response()->json([
+                'employees' => $employees->values(),
+                'stats' => $stats
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in getRealTimeData: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to load employee data',
+                'message' => $e->getMessage(),
+                'employees' => [],
+                'stats' => [
+                    'total' => 0,
+                    'present' => 0,
+                    'late' => 0,
+                    'absent' => 0,
+                    'break' => 0,
+                ]
+            ], 500);
         }
-        
-        return response()->json([
-            'employees' => $employees->values(),
-            'stats' => $stats
-        ]);
     }
 
     /**
@@ -342,7 +526,7 @@ class AttendanceController extends Controller
         $totalEmployees = \App\Models\Employee::active()->count();
         
         // Get today's attendance statistics
-        $todayAttendanceRecords = Attendance::where('date', $today)->get();
+        $todayAttendanceRecords = Attendance::whereDate('date', $today)->get();
         $attendanceStats = [
             'present' => $todayAttendanceRecords->where('status', 'present')->count(),
             'late' => $todayAttendanceRecords->where('status', 'late')->count(),
@@ -475,7 +659,7 @@ class AttendanceController extends Controller
         $totalEmployees = Employee::active()->count();
         
         // Get today's attendance data
-        $todayAttendance = Attendance::where('date', $dateString)->get();
+        $todayAttendance = Attendance::whereDate('date', $dateString)->get();
         
         $present = $todayAttendance->where('status', 'present')->count();
         $late = $todayAttendance->where('status', 'late')->count();
@@ -483,7 +667,7 @@ class AttendanceController extends Controller
         $onBreak = $todayAttendance->where('status', 'on_break')->count();
         
         // Calculate average check-in time
-        $avgCheckIn = Attendance::where('date', $dateString)
+        $avgCheckIn = Attendance::whereDate('date', $dateString)
             ->whereNotNull('clock_in_time')
             ->selectRaw('AVG(TIME_TO_SEC(clock_in_time)) as avg_seconds')
             ->first();
@@ -694,8 +878,8 @@ class AttendanceController extends Controller
             $today = now()->toDateString();
             $totalEmployees = Employee::active()->count();
             
-            // Get today's attendance records
-            $todayAttendance = Attendance::where('date', $today)->get();
+            // Get today's attendance records (handle both date string and datetime formats)
+            $todayAttendance = Attendance::whereDate('date', $today)->get();
             
             // Calculate basic stats
             $present = $todayAttendance->where('status', 'present')->count();
@@ -711,7 +895,7 @@ class AttendanceController extends Controller
             $hoursPercentage = $expectedHours > 0 ? round(($totalHoursToday / $expectedHours) * 100, 1) : 0;
             
             // Calculate average check-in time
-            $avgCheckIn = Attendance::where('date', $today)
+            $avgCheckIn = Attendance::whereDate('date', $today)
                 ->whereNotNull('clock_in_time')
                 ->selectRaw('AVG(TIME_TO_SEC(clock_in_time)) as avg_seconds')
                 ->first();
@@ -799,12 +983,12 @@ class AttendanceController extends Controller
             })->count();
             
             // Calculate real clock in/out counts from database
-            $clockedInToday = Attendance::where('date', $today)
+            $clockedInToday = Attendance::whereDate('date', $today)
                 ->whereNotNull('clock_in_time')
                 ->whereNull('clock_out_time') // Still working (haven't clocked out yet)
                 ->count();
             
-            $clockedOutToday = Attendance::where('date', $today)
+            $clockedOutToday = Attendance::whereDate('date', $today)
                 ->whereNotNull('clock_in_time')
                 ->whereNotNull('clock_out_time') // Finished work (clocked out)
                 ->count();
@@ -1570,6 +1754,133 @@ class AttendanceController extends Controller
     }
     
     /**
+     * Get employee timesheets data from attendance table
+     */
+    public function getEmployeeTimesheets(Request $request)
+    {
+        try {
+            $startDate = $request->get('start_date', now()->startOfWeek()->toDateString());
+            $endDate = $request->get('end_date', now()->endOfWeek()->toDateString());
+            $search = $request->get('search', '');
+            $department = $request->get('department', '');
+            
+            // Build query for attendance records with employee data
+            // Only show completed timesheets (both clock in and clock out times)
+            $query = Attendance::with(['user.employee'])
+                ->whereBetween('date', [$startDate, $endDate])
+                ->whereNotNull('clock_in_time')
+                ->whereNotNull('clock_out_time') // Only completed work entries
+                ->whereHas('user.employee'); // Ensure employee relationship exists
+            
+            // Apply search filter
+            if (!empty($search)) {
+                $query->whereHas('user', function ($q) use ($search) {
+                    $q->where('name', 'LIKE', "%{$search}%");
+                });
+            }
+            
+            // Apply department filter
+            if (!empty($department)) {
+                $query->whereHas('user.employee', function ($q) use ($department) {
+                    $q->where('department', $department);
+                });
+            }
+            
+            // Get attendance records
+            $attendances = $query->orderBy('date', 'desc')
+                ->orderBy('clock_in_time')
+                ->get();
+            
+            // Transform attendance data to match timesheet table structure
+            $timesheetData = $attendances->map(function ($attendance) {
+                $employee = $attendance->user->employee ?? null;
+                
+                return [
+                    'id' => $attendance->id,
+                    'employee_id' => $attendance->user_id,
+                    'employee' => $attendance->user->name ?? 'Unknown',
+                    'department' => $employee->department ?? 'No Department',
+                    'position' => $employee->position ?? 'No Position',
+                    'date' => $attendance->date,
+                    'time_start' => $attendance->clock_in_time ? Carbon::parse($attendance->clock_in_time)->format('H:i') : '--',
+                    'time_end' => $attendance->clock_out_time ? Carbon::parse($attendance->clock_out_time)->format('H:i') : '--',
+                    'overtime_hours' => $attendance->overtime_hours ?? 0,
+                    'total_hours' => $attendance->hours_worked ?? 0,
+                    'status' => $this->mapAttendanceStatus($attendance->status),
+                    'break_start' => $attendance->break_start,
+                    'break_end' => $attendance->break_end,
+                    'notes' => $attendance->notes
+                ];
+            });
+            
+            // Get unique departments for filter dropdown
+            $departments = Employee::active()
+                ->whereNotNull('department')
+                ->distinct()
+                ->pluck('department')
+                ->sort()
+                ->values();
+            
+            // Calculate statistics
+            $stats = [
+                'total_timesheets' => $timesheetData->count(),
+                'total_hours' => round($timesheetData->sum('total_hours'), 1),
+                'total_overtime' => round($timesheetData->sum('overtime_hours'), 1),
+                'total_employees' => $timesheetData->unique('employee_id')->count(),
+                'pending_approval' => $timesheetData->where('status', 'submitted')->count(),
+                'approved' => $timesheetData->where('status', 'approved')->count()
+            ];
+            
+            return response()->json([
+                'success' => true,
+                'data' => $timesheetData->values(),
+                'departments' => $departments,
+                'stats' => $stats,
+                'filters' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'search' => $search,
+                    'department' => $department
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load employee timesheets: ' . $e->getMessage(),
+                'data' => [],
+                'departments' => [],
+                'stats' => [
+                    'total_timesheets' => 0,
+                    'total_hours' => 0,
+                    'total_overtime' => 0,
+                    'total_employees' => 0,
+                    'pending_approval' => 0,
+                    'approved' => 0
+                ]
+            ], 500);
+        }
+    }
+    
+    /**
+     * Map attendance status to timesheet status
+     */
+    private function mapAttendanceStatus($attendanceStatus)
+    {
+        switch ($attendanceStatus) {
+            case 'present':
+            case 'late':
+                return 'approved'; // Regular attendance is considered approved
+            case 'on_break':
+                return 'submitted'; // On break entries might need approval
+            case 'absent':
+                return 'draft'; // Absent entries are drafts
+            default:
+                return 'draft';
+        }
+    }
+    
+    /**
      * Sync attendance data to timesheet
      */
     private function syncAttendanceToTimesheet(Attendance $attendance)
@@ -1598,11 +1909,9 @@ class AttendanceController extends Controller
         // Calculate hours worked and overtime if both clock in/out times exist
         if ($attendance->clock_in_time && $attendance->clock_out_time) {
             $hoursWorked = $attendance->calculateHours();
-            $updateData['hours_worked'] = $hoursWorked;
+            $overtimeHours = $attendance->calculateOvertime();
             
-            // Calculate overtime (anything over 8 hours)
-            $regularHours = 8.0;
-            $overtimeHours = max(0, $hoursWorked - $regularHours);
+            $updateData['hours_worked'] = $hoursWorked;
             $updateData['overtime_hours'] = $overtimeHours;
         }
         

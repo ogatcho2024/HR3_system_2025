@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Timesheet;
 use App\Models\User;
 use App\Models\Employee;
+use App\Models\Attendance;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -210,13 +211,13 @@ class TimesheetController extends Controller
             $currentWeekStart = now()->startOfWeek();
             $currentWeekEnd = now()->endOfWeek();
             
-            // Calculate Quick Stats Overview
+            // Calculate Quick Stats Overview using attendance data
             $stats = [
                 'pendingApprovals' => Timesheet::where('status', 'submitted')->count(),
                 'totalEmployees' => Employee::active()->count(),
-                'overtimeHours' => round(Timesheet::whereBetween('work_date', [$currentWeekStart, $currentWeekEnd])
+                'overtimeHours' => round(Attendance::whereBetween('date', [$currentWeekStart, $currentWeekEnd])
                     ->sum('overtime_hours'), 0),
-                'weeklyHours' => round(Timesheet::whereBetween('work_date', [$currentWeekStart, $currentWeekEnd])
+                'weeklyHours' => round(Attendance::whereBetween('date', [$currentWeekStart, $currentWeekEnd])
                     ->sum('hours_worked'), 0)
             ];
             

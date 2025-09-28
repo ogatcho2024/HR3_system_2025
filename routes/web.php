@@ -26,6 +26,7 @@ use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ShiftManagementController;
 use App\Http\Controllers\EmployeeDashboardController;
+use App\Http\Controllers\ActivityController;
 
 
 Route::get('/', [LandingController::class, 'main'])->name('landing');
@@ -48,12 +49,12 @@ Route::get('/load-content/{section}', function ($section) {
 //     return view('attendanceTimeTracking');
 // })->name('attendanceTimeTracking');
 
-Route::view('/activities', 'activities')->name('activities');
+Route::get('/activities', [ActivityController::class, 'index'])->name('activities');
 
 Route::get('/dashb', [\App\Http\Controllers\AttendanceController::class, 'dashboard'])->name('dashb');
-Route::get('/workScheduleShiftManagement', [ShiftManagementController::class, 'index'])->name('workScheduleShiftManagement');
+Route::get('/workScheduleShiftManagement', [ShiftManagementController::class, 'index'])->name('workScheduleShiftManagement')->middleware('auth');
 
-// Shift Management API Routes
+// Shift Management API Routes (Public for testing)
 Route::prefix('shift-management/api')->name('shift-management.api.')->group(function () {
     Route::get('templates', [ShiftManagementController::class, 'getShiftTemplates'])->name('templates');
     Route::post('templates', [ShiftManagementController::class, 'store'])->name('templates.store');
@@ -62,8 +63,7 @@ Route::prefix('shift-management/api')->name('shift-management.api.')->group(func
     Route::delete('templates/{id}', [ShiftManagementController::class, 'destroy'])->name('templates.destroy');
     Route::patch('templates/{id}/toggle-status', [ShiftManagementController::class, 'toggleStatus'])->name('templates.toggle-status');
     
-    // Employee Assignment Routes
-    Route::get('employees', [ShiftManagementController::class, 'getEmployeesForAssignment'])->name('employees');
+    // Employee Assignment Routes (TEMPORARY: Public for debugging)
     Route::post('assignments', [ShiftManagementController::class, 'storeAssignment'])->name('assignments.store');
     Route::put('assignments/{id}', [ShiftManagementController::class, 'updateAssignment'])->name('assignments.update');
     Route::delete('assignments/{id}', [ShiftManagementController::class, 'removeAssignment'])->name('assignments.destroy');
@@ -204,6 +204,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/employees', [EmployeeManagementController::class, 'employees'])->name('employees');
         Route::get('/employees/{user}/setup', [EmployeeManagementController::class, 'showProfileSetup'])->name('employees.setup');
         Route::post('/employees/{user}/profile', [EmployeeManagementController::class, 'storeProfile'])->name('employees.store-profile');
+        Route::post('/employees/{employee}/create-user', [EmployeeManagementController::class, 'createUserAccount'])->name('employees.create-user');
         Route::put('/users/{user}', [EmployeeManagementController::class, 'updateUser'])->name('users.update');
         Route::delete('/users/{user}', [EmployeeManagementController::class, 'deleteUser'])->name('users.delete');
         
@@ -325,6 +326,158 @@ Route::prefix('attendance')->name('attendance.')->group(function () {
     
     // Department Performance API (public for testing)
     Route::get('/department-performance', [\App\Http\Controllers\AttendanceController::class, 'getDepartmentPerformance'])->name('department-performance');
+    
+    // Employee timesheets data from attendance table
+    Route::get('/employee-timesheets', [\App\Http\Controllers\AttendanceController::class, 'getEmployeeTimesheets']);
+    
+    // Update attendance record
+    Route::put('/{attendance}', [\App\Http\Controllers\AttendanceController::class, 'update']);
+    
+    // Delete attendance record
+    Route::delete('/{attendance}', [\App\Http\Controllers\AttendanceController::class, 'destroy']);
+    
+    // Simple attendance counts endpoint
+    Route::get('/simple-counts', function() {
+        $today = now()->toDateString();
+        $todayAttendance = \App\Models\Attendance::whereDate('date', $today)->get();
+        
+        // Employees who have clocked in but not clocked out yet (still working)
+        // This includes employees who are on break, since they haven't clocked out
+        $clockedInRecords = $todayAttendance->whereNotNull('clock_in_time')->whereNull('clock_out_time');
+        
+        // Employees who have finished work (clocked out)
+        $clockedOutRecords = $todayAttendance->whereNotNull('clock_in_time')->whereNotNull('clock_out_time');
+        
+        // Employees currently on break (they're still clocked in, but on break)
+        $onBreakRecords = $todayAttendance->where('status', 'on_break');
+        
+        return response()->json([
+            'debug' => [
+                'today' => $today,
+                'total_records' => $todayAttendance->count(),
+                'clocked_in_records' => $clockedInRecords->map(function($record) {
+                    return [
+                        'user_name' => $record->user ? $record->user->name : 'Unknown',
+                        'status' => $record->status,
+                        'clock_in_time' => $record->clock_in_time,
+                        'clock_out_time' => $record->clock_out_time
+                    ];
+                })->values()->all(),
+                'clocked_out_records' => $clockedOutRecords->map(function($record) {
+                    return [
+                        'user_name' => $record->user ? $record->user->name : 'Unknown',
+                        'status' => $record->status,
+                        'clock_in_time' => $record->clock_in_time,
+                        'clock_out_time' => $record->clock_out_time
+                    ];
+                })->values()->all(),
+                'on_break_records' => $onBreakRecords->map(function($record) {
+                    return [
+                        'user_name' => $record->user ? $record->user->name : 'Unknown',
+                        'status' => $record->status,
+                        'clock_in_time' => $record->clock_in_time,
+                        'clock_out_time' => $record->clock_out_time
+                    ];
+                })->values()->all()
+            ],
+            // Currently clocked in (includes those on break)
+            'clockedIn' => $clockedInRecords->count(),
+            // Finished work today
+            'clockedOut' => $clockedOutRecords->count(),
+            // Currently on break (subset of clocked in)
+            'onBreak' => $onBreakRecords->count(),
+            // Total active employees
+            'totalEmployees' => \App\Models\Employee::active()->count()
+        ]);
+    });
+    
+    // Debug route to check attendance data
+    Route::get('/debug-data', function() {
+        $today = now()->toDateString();
+        $allAttendanceRecords = \App\Models\Attendance::get();
+        $todayAttendanceRecords = \App\Models\Attendance::where('date', $today)->get();
+        $totalEmployeesActive = \App\Models\Employee::active()->count();
+        $totalEmployeesAll = \App\Models\Employee::count();
+        $totalUsers = \App\Models\User::count();
+        
+        $allEmployees = \App\Models\Employee::get();
+        $activeEmployees = \App\Models\Employee::active()->get();
+        
+        // Test both old and new methods
+        $clockedInOld = $todayAttendanceRecords->whereNotNull('clock_in_time')->whereNull('clock_out_time')->count();
+        $clockedOutOld = $todayAttendanceRecords->whereNotNull('clock_in_time')->whereNotNull('clock_out_time')->count();
+        
+        // Test the new method with whereDate
+        $todayAttendanceNew = \App\Models\Attendance::whereDate('date', $today)->get();
+        $clockedInNew = $todayAttendanceNew->whereNotNull('clock_in_time')->whereNull('clock_out_time')->count();
+        $clockedOutNew = $todayAttendanceNew->whereNotNull('clock_in_time')->whereNotNull('clock_out_time')->count();
+        
+        return [
+            'debug_info' => [
+                'today' => $today,
+                'current_timestamp' => now()->toDateTimeString(),
+                'total_employees_active' => $totalEmployeesActive,
+                'total_employees_all' => $totalEmployeesAll,
+                'total_users' => $totalUsers,
+                'total_attendance_records' => $allAttendanceRecords->count(),
+                'today_attendance_records' => $todayAttendanceRecords->count()
+            ],
+            'all_employees' => $allEmployees->map(function($e) {
+                return [
+                    'id' => $e->id,
+                    'employee_id' => $e->employee_id,
+                    'user_id' => $e->user_id,
+                    'status' => $e->status,
+                    'department' => $e->department,
+                    'position' => $e->position,
+                    'user_name' => $e->user ? $e->user->name : 'No User Found'
+                ];
+            }),
+            'active_employees' => $activeEmployees->map(function($e) {
+                return [
+                    'id' => $e->id,
+                    'employee_id' => $e->employee_id,
+                    'user_id' => $e->user_id,
+                    'status' => $e->status,
+                    'department' => $e->department,
+                    'position' => $e->position,
+                    'user_name' => $e->user ? $e->user->name : 'No User Found'
+                ];
+            }),
+            'today_attendance' => $todayAttendanceRecords->map(function($a) {
+                return [
+                    'id' => $a->id,
+                    'user_id' => $a->user_id,
+                    'date' => $a->date,
+                    'clock_in_time' => $a->clock_in_time,
+                    'clock_out_time' => $a->clock_out_time,
+                    'status' => $a->status,
+                    'user_name' => $a->user ? $a->user->name : 'No User Found'
+                ];
+            }),
+            'all_attendance' => $allAttendanceRecords->map(function($a) {
+                return [
+                    'id' => $a->id,
+                    'user_id' => $a->user_id,
+                    'date' => $a->date,
+                    'clock_in_time' => $a->clock_in_time,
+                    'clock_out_time' => $a->clock_out_time,
+                    'status' => $a->status,
+                    'user_name' => $a->user ? $a->user->name : 'No User Found'
+                ];
+            }),
+            'calculated_counts' => [
+                'OLD_METHOD' => [
+                    'clocked_in_current' => $clockedInOld,
+                    'clocked_out_today' => $clockedOutOld
+                ],
+                'NEW_METHOD' => [
+                    'clocked_in_current' => $clockedInNew,
+                    'clocked_out_today' => $clockedOutNew
+                ]
+            ]
+        ];
+    });
 });
 
 // Attendance Routes (Protected by auth middleware)
@@ -386,6 +539,12 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/api/templates/{id}', [ShiftManagementController::class, 'update'])->name('api.templates.update');
         Route::delete('/api/templates/{id}', [ShiftManagementController::class, 'destroy'])->name('api.templates.destroy');
         Route::patch('/api/templates/{id}/toggle-status', [ShiftManagementController::class, 'toggleStatus'])->name('api.templates.toggle-status');
+        
+        // Employee Assignment Routes
+        Route::get('/api/employees', [ShiftManagementController::class, 'getEmployeesForAssignment'])->name('api.employees');
+        Route::post('/api/assignments', [ShiftManagementController::class, 'storeAssignment'])->name('api.assignments.store');
+        Route::put('/api/assignments/{id}', [ShiftManagementController::class, 'updateAssignment'])->name('api.assignments.update');
+        Route::delete('/api/assignments/{id}', [ShiftManagementController::class, 'removeAssignment'])->name('api.assignments.destroy');
         
     // Shift calendar API endpoints
     Route::get('/api/calendar-data', [ShiftManagementController::class, 'getShiftCalendarDataApi'])->name('api.calendar-data');

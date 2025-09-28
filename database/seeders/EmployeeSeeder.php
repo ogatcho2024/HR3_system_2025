@@ -82,9 +82,89 @@ class EmployeeSeeder extends Seeder
             ]
         );
 
+        // Create new employees as requested
+        $newEmployees = [
+            [
+                'name' => 'Roderick',
+                'lastname' => 'Ogatcho',
+                'email' => 'roderick.ogatcho@company.com',
+                'department' => 'Engineering',
+                'position' => 'Software Developer',
+                'employee_id' => 'EMP003',
+                'salary' => 65000.00,
+            ],
+            [
+                'name' => 'Kurt',
+                'lastname' => 'Bundalian',
+                'email' => 'kurt.bundalian@company.com',
+                'department' => 'Marketing',
+                'position' => 'Marketing Specialist',
+                'employee_id' => 'EMP004',
+                'salary' => 58000.00,
+            ],
+            [
+                'name' => 'Pablo',
+                'lastname' => 'Tribiana',
+                'email' => 'pablo.tribiana@company.com',
+                'department' => 'Human Resources',
+                'position' => 'HR Coordinator',
+                'employee_id' => 'EMP005',
+                'salary' => 62000.00,
+            ],
+            [
+                'name' => 'Mark Adreane',
+                'lastname' => 'Ducot',
+                'email' => 'mark.ducot@company.com',
+                'department' => 'Finance',
+                'position' => 'Financial Analyst',
+                'employee_id' => 'EMP006',
+                'salary' => 70000.00,
+            ],
+        ];
+
+        foreach ($newEmployees as $index => $employeeData) {
+            // Create user record
+            $user = User::firstOrCreate(
+                ['email' => $employeeData['email']],
+                [
+                    'name' => $employeeData['name'],
+                    'lastname' => $employeeData['lastname'],
+                    'password' => Hash::make('password123'),
+                    'phone' => '09' . str_pad(100000000 + $index, 9, '0', STR_PAD_LEFT),
+                    'account_type' => 'employee',
+                    'otp_status' => true,
+                    'position' => $employeeData['position'],
+                ]
+            );
+
+            // Create employee record
+            Employee::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'employee_id' => $employeeData['employee_id'],
+                    'department' => $employeeData['department'],
+                    'position' => $employeeData['position'],
+                    'manager_name' => 'Department Manager',
+                    'hire_date' => Carbon::now()->subMonths(rand(1, 12)),
+                    'salary' => $employeeData['salary'],
+                    'employment_type' => 'full-time',
+                    'work_location' => 'Main Office',
+                    'emergency_contact_name' => $employeeData['name'] . ' Emergency Contact',
+                    'emergency_contact_phone' => '09' . str_pad(900000000 + $index, 9, '0', STR_PAD_LEFT),
+                    'address' => ($index + 1) . '23 Sample Street, Sample City, Sample Province',
+                    'status' => 'active',
+                ]
+            );
+        }
+
         echo "Employee seeder completed successfully!\n";
         echo "Test users created:\n";
         echo "- john.doe@company.com (password: password)\n";
         echo "- sarah.johnson@company.com (password: password)\n";
+        echo "\nNew employees added:\n";
+        echo "- roderick.ogatcho@company.com (password: password123)\n";
+        echo "- kurt.bundalian@company.com (password: password123)\n";
+        echo "- pablo.tribiana@company.com (password: password123)\n";
+        echo "- mark.ducot@company.com (password: password123)\n";
     }
 }

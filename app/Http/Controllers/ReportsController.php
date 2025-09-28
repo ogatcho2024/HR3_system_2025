@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Employee;
+use App\Models\Department;
 use App\Models\LeaveRequest;
 use App\Models\ShiftRequest;
 use App\Models\Timesheet;
@@ -66,8 +67,10 @@ class ReportsController extends Controller
 
         $employees = $query->orderBy('created_at', 'desc')->paginate(20);
 
-        // Get filter options
-        $departments = Employee::distinct()->pluck('department')->filter();
+        // Get filter options from Department model and existing data
+        $departments = Department::active()->pluck('department_name')->merge(
+            Employee::distinct()->pluck('department')->filter()
+        )->unique()->sort()->values();
         $employmentTypes = Employee::distinct()->pluck('employment_type')->filter();
 
         return view('reports.employees', compact('employees', 'departments', 'employmentTypes'));
@@ -169,8 +172,10 @@ class ReportsController extends Controller
             'perfect_attendance_employees' => $this->getPerfectAttendanceEmployees($thisMonth),
         ];
 
-        // Get departments for filter
-        $departments = Employee::distinct()->pluck('department')->filter()->sort();
+        // Get departments for filter from Department model and existing data
+        $departments = Department::active()->pluck('department_name')->merge(
+            Employee::distinct()->pluck('department')->filter()
+        )->unique()->sort()->values();
 
         // Get attendance trends for the last 7 days
         $attendanceTrends = $this->getAttendanceTrends();

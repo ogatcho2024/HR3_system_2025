@@ -1,6 +1,6 @@
 @extends('dashboard')
 
-@section('title', 'Employees')
+@section('title', 'User Profile Management')
 
 @section('content')
 <div class="bg-gray-300 min-h-full flex flex-col">
@@ -74,13 +74,11 @@
                         <select name="department" id="department" 
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                             <option value="">All Departments</option>
-                            <option value="IT" {{ request('department') == 'IT' ? 'selected' : '' }}>IT</option>
-                            <option value="Marketing" {{ request('department') == 'Marketing' ? 'selected' : '' }}>Marketing</option>
-                            <option value="Finance" {{ request('department') == 'Finance' ? 'selected' : '' }}>Finance</option>
-                            <option value="HR" {{ request('department') == 'HR' ? 'selected' : '' }}>Human Resources</option>
-                            <option value="Operations" {{ request('department') == 'Operations' ? 'selected' : '' }}>Operations</option>
-                            <option value="Security" {{ request('department') == 'Security' ? 'selected' : '' }}>Security</option>
-                            <option value="Maintenance" {{ request('department') == 'Maintenance' ? 'selected' : '' }}>Maintenance</option>
+                            @foreach($departments as $department)
+                                <option value="{{ $department->department_name }}" {{ request('department') == $department->department_name ? 'selected' : '' }}>
+                                    {{ $department->department_name }}
+                                </option>
+                            @endforeach
                         </select>
                     </div>
                     
@@ -96,37 +94,39 @@
             </div>
 
             <!-- User Profiles Management Table -->
-            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div class="px-6 py-4 border-b bg-gray-50 border-gray-200 flex items-center justify-between">
-                    <h2 class="text-lg font-medium text-gray-900">
-                        User Profiles Management ({{ $employees->total() }})
-                    </h2>
-                    <div class="text-sm text-gray-600">
-                        Manage user accounts and profile setup for system access
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg flex-1">
+                <div class="px-6 py-4 border-b bg-gray-50 border-gray-200">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <h2 class="text-lg font-medium text-gray-900">
+                            User Profiles Management ({{ $employees->total() }})
+                        </h2>
+                        <div class="text-sm text-gray-600">
+                            Manage user accounts and profile setup for system access
+                        </div>
                     </div>
                 </div>
                 
                 @if($employees->count() > 0)
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200 table-fixed">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="w-1/4 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     User
                                 </th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="w-1/6 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Department
                                 </th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="w-1/8 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Profile Status
                                 </th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="w-1/8 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Date Created
                                 </th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="w-1/8 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     User Role
                                 </th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="w-1/6 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Actions
                                 </th>
                             </tr>
@@ -163,14 +163,20 @@
                                 <!-- Department Column -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     @if($user->employee && $user->employee->department)
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                            @if($user->employee->department == 'IT') bg-blue-100 text-blue-800
-                                            @elseif($user->employee->department == 'Marketing') bg-green-100 text-green-800
-                                            @elseif($user->employee->department == 'Finance') bg-purple-100 text-purple-800
-                                            @elseif($user->employee->department == 'HR') bg-pink-100 text-pink-800
-                                            @elseif($user->employee->department == 'Operations') bg-orange-100 text-orange-800
-                                            @else bg-gray-100 text-gray-800
-                                            @endif">
+                                        @php
+                                            $colors = [
+                                                'Information Technology' => 'bg-blue-100 text-blue-800',
+                                                'IT' => 'bg-blue-100 text-blue-800',
+                                                'Marketing' => 'bg-green-100 text-green-800',
+                                                'Finance' => 'bg-purple-100 text-purple-800',
+                                                'Human Resources' => 'bg-pink-100 text-pink-800',
+                                                'HR' => 'bg-pink-100 text-pink-800',
+                                                'Logistics' => 'bg-orange-100 text-orange-800',
+                                                'Maintenance' => 'bg-yellow-100 text-yellow-800',
+                                            ];
+                                            $colorClass = $colors[$user->employee->department] ?? 'bg-gray-100 text-gray-800';
+                                        @endphp
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $colorClass }}">
                                             {{ $user->employee->department }}
                                         </span>
                                     @else
@@ -230,32 +236,35 @@
                                 </td>
                                 
                                 <!-- Actions Column -->
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div class="flex items-center justify-end space-x-2">
+                                <td class="px-6 py-4 text-right text-sm font-medium">
+                                    <div class="flex items-center justify-end space-x-1 min-w-max">
                                         @if($user->id) {{-- User exists in database --}}
                                             <!-- Edit and Delete for existing users -->
                                             <button onclick="openEditModal({{ $user->id }}, '{{ $user->name }}', '{{ $user->lastname }}', '{{ $user->email }}', '{{ $user->phone }}', '{{ $user->position }}', '{{ $user->account_type }}', '{{ $user->photo }}')" 
-                                               class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                               class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                               title="Edit User">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                 </svg>
-                                                Edit
+                                                <span class="ml-1 hidden sm:inline">Edit</span>
                                             </button>
                                             <button onclick="deleteUser({{ $user->id }}, '{{ $user->name }} {{ $user->lastname }}')" 
-                                                    class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
-                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                                                    title="Delete User">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                 </svg>
-                                                Delete
+                                                <span class="ml-1 hidden sm:inline">Delete</span>
                                             </button>
                                         @else
                                             <!-- Setup Profile for incomplete users -->
                                             <button onclick="openSetupModal()" 
-                                               class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
-                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                               class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                                               title="Setup Profile">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                                 </svg>
-                                                Setup
+                                                <span class="ml-1">Setup</span>
                                             </button>
                                         @endif
                                     </div>
@@ -292,7 +301,7 @@
     <div class="absolute inset-0 backdrop-blur-sm transition-opacity" aria-hidden="true"></div>
         
         <!-- Modal Content -->
-        <div class="relative bg-white rounded-xl shadow-2xl max-w-4xl w-full transform transition-all">
+        <div class="relative bg-white rounded-xl shadow-2xl w-1/2 max-h-[90vh] overflow-y-auto transform transition-all">
             <div class="bg-white rounded-xl">
                 <!-- Modal Header -->
                 <div class="flex items-center justify-between p-6 border-b border-gray-200">

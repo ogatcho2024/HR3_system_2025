@@ -8,6 +8,7 @@ use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\User;
 use App\Models\Employee;
+use App\Models\Department;
 use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -261,8 +262,11 @@ class LeaveManagementController extends Controller
                       });
             })
             ->get();
+            
+        // Get all active departments for the filter dropdown
+        $departments = Department::active()->orderBy('department_name')->get();
         
-        return view('admin.leave-management.calendar', compact('leaveRequests', 'month', 'year'));
+        return view('leave-management.calendar', compact('leaveRequests', 'month', 'year', 'departments'));
     }
 
     /**

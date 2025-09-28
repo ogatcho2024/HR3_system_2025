@@ -590,12 +590,12 @@
                         <div class="flex space-x-3">
                             <button @click="showRejectionReason ? updateRequestStatus('leave', selectedLeaveRequest.id, 'rejected') : (showRejectionReason = true)" 
                                     :disabled="processing" 
-                                    class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                    class="inline-flex justify-center ml-2 rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                                 <span x-text="processing ? 'Processing...' : (showRejectionReason ? 'Confirm Reject' : 'Reject')"></span>
                             </button>
                             <button @click="updateRequestStatus('leave', selectedLeaveRequest.id, 'approved')" 
                                     :disabled="processing" 
-                                    class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                    class="inline-flex justify-center ml-2 rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                                 <span x-text="processing ? 'Processing...' : 'Approve'"></span>
                             </button>
                         </div>
@@ -651,7 +651,7 @@
                 </div>
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 flex flex-col sm:flex-row sm:justify-end space-y-2 sm:space-y-0 sm:space-x-3">
                     <button @click="showShiftModal = false; showRejectionReason = false; rejectionReason = ''" 
-                            class="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            class="inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                         <span x-text="selectedShiftRequest?.status === 'pending' ? 'Cancel' : 'Close'"></span>
                     </button>
                     <!-- Only show approve/reject buttons for pending requests -->
@@ -659,12 +659,12 @@
                         <div class="flex space-x-3">
                             <button @click="showRejectionReason ? updateRequestStatus('shift', selectedShiftRequest.id, 'rejected') : (showRejectionReason = true)" 
                                     :disabled="processing" 
-                                    class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                    class="inline-flex justify-center ml-2 rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                                 <span x-text="processing ? 'Processing...' : (showRejectionReason ? 'Confirm Reject' : 'Reject')"></span>
                             </button>
                             <button @click="updateRequestStatus('shift', selectedShiftRequest.id, 'approved')" 
                                     :disabled="processing" 
-                                    class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                    class="inline-flex justify-center ml-2 rounded-lg border border-transparent shadow-sm px-4 py-2 bg-green-600 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                                 <span x-text="processing ? 'Processing...' : 'Approve'"></span>
                             </button>
                         </div>

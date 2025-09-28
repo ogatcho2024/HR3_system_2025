@@ -173,8 +173,12 @@
     <!-- Shift Templates Tab -->
     <div x-show="activeTab === 'shifts'" class="space-y-6">
         <div class="bg-white rounded-lg shadow-lg">
-            <div class="px-6 py-4 border-b border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center">
                 <h3 class="text-lg font-semibold text-gray-900">Shift Templates</h3>
+                <button @click="activeTab = 'shifts'; showShiftModal = true" 
+                    class="flex items-center p-2 bg-blue ml-auto rounded-lg hover:bg-blue-100 transition-colors">
+                    + Shift Template
+                </button>
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -284,11 +288,9 @@
                         </select>
                         <select class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
                             <option>All Departments</option>
-                            <option>IT</option>
-                            <option>Marketing</option>
-                            <option>Finance</option>
-                            <option>HR</option>
-                            <option>Operations</option>
+                            @foreach($departments as $department)
+                                <option value="{{ $department->department_code }}">{{ $department->department_name }}</option>
+                            @endforeach
                         </select>
                         <button class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm">Reset Filters</button>
                     </div>
@@ -382,30 +384,18 @@
                 <div class="mt-6 border-t pt-4">
                     <h4 class="text-sm font-medium text-gray-900 mb-3">Department Legend</h4>
                     <div class="flex flex-wrap gap-2 md:gap-4">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-blue-500 rounded"></div>
-                            <span class="text-xs text-gray-600">IT Department</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-green-500 rounded"></div>
-                            <span class="text-xs text-gray-600">Marketing</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-purple-500 rounded"></div>
-                            <span class="text-xs text-gray-600">Human Resources</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-orange-500 rounded"></div>
-                            <span class="text-xs text-gray-600">Operations</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-red-500 rounded"></div>
-                            <span class="text-xs text-gray-600">Security</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-gray-500 rounded"></div>
-                            <span class="text-xs text-gray-600">Maintenance</span>
-                        </div>
+                        @php
+                            $colors = ['blue', 'green', 'purple', 'orange', 'red', 'yellow', 'indigo', 'pink'];
+                        @endphp
+                        @foreach($departments as $index => $department)
+                            @php
+                                $color = $colors[$index % count($colors)];
+                            @endphp
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 bg-{{ $color }}-500 rounded"></div>
+                                <span class="text-xs text-gray-600">{{ $department->department_name }}</span>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
 
@@ -463,13 +453,9 @@
                                 @change="filterAssignments()"
                                 class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
                             <option value="">All Departments</option>
-                            <option value="IT">IT</option>
-                            <option value="Marketing">Marketing</option>
-                            <option value="Finance">Finance</option>
-                            <option value="HR">Human Resources</option>
-                            <option value="Operations">Operations</option>
-                            <option value="Security">Security</option>
-                            <option value="Maintenance">Maintenance</option>
+                            @foreach($departments as $department)
+                                <option value="{{ $department->department_code }}" x-text="'{{ $department->department_name }}'"></option>
+                            @endforeach
                         </select>
                         <button @click="resetFilters()" 
                                 class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm whitespace-nowrap">Reset</button>
@@ -550,27 +536,6 @@
                                         </div>
                                     </td>
                                 </tr>
-                                @if(isset($employeeAssignments) && count($employeeAssignments) === 0)
-                                    <tr>
-                                        <td colspan="6" class="px-6 py-12 text-center">
-                                            <div class="flex flex-col items-center">
-                                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                                </svg>
-                                                <h3 class="mt-2 text-sm font-medium text-gray-900">No employee assignments</h3>
-                                                <p class="mt-1 text-sm text-gray-500">Get started by assigning employees to shifts.</p>
-                                                <div class="mt-6">
-                                                    <button @click="openAssignModal()" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                                        <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                                        </svg>
-                                                        Assign First Employee
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endif
                             </tbody>
                         </table>
                     </div>
@@ -946,12 +911,17 @@
                 <div class="bg-white px-4 pb-4 sm:px-6">
                     <form class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Select Employee</label>
-                            <select x-model="assignForm.employee_id" :disabled="loadingEmployees" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:opacity-50">
-                                <option value="" x-text="loadingEmployees ? 'Loading employees...' : 'Choose an employee...'" x-show="loadingEmployees || availableEmployees.length === 0"></option>
-                                <template x-for="employee in availableEmployees" :key="employee.id">
-                                    <option :value="employee.id" x-text="employee.name + ' - ' + employee.department"></option>
-                                </template>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Select Employee 
+                                @if(count($availableEmployees) > 0)
+                                    <span class="text-xs text-gray-500 font-normal">({{ count($availableEmployees) }} available)</span>
+                                @endif
+                            </label>
+                            <select x-model="assignForm.employee_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                <option value="">Choose an employee...</option>
+                                @foreach($availableEmployees as $employee)
+                                    <option value="{{ $employee['id'] }}">{{ $employee['name'] }}</option>
+                                @endforeach
                             </select>
                         </div>
                         
@@ -1047,8 +1017,8 @@ function shiftManagement() {
         shiftTemplates: @json($shiftTemplates ?? []),
         loading: false,
         
-        // Assignment form data
-        availableEmployees: [],
+        // Assignment form data (now using server-side data, no need for JavaScript array)
+        // availableEmployees populated server-side
         employeeAssignments: @json($employeeAssignments ?? []),
         filteredAssignments: [],
         assignmentFilters: {
@@ -1081,6 +1051,9 @@ function shiftManagement() {
         currentCalendarDate: new Date(),
 
         init() {
+            console.log('🎬 Alpine.js shiftManagement component initialized!');
+            console.log('📋 Initial availableEmployees:', this.availableEmployees);
+            console.log('🔧 Initial loadingEmployees:', this.loadingEmployees);
             this.filterAssignments();
         },
 
@@ -1142,7 +1115,7 @@ function shiftManagement() {
             }
             
             try {
-                const response = await fetch(`/shift-management/api/assignments/${assignmentId}`, {
+                const response = await fetch(`http://localhost/dashboard/HumanResources3/public/shift-management/api/assignments/${assignmentId}`, {
                     method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -1229,8 +1202,8 @@ function shiftManagement() {
 
             try {
                 const url = this.isEditMode 
-                    ? `/shift-management/api/templates/${this.shiftForm.id}`
-                    : '/shift-management/api/templates';
+                    ? `http://localhost/dashboard/HumanResources3/public/shift-management/api/templates/${this.shiftForm.id}`
+                    : 'http://localhost/dashboard/HumanResources3/public/shift-management/api/templates';
                 const method = this.isEditMode ? 'PUT' : 'POST';
 
                 const requestData = {
@@ -1260,7 +1233,11 @@ function shiftManagement() {
                     body: JSON.stringify(requestData)
                 });
 
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
                 const result = await response.json();
+                console.log('Server response:', result);
 
                 if (result.success) {
                     if (this.isEditMode) {
@@ -1276,7 +1253,7 @@ function shiftManagement() {
                     this.resetShiftForm();
                     this.showShiftModal = false;
                 } else {
-                    let errorMessage = 'Error: ' + result.message;
+                    let errorMessage = 'Error: ' + (result.message || 'Unknown server error');
                     if (result.errors) {
                         console.error('Validation errors:', result.errors);
                         const errorList = [];
@@ -1307,7 +1284,7 @@ function shiftManagement() {
             }
 
             try {
-                const response = await fetch(`/shift-management/api/templates/${shiftId}`, {
+                const response = await fetch(`http://localhost/dashboard/HumanResources3/public/shift-management/api/templates/${shiftId}`, {
                     method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
@@ -1398,32 +1375,7 @@ function shiftManagement() {
         },
         
         // Assignment-related methods
-        async loadEmployeesForAssignment() {
-            if (this.availableEmployees.length > 0) {
-                return; // Already loaded
-            }
-            
-            this.loadingEmployees = true;
-            try {
-                const response = await fetch('/shift-management/api/employees', {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    }
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    this.availableEmployees = result.data;
-                } else {
-                    console.error('Failed to load employees:', result.message);
-                }
-            } catch (error) {
-                console.error('Error loading employees:', error);
-            } finally {
-                this.loadingEmployees = false;
-            }
-        },
+        // Note: Employee loading is now handled server-side, no API calls needed
         
         async assignEmployee() {
             // Validation
@@ -1437,16 +1389,18 @@ function shiftManagement() {
             try {
                 const isEditing = this.editingAssignmentId !== null;
                 const url = isEditing 
-                    ? `/shift-management/api/assignments/${this.editingAssignmentId}`
-                    : '/shift-management/api/assignments';
+                    ? `http://localhost/dashboard/HumanResources3/public/shift-management/api/assignments/${this.editingAssignmentId}`
+                    : 'http://localhost/dashboard/HumanResources3/public/shift-management/api/assignments';
                 const method = isEditing ? 'PUT' : 'POST';
                 
                 const response = await fetch(url, {
                     method: method,
+                    credentials: 'same-origin', // Include cookies for authentication
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'X-Requested-With': 'XMLHttpRequest' // Identify as AJAX request
                     },
                     body: JSON.stringify({
                         employee_id: this.assignForm.employee_id,
@@ -1456,7 +1410,17 @@ function shiftManagement() {
                     })
                 });
                 
+                console.log('📊 Assignment API Response status:', response.status);
+                console.log('📊 Assignment API Response ok:', response.ok);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Assignment API Error:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const result = await response.json();
+                console.log('📊 Assignment API Result:', result);
                 
                 if (result.success) {
                     if (isEditing) {
@@ -1505,8 +1469,9 @@ function shiftManagement() {
         
         // Initialize data when modal opens
         openAssignModal() {
+            console.log('🚀 openAssignModal function called - using server-side employee data');
             this.showAssignModal = true;
-            this.loadEmployeesForAssignment();
+            // No need to load employees via API - they're already in the HTML
             
             // If not in editing mode, reset the form
             if (this.editingAssignmentId === null) {

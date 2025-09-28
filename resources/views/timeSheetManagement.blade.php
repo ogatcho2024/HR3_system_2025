@@ -32,7 +32,7 @@
         <div class="bg-white rounded-2xl p-6 shadow">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-600">Pending Approvals</p>
+              <p class="text-sm font-medium text-gray-600">Pending Timesheets</p>
               <p class="text-2xl font-bold text-orange-600" x-text="stats.pendingApprovals"></p>
             </div>
             <div class="bg-orange-100 p-3 rounded-full">
@@ -569,13 +569,81 @@
           </div>
         </div>
       </div>
+      <!-- Edit Timesheet Modal -->
+      <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-4">
+          <div class="absolute inset-0 bg-opacity-2 backdrop-blur-sm" @click="showEditModal = false"></div>
+          <div class="relative bg-white rounded-lg shadow-2xl max-w-md w-full border border-gray-200 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+            <h3 class="text-xl font-semibold text-gray-900">Edit Attendance Record</h3>
+            <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600 hover:bg-gray-200 p-2 rounded-full transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <form @submit.prevent="updateTimesheetEntry()">
+            <div class="p-6 space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Employee</label>
+                <input type="text" x-model="editingTimesheet.employee" readonly class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600">
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                <input type="date" x-model="editingTimesheet.date" readonly class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600">
+              </div>
+              
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Time Start</label>
+                  <input type="time" x-model="editingTimesheet.time_start" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Time End</label>
+                  <input type="time" x-model="editingTimesheet.time_end" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                </div>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                <textarea x-model="editingTimesheet.notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Optional notes..."></textarea>
+              </div>
+              
+              <div x-show="editingTimesheet.total_hours" class="bg-gray-50 p-3 rounded-md">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">Total Hours:</span>
+                  <span class="font-medium" x-text="editingTimesheet.total_hours + 'h'"></span>
+                </div>
+                <div class="flex justify-between text-sm mt-1">
+                  <span class="text-gray-600">Overtime:</span>
+                  <span class="font-medium text-orange-600" x-text="editingTimesheet.overtime_hours + 'h'"></span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+              <button type="button" @click="showEditModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-xl hover:bg-gray-100 transition-colors">
+                Cancel
+              </button>
+              <button type="submit" :disabled="updating" class="px-4 ml-2 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium">
+                <span x-show="!updating">Update Record</span>
+                <span x-show="updating">Updating...</span>
+              </button>
+            </div>
+          </form>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 
   <script>
   function hrTimesheetApp() {
     return {
-      activeTab: 'overview',
+      activeTab: 'employees',
       currentDate: new Date(),
       currentWeekStart: null,
       currentMonth: new Date().getMonth(),
@@ -634,7 +702,19 @@
       timesheetSearch: '',
       timesheetDepartmentFilter: '',
       availableDepartments: [],
-      editingTimesheet: null,
+      editingTimesheet: {
+        id: '',
+        employee: '',
+        date: '',
+        time_start: '',
+        time_end: '',
+        status: '',
+        notes: '',
+        total_hours: '',
+        overtime_hours: ''
+      },
+      showEditModal: false,
+      updating: false,
       
       // Compliance Data
       complianceStats: {
@@ -1281,17 +1361,16 @@
             department: this.timesheetDepartmentFilter
           });
           
-          const response = await fetch(`/timesheets/employee-timesheets?${params}`);
+          const response = await fetch(`http://localhost/dashboard/HumanResources3/public/attendance/employee-timesheets?${params}`);
           const result = await response.json();
           
           if (result.success) {
             this.employeeTimesheets = result.data;
             this.availableDepartments = result.departments;
+            this.timesheetStats = result.stats; // Use stats from main response
             
             // Update legacy employees array for backward compatibility
             this.updateEmployeesFromTimesheets();
-            
-            this.loadTimesheetStats();
           } else {
             console.error('Failed to load employee timesheets:', result.message);
           }
@@ -1329,19 +1408,79 @@
       },
       
       editTimesheetEntry(timesheet) {
-        // Open edit modal or inline editing
-        this.editingTimesheet = { ...timesheet };
-        console.log('Editing timesheet:', timesheet);
-        // You can implement a modal here for editing
+        console.log('Edit button clicked, timesheet:', timesheet);
+        
+        // Populate the edit form with current timesheet data
+        this.editingTimesheet = {
+          id: timesheet.id,
+          employee: timesheet.employee,
+          date: new Date(timesheet.date).toISOString().split('T')[0], // Format date as YYYY-MM-DD
+          time_start: timesheet.time_start,
+          time_end: timesheet.time_end,
+          status: timesheet.status,
+          notes: timesheet.notes || '',
+          total_hours: timesheet.total_hours,
+          overtime_hours: timesheet.overtime_hours
+        };
+        
+        console.log('Setting showEditModal to true');
+        this.showEditModal = true;
+        console.log('showEditModal is now:', this.showEditModal);
+      },
+      
+      async updateTimesheetEntry() {
+        console.log('Starting update for timesheet:', this.editingTimesheet);
+        this.updating = true;
+        
+        const updateData = {
+          time_start: this.editingTimesheet.time_start,
+          time_end: this.editingTimesheet.time_end,
+          notes: this.editingTimesheet.notes
+        };
+        
+        console.log('Update data:', updateData);
+        console.log('Request URL:', `http://localhost/dashboard/HumanResources3/public/attendance/${this.editingTimesheet.id}`);
+        
+        try {
+          const response = await fetch(`http://localhost/dashboard/HumanResources3/public/attendance/${this.editingTimesheet.id}`, {
+            method: 'PUT',
+            headers: {
+              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+          });
+          
+          console.log('Response status:', response.status);
+          console.log('Response headers:', response.headers);
+          
+          const result = await response.json();
+          console.log('Response data:', result);
+          
+          if (response.ok) {
+            this.showEditModal = false;
+            this.loadEmployeeTimesheets(); // Refresh the data
+            alert('Attendance record updated successfully!');
+          } else {
+            console.error('Server error response:', result);
+            alert('Failed to update attendance record: ' + (result.message || result.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Network/Parse error:', error);
+          alert('Error updating attendance record: ' + error.message);
+        } finally {
+          this.updating = false;
+        }
       },
       
       async deleteTimesheetEntry(timesheetId) {
-        if (!confirm('Are you sure you want to delete this timesheet entry?')) {
+        if (!confirm('Are you sure you want to delete this attendance record?')) {
           return;
         }
         
         try {
-          const response = await fetch(`/timesheets/${timesheetId}`, {
+          const response = await fetch(`http://localhost/dashboard/HumanResources3/public/attendance/${timesheetId}`, {
             method: 'DELETE',
             headers: {
               'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -1349,17 +1488,16 @@
             }
           });
           
-          const result = await response.json();
-          
-          if (result.success) {
+          if (response.ok) {
             this.loadEmployeeTimesheets();
-            alert('Timesheet entry deleted successfully!');
+            alert('Attendance record deleted successfully!');
           } else {
-            alert('Failed to delete timesheet entry: ' + result.message);
+            const result = await response.json();
+            alert('Failed to delete attendance record: ' + (result.message || 'Unknown error'));
           }
         } catch (error) {
-          console.error('Error deleting timesheet:', error);
-          alert('Error deleting timesheet entry');
+          console.error('Error deleting attendance record:', error);
+          alert('Error deleting attendance record');
         }
       },
       
@@ -1373,8 +1511,8 @@
         const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
         startOfWeek.setDate(today.getDate() + mondayOffset);
         
-        // Set to Friday of current week
-        endOfWeek.setDate(startOfWeek.getDate() + 4);
+        // Set to Sunday of current week (to include weekend)
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
         
         this.timesheetDateRange.start = startOfWeek.toISOString().split('T')[0];
         this.timesheetDateRange.end = endOfWeek.toISOString().split('T')[0];

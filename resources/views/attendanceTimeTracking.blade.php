@@ -2,186 +2,14 @@
 
 @section('title', 'Attendance & Time Tracking')
 
+@push('styles')
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+@endpush
+
 @section('content')
-<div class="py-2 px-3 md:p-6 max-w-full bg-gray-300" x-data="{
-        // Dynamic API base URL detection
-        getApiBaseUrl() {
-            // Check if we're running on Vite dev server (port 5173)
-            if (window.location.port === '5173') {
-                // Use configured app URL for Vite dev server
-                return '{{ config("app.url") }}';
-            }
-            // Use current origin for php artisan serve or other environments
-            return window.location.origin;
-        },
-    activeTab: '{{ request()->get('tab', 'overview') }}',
-    currentTime: new Date(),
-    attendanceData: {},
-    overviewData: {},
-    recentActivities: [],
-    departmentData: [],
-    selectedFilter: 'all',
-    employeeData: [],
-    statsData: {},
-    loading: false,
-    overviewLoading: false,
-    activitiesLoading: false,
-    departmentLoading: false,
-    searchQuery: '',
-    selectedEmployees: []
-}" x-init="
-    setInterval(() => { currentTime = new Date() }, 1000);
-    
-    // Function to load overview data
-    async function loadOverviewData() {
-        overviewLoading = true;
-        try {
-            const response = await fetch(getApiBaseUrl() + '/attendance/overview-data');
-            const data = await response.json();
-            if (data.success) {
-                overviewData = data.data;
-                // Update attendance data for compatibility with existing code
-                attendanceData = {
-                    todayPresent: data.data.present,
-                    todayLate: data.data.late,
-                    onBreak: data.data.onBreak,
-                    todayAbsent: data.data.absent,
-                    overtimeToday: data.data.weeklyOvertime,
-                    clockedIn: data.data.clockedInToday || 0,
-                    clockedOut: data.data.clockedOutToday || 0,
-                    totalEmployees: data.data.totalEmployees,
-                    avgCheckIn: data.data.avgCheckIn,
-                    lateThreshold: 15
-                };
-            }
-        } catch (error) {
-            console.error('Error loading overview data:', error);
-        } finally {
-            overviewLoading = false;
-        }
-    }
-    
-    // Function to load recent activities
-    async function loadRecentActivities() {
-        activitiesLoading = true;
-        try {
-            const response = await fetch(getApiBaseUrl() + '/attendance/recent-activities?limit=10');
-            const data = await response.json();
-            if (data.success) {
-                recentActivities = data.activities;
-            }
-        } catch (error) {
-            console.error('Error loading recent activities:', error);
-        } finally {
-            activitiesLoading = false;
-        }
-    }
-    
-    // Function to load department performance
-    async function loadDepartmentPerformance() {
-        departmentLoading = true;
-        try {
-            const response = await fetch(getApiBaseUrl() + '/attendance/department-performance');
-            const data = await response.json();
-            if (data.success) {
-                departmentData = data.departments;
-            }
-        } catch (error) {
-            console.error('Error loading department performance:', error);
-        } finally {
-            departmentLoading = false;
-        }
-    }
-    
-    // Function to load real-time data
-    async function loadRealTimeData() {
-        loading = true;
-        try {
-            const response = await fetch(getApiBaseUrl() + '/attendance/real-time-data?status=' + selectedFilter);
-            const data = await response.json();
-            console.log('API Response:', data);
-            console.log('Employees received:', data.employees);
-            console.log('Stats received:', data.stats);
-            employeeData = data.employees;
-            statsData = data.stats;
-            console.log('employeeData set to:', employeeData);
-            console.log('statsData set to:', statsData);
-            
-            // Update attendance data with real stats for clock in/out tab
-            if (activeTab === 'clockinout' || activeTab === 'realtime') {
-                // For consistency, also load overview data to get real clock in/out counts
-                const overviewResponse = await fetch(getApiBaseUrl() + '/attendance/overview-data');
-                const overviewData = await overviewResponse.json();
-                
-                attendanceData = {
-                    todayPresent: data.stats.present,
-                    todayLate: data.stats.late,
-                    onBreak: data.stats.break,
-                    todayAbsent: data.stats.absent,
-                    overtimeToday: 24, // Keep this as sample for now
-                    clockedIn: overviewData.success ? (overviewData.data.clockedInToday || 0) : 0,
-                    clockedOut: overviewData.success ? (overviewData.data.clockedOutToday || 0) : 0,
-                    totalEmployees: data.stats.total,
-                    avgCheckIn: '08:24', // Keep this as sample for now
-                    lateThreshold: 15
-                };
-            }
-        } catch (error) {
-            console.error('Error loading real-time data:', error);
-        } finally {
-            loading = false;
-        }
-    }
-    
-    // Load initial data
-    loadOverviewData();
-    loadRecentActivities();
-    loadDepartmentPerformance();
-    loadRealTimeData();
-    
-    // Refresh data every 30 seconds
-    setInterval(() => {
-        if (activeTab === 'overview') {
-            loadOverviewData();
-            loadRecentActivities();
-            loadDepartmentPerformance();
-        } else {
-            loadRealTimeData();
-        }
-    }, 30000);
-    
-    // Watch for filter changes
-    $watch('selectedFilter', () => {
-        loadRealTimeData();
-    });
-    
-    // Watch for tab changes
-    $watch('activeTab', () => {
-        if (activeTab === 'overview') {
-            loadOverviewData();
-            loadRecentActivities();
-            loadDepartmentPerformance();
-        } else {
-            loadRealTimeData();
-        }
-    });
-" x-computed="{
-    filteredEmployees() {
-        // Since the backend already filters the data based on selectedFilter,
-        // we just return the employeeData as-is for the real-time tab
-        return this.employeeData || [];
-    },
-    clockInOutFilteredEmployees() {
-        // For the Clock In/Out tab, filter by search query
-        if (!this.searchQuery) return this.employeeData || [];
-        if (!this.employeeData) return [];
-        return this.employeeData.filter(emp => 
-            emp.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-            emp.department.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-            emp.position.toLowerCase().includes(this.searchQuery.toLowerCase())
-        );
-    }
-}"
+<div class="py-2 px-3 md:p-6 max-w-full bg-gray-300" x-data="attendanceTracker()" x-init="init()"
     <!-- Header -->
     <div class="mb-8">
         <div class="flex items-center justify-between">
@@ -665,8 +493,8 @@
                             class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                 </div>
-                <div class="flex space-x-3">
-                    <a href="{{ route('attendance.manual-entry') }}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2">
+                <div class="flex space-x-3" x-data="manualEntry()" x-cloak>
+                    <a href="{{ route('attendance.manual-entry') }}" class="flex items-center p-2 bg-blue ml-auto rounded-lg hover:bg-blue-100 transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
@@ -689,7 +517,7 @@
         </div>
 
         <!-- Main Content Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-1 gap-6">
             <!-- Employee List -->
             <div class="lg:col-span-2 bg-white rounded-lg shadow-lg">
                 <div class="p-6 border-b border-gray-200">
@@ -792,77 +620,6 @@
                         <p class="text-lg font-medium mb-1">No Data Available</p>
                         <p class="text-sm">No employee data found for the current search. Try adjusting your search terms or check back later.</p>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Live Activity Feed -->
-            <div class="bg-white rounded-lg shadow-lg">
-                <div class="p-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                        Live Activity
-                    </h3>
-                    <p class="text-sm text-gray-600">Real-time clock in/out activities</p>
-                </div>
-                
-                <div class="max-h-96 overflow-y-auto">
-                    <template x-for="activity in recentActivities" :key="activity.id">
-                        <div class="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                            <div class="flex items-center space-x-3">
-                                <!-- Activity Icon -->
-                                <div :class="{
-                                    'bg-green-100': activity.type === 'in',
-                                    'bg-red-100': activity.type === 'out',
-                                    'bg-blue-100': activity.type === 'break' || activity.type === 'break_end',
-                                    'bg-yellow-100': activity.type === 'manual'
-                                }" class="w-10 h-10 rounded-full flex items-center justify-center">
-                                    <template x-if="activity.type === 'in'">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                                        </svg>
-                                    </template>
-                                    <template x-if="activity.type === 'out'">
-                                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                                        </svg>
-                                    </template>
-                                    <template x-if="activity.type === 'break' || activity.type === 'break_end'">
-                                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                    </template>
-                                    <template x-if="activity.type === 'manual'">
-                                        <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                        </svg>
-                                    </template>
-                                </div>
-                                
-                                <!-- Activity Details -->
-                                <div class="flex-1">
-                                    <div class="font-medium text-gray-900" x-text="activity.employee + ' - ' + activity.action"></div>
-                                    <div class="text-sm text-gray-500" x-text="activity.time + ' • ' + activity.department"></div>
-                                </div>
-                                
-                                <!-- Status Indicator -->
-                                <div class="w-3 h-3 rounded-full animate-pulse" :class="{
-                                    'bg-green-400': activity.type === 'in',
-                                    'bg-red-400': activity.type === 'out',
-                                    'bg-blue-400': activity.type === 'break' || activity.type === 'break_end',
-                                    'bg-yellow-400': activity.type === 'manual'
-                                }"></div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-                
-                <!-- View All Activities Button -->
-                <div class="p-4 border-t border-gray-200">
-                    <a href="{{ route('attendance.all-activities') }}" class="block w-full text-center text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors">
-                        View All Activities →
-                    </a>
                 </div>
             </div>
         </div>
@@ -1684,6 +1441,328 @@
 </div>
 
 <script>
+function attendanceTracker() {
+    return {
+        // Dynamic API base URL detection
+        getApiBaseUrl() {
+            // For your XAMPP setup, use the full path
+            return 'http://localhost/dashboard/HumanResources3/public';
+        },
+        
+        // Main properties
+        activeTab: '{{ request()->get('tab', 'overview') }}',
+        currentTime: new Date(),
+        attendanceData: {},
+        overviewData: {},
+        recentActivities: [],
+        departmentData: [],
+        selectedFilter: 'all',
+        employeeData: [],
+        statsData: {},
+        loading: false,
+        overviewLoading: false,
+        activitiesLoading: false,
+        departmentLoading: false,
+        searchQuery: '',
+        selectedEmployees: [],
+        showBulkActions: false,
+        
+        // Computed properties
+        get filteredEmployees() {
+            return this.employeeData || [];
+        },
+        
+        get clockInOutFilteredEmployees() {
+            if (!this.searchQuery) return this.employeeData || [];
+            if (!this.employeeData) return [];
+            return this.employeeData.filter(emp => 
+                emp.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                emp.department.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                emp.position.toLowerCase().includes(this.searchQuery.toLowerCase())
+            );
+        },
+        
+        // Initialize the component
+        init() {
+            console.log('Attendance Tracker initialized');
+            
+            // Start clock
+            setInterval(() => { this.currentTime = new Date() }, 1000);
+            
+            // Load initial data based on active tab
+            console.log('Initial activeTab:', this.activeTab);
+            if (this.activeTab === 'clockinout') {
+                console.log('Initial load: calling loadSimpleCounts for clockinout tab');
+                this.loadSimpleCounts();
+                // Don't load real-time data for clockinout tab to avoid 404 errors
+            } else {
+                console.log('Initial load: loading overview data');
+                this.loadOverviewData();
+                this.loadRecentActivities();
+                this.loadDepartmentPerformance();
+                this.loadRealTimeData();
+            }
+            
+            // Set up watchers
+            this.$watch('selectedFilter', () => {
+                this.loadRealTimeData();
+            });
+            
+            this.$watch('activeTab', () => {
+                console.log('Tab switched to:', this.activeTab);
+                if (this.activeTab === 'overview') {
+                    console.log('Loading overview data');
+                    this.loadOverviewData();
+                    this.loadRecentActivities();
+                    this.loadDepartmentPerformance();
+                } else if (this.activeTab === 'clockinout') {
+                    console.log('Loading clockinout data - calling loadSimpleCounts');
+                    // For clock in/out tab, load simple counts only
+                    this.loadSimpleCounts();
+                    // Don't load real-time data to avoid 404 errors
+                } else {
+                    console.log('Loading realtime data');
+                    this.loadRealTimeData();
+                }
+            });
+            
+            this.$watch('selectedEmployees', () => {
+                this.showBulkActions = this.selectedEmployees.length > 0;
+            });
+            
+            // Refresh data every 30 seconds
+            setInterval(() => {
+                if (this.activeTab === 'overview') {
+                    this.loadOverviewData();
+                    this.loadRecentActivities();
+                    this.loadDepartmentPerformance();
+                } else if (this.activeTab === 'clockinout') {
+                    this.loadSimpleCounts();
+                } else {
+                    this.loadRealTimeData();
+                }
+            }, 30000);
+        },
+        
+        // Data loading functions
+        async loadOverviewData() {
+            this.overviewLoading = true;
+            try {
+                const response = await fetch(this.getApiBaseUrl() + '/attendance/overview-data');
+                const data = await response.json();
+                if (data.success) {
+                    this.overviewData = data.data;
+                    this.attendanceData = {
+                        todayPresent: data.data.present,
+                        todayLate: data.data.late,
+                        onBreak: data.data.onBreak,
+                        todayAbsent: data.data.absent,
+                        overtimeToday: data.data.weeklyOvertime,
+                        clockedIn: data.data.clockedInToday || 0,
+                        clockedOut: data.data.clockedOutToday || 0,
+                        totalEmployees: data.data.totalEmployees,
+                        avgCheckIn: data.data.avgCheckIn,
+                        lateThreshold: 15
+                    };
+                }
+            } catch (error) {
+                console.error('Error loading overview data:', error);
+            } finally {
+                this.overviewLoading = false;
+            }
+        },
+        
+        // Simple function to load just attendance counts for clockinout tab
+        async loadSimpleCounts() {
+            try {
+                const response = await fetch(this.getApiBaseUrl() + '/attendance/simple-counts');
+                const data = await response.json();
+                console.log('Simple counts loaded:', data);
+                
+                this.attendanceData = {
+                    clockedIn: data.clockedIn || 0,
+                    clockedOut: data.clockedOut || 0,
+                    onBreak: data.onBreak || 0,
+                    totalEmployees: data.totalEmployees || 0
+                };
+                
+                console.log('attendanceData updated:', this.attendanceData);
+                
+                // Also load employee data for the Clock In/Out tab employee list
+                await this.loadClockInOutEmployeeData();
+                
+            } catch (error) {
+                console.error('Error loading simple counts:', error);
+                // Fallback to zeros if there's an error
+                this.attendanceData = {
+                    clockedIn: 0,
+                    clockedOut: 0,
+                    onBreak: 0,
+                    totalEmployees: 0
+                };
+            }
+        },
+        
+        // Load employee data specifically for Clock In/Out tab
+        async loadClockInOutEmployeeData() {
+            try {
+                const response = await fetch(this.getApiBaseUrl() + '/attendance/real-time-data');
+                const data = await response.json();
+                console.log('Clock In/Out employee data loaded:', data);
+                
+                if (data.employees) {
+                    this.employeeData = data.employees;
+                    console.log('employeeData updated for Clock In/Out tab:', this.employeeData);
+                }
+            } catch (error) {
+                console.error('Error loading employee data for Clock In/Out tab:', error);
+                this.employeeData = [];
+            }
+        },
+        
+        async loadRecentActivities() {
+            this.activitiesLoading = true;
+            try {
+                const response = await fetch(this.getApiBaseUrl() + '/attendance/recent-activities?limit=10');
+                const data = await response.json();
+                if (data.success) {
+                    this.recentActivities = data.activities;
+                }
+            } catch (error) {
+                console.error('Error loading recent activities:', error);
+            } finally {
+                this.activitiesLoading = false;
+            }
+        },
+        
+        async loadDepartmentPerformance() {
+            this.departmentLoading = true;
+            try {
+                const response = await fetch(this.getApiBaseUrl() + '/attendance/department-performance');
+                const data = await response.json();
+                if (data.success) {
+                    this.departmentData = data.departments;
+                }
+            } catch (error) {
+                console.error('Error loading department performance:', error);
+            } finally {
+                this.departmentLoading = false;
+            }
+        },
+        
+        async loadRealTimeData() {
+            this.loading = true;
+            try {
+                const response = await fetch(this.getApiBaseUrl() + '/attendance/real-time-data?status=' + this.selectedFilter);
+                const data = await response.json();
+                console.log('API Response:', data);
+                this.employeeData = data.employees;
+                this.statsData = data.stats;
+                
+                if (this.activeTab === 'clockinout' || this.activeTab === 'realtime') {
+                    try {
+                        const overviewResponse = await fetch(this.getApiBaseUrl() + '/attendance/overview-data');
+                        const overviewData = await overviewResponse.json();
+                        
+                        console.log('loadRealTimeData - overviewData:', overviewData);
+                        
+                        this.attendanceData = {
+                            todayPresent: data.stats.present,
+                            todayLate: data.stats.late,
+                            onBreak: data.stats.break,
+                            todayAbsent: data.stats.absent,
+                            overtimeToday: 24,
+                            clockedIn: overviewData.success ? (overviewData.data.clockedInToday || 0) : 0,
+                            clockedOut: overviewData.success ? (overviewData.data.clockedOutToday || 0) : 0,
+                            totalEmployees: data.stats.total,
+                            avgCheckIn: '08:24',
+                            lateThreshold: 15
+                        };
+                        
+                        console.log('loadRealTimeData - final attendanceData:', this.attendanceData);
+                    } catch (error) {
+                        console.error('Error loading overview data in loadRealTimeData:', error);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading real-time data:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        resetModalForm() {
+            this.modalFormData = {
+                user_id: '',
+                date: new Date().toISOString().split('T')[0],
+                status: 'present',
+                clock_in_time: '',
+                clock_out_time: '',
+                break_start: '',
+                break_end: '',
+                notes: ''
+            };
+        },
+        
+        resetModalMessages() {
+            this.modalErrorMessage = '';
+            this.modalSuccessMessage = '';
+        },
+        
+        async loadModalEmployees() {
+            try {
+                const response = await fetch(this.getApiBaseUrl() + '/attendance/real-time-data');
+                const data = await response.json();
+                if (data.employees) {
+                    this.modalAvailableEmployees = data.employees;
+                }
+            } catch (error) {
+                console.error('Error loading employees for modal:', error);
+            }
+        },
+        
+        async submitModalEntry() {
+            this.modalSubmitting = true;
+            this.resetModalMessages();
+
+            try {
+                const response = await fetch('/attendance/manual-entry', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify(this.modalFormData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    this.modalSuccessMessage = result.message || 'Attendance entry saved successfully!';
+                    this.resetModalForm();
+                    this.loadRealTimeData();
+                    
+                    setTimeout(() => {
+                        this.showManualEntryModal = false;
+                    }, 1500);
+                } else {
+                    if (result.errors) {
+                        const errorMessages = Object.values(result.errors).flat();
+                        this.modalErrorMessage = errorMessages.join(', ');
+                    } else {
+                        this.modalErrorMessage = result.message || 'An error occurred while saving the entry.';
+                    }
+                }
+            } catch (error) {
+                this.modalErrorMessage = 'Network error. Please try again.';
+                console.error('Error submitting entry:', error);
+            } finally {
+                this.modalSubmitting = false;
+            }
+        }
+    }
+}
+
     function pdfExporter() {
         return {
             downloadPDF(type) {
@@ -1721,6 +1800,7 @@
             }
         }
     }
+
 </script>
 
 @endsection

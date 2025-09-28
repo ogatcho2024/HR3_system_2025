@@ -67,10 +67,17 @@
                         <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
                             <div>
                                 <label for="department" class="block text-sm font-medium text-gray-700">Department *</label>
-                                <input type="text" name="department" id="department" 
-                                       value="{{ old('department', $user->employee->department ?? '') }}"
-                                       class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md @error('department') border-red-300 @enderror" 
-                                       required>
+                                <select name="department" id="department" 
+                                        class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('department') border-red-300 @enderror" 
+                                        required>
+                                    <option value="">Select Department</option>
+                                    @foreach($departments as $department)
+                                        <option value="{{ $department->department_name }}" 
+                                                {{ old('department', $user->employee->department ?? '') == $department->department_name ? 'selected' : '' }}>
+                                            {{ $department->department_name }} ({{ $department->department_code }})
+                                        </option>
+                                    @endforeach
+                                </select>
                                 @error('department')
                                     <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                                 @enderror

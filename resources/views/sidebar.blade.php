@@ -94,12 +94,6 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ route('workScheduleShiftManagement', ['tab' => 'schedule']) }}" class="nav-link {{ request()->get('tab') == 'schedule' ? 'active' : '' }}">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>Shift Calendar</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
                             <a href="{{ route('workScheduleShiftManagement', ['tab' => 'assignments']) }}" class="nav-link {{ request()->get('tab') == 'assignments' ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Employee Assignments</p>

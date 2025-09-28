@@ -148,11 +148,9 @@
                     <label for="departmentFilter" class="block text-sm font-medium text-gray-700">Department</label>
                     <select id="departmentFilter" onchange="filterCalendar()" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                         <option value="">All Departments</option>
-                        <option value="IT">IT</option>
-                        <option value="Finance">Finance</option>
-                        <option value="HR">HR</option>
-                        <option value="Operations">Operations</option>
-                        <option value="Marketing">Marketing</option>
+                        @foreach($departments as $department)
+                            <option value="{{ $department->department_name }}">{{ $department->department_name }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <div>

@@ -6,6 +6,7 @@ use App\Models\ShiftTemplate;
 use App\Models\ShiftAssignment;
 use App\Models\ShiftRequest;
 use App\Models\Employee;
+use App\Models\Department;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -54,8 +55,14 @@ class ShiftManagementController extends Controller
         
         // Get pending shift requests
         $pendingShiftRequests = $this->getPendingShiftRequests();
+        
+        // Get all employees for the dropdown (simple approach)
+        $availableEmployees = $this->getEmployeesForDropdown();
+        
+        // Get all active departments for dropdowns
+        $departments = Department::active()->orderBy('department_name')->get();
             
-        return view('workScheduleShiftManagement', compact('shiftTemplates', 'activeTab', 'stats', 'recentActivities', 'employeeAssignments', 'shiftCalendarData', 'pendingShiftRequests'));
+        return view('workScheduleShiftManagement', compact('shiftTemplates', 'activeTab', 'stats', 'recentActivities', 'employeeAssignments', 'shiftCalendarData', 'pendingShiftRequests', 'availableEmployees', 'departments'));
     }
 
     /**
@@ -665,15 +672,19 @@ class ShiftManagementController extends Controller
                 ->where('status', 'active')
                 ->get()
                 ->map(function ($employee) {
+                    $fullName = trim($employee->user->name . ' ' . ($employee->user->lastname ?? ''));
                     return [
                         'id' => $employee->id,
                         'user_id' => $employee->user_id,
-                        'name' => $employee->user->name,
+                        'name' => $fullName,
+                        'first_name' => $employee->user->name,
+                        'last_name' => $employee->user->lastname ?? '',
                         'email' => $employee->user->email ?? '',
                         'department' => $employee->department ?? 'No Department',
                         'position' => $employee->position ?? 'No Position',
-                        'initials' => $this->getInitials($employee->user->name),
-                        'avatar_color' => $this->getAvatarColor($employee->user->name)
+                        'employee_id' => $employee->employee_id ?? 'N/A',
+                        'initials' => $this->getInitials($fullName),
+                        'avatar_color' => $this->getAvatarColor($fullName)
                     ];
                 });
 
@@ -688,6 +699,32 @@ class ShiftManagementController extends Controller
                 'success' => false,
                 'message' => 'Error fetching employees. Please try again.'
             ], 500);
+        }
+    }
+    
+    /**
+     * Get employees for dropdown (simple method for blade template)
+     */
+    private function getEmployeesForDropdown()
+    {
+        try {
+            return Employee::with('user')
+                ->whereHas('user')
+                ->where('status', 'active')
+                ->get()
+                ->map(function ($employee) {
+                    $fullName = trim($employee->user->name . ' ' . ($employee->user->lastname ?? ''));
+                    return [
+                        'id' => $employee->id,
+                        'name' => $fullName,
+                        'employee_id' => $employee->employee_id ?? 'N/A',
+                        'department' => $employee->department ?? 'No Department',
+                        'position' => $employee->position ?? 'No Position',
+                    ];
+                });
+        } catch (\Exception $e) {
+            Log::error('Error fetching employees for dropdown: ' . $e->getMessage());
+            return collect(); // Return empty collection on error
         }
     }
     

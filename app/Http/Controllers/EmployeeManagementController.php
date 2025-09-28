@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Employee;
+use App\Models\Department;
 use App\Models\LeaveRequest;
 use App\Models\ShiftRequest;
 use App\Models\Alert;
@@ -12,6 +13,7 @@ use App\Models\Timesheet;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class EmployeeManagementController extends Controller
 {
@@ -56,45 +58,63 @@ class EmployeeManagementController extends Controller
     }
 
     /**
-     * Display all users (existing users have complete profiles, non-existing need setup)
+     * Display all employees and their user account setup status
+     * Reads from employees table and checks if they have user accounts
      */
     public function employees(Request $request): View
     {
-        $query = User::with('employee');
+        // Base query - from employees table with user relationship
+        $query = Employee::with('user');
 
         // Search functionality
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function($q) use ($search) {
-                $q->where('name', 'LIKE', "%{$search}%")
-                  ->orWhere('lastname', 'LIKE', "%{$search}%")
-                  ->orWhere('email', 'LIKE', "%{$search}%");
+                $q->where('employee_id', 'LIKE', "%{$search}%")
+                  ->orWhere('position', 'LIKE', "%{$search}%")
+                  ->orWhere('department', 'LIKE', "%{$search}%")
+                  ->orWhere('manager_name', 'LIKE', "%{$search}%")
+                  // Also search in related user data if exists
+                  ->orWhereHas('user', function($userQuery) use ($search) {
+                      $userQuery->where('name', 'LIKE', "%{$search}%")
+                                ->orWhere('lastname', 'LIKE', "%{$search}%")
+                                ->orWhere('email', 'LIKE', "%{$search}%");
+                  });
             });
         }
 
-        // Filter by profile status (all users in the users table have complete profiles)
-        // For incomplete profiles, we would need to add logic to show potential users
-        // For now, all users in the database are considered "complete"
+        // Filter by user account status
         if ($request->filled('profile_status')) {
             $status = $request->get('profile_status');
-            // Since all users in DB are complete, incomplete filter shows none
             if ($status === 'incomplete') {
-                $query->whereRaw('1 = 0'); // No results
+                // Employees without user accounts
+                $query->whereDoesntHave('user');
+            } elseif ($status === 'complete') {
+                // Employees with user accounts
+                $query->whereHas('user');
             }
-            // Complete status shows all users (no additional filter needed)
         }
         
-        // Filter by department (using employee relationship)
+        // Filter by department
         if ($request->filled('department')) {
             $department = $request->get('department');
-            $query->whereHas('employee', function($q) use ($department) {
-                $q->where('department', $department);
-            });
+            $query->where('department', $department);
         }
 
-        $employees = $query->paginate(15);
+        // Order by most recent first
+        $employees = $query->orderBy('created_at', 'desc')->paginate(15);
+        
+        // Get all departments from employees table for filter dropdown
+        $departments = Employee::whereNotNull('department')
+                              ->distinct()
+                              ->pluck('department')
+                              ->filter()
+                              ->sort()
+                              ->map(function($dept) {
+                                  return (object) ['department_name' => $dept];
+                              });
 
-        return view('employee-management.employees.index', compact('employees'));
+        return view('employee-management.employees.index', compact('employees', 'departments'));
     }
 
     /**
@@ -102,7 +122,10 @@ class EmployeeManagementController extends Controller
      */
     public function showProfileSetup(User $user): View
     {
-        return view('employee-management.employees.setup', compact('user'));
+        // Get all active departments for the dropdown
+        $departments = Department::active()->orderBy('department_name')->get();
+        
+        return view('employee-management.employees.setup', compact('user', 'departments'));
     }
 
     /**
@@ -147,6 +170,53 @@ class EmployeeManagementController extends Controller
     }
 
     /**
+     * Create a user account for an employee who doesn't have one
+     */
+    public function createUserAccount(Request $request, Employee $employee): RedirectResponse
+    {
+        // Check if employee already has a user account
+        if ($employee->user) {
+            return redirect()->route('employee-management.employees')
+                ->with('error', 'This employee already has a user account.');
+        }
+
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'lastname' => 'required|string|max:255', 
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'phone' => 'nullable|string|max:20',
+            'account_type' => 'required|in:1,2,3',
+            'password' => 'required|string|min:8|confirmed',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+        ]);
+
+        try {
+            // Handle photo upload
+            if ($request->hasFile('photo')) {
+                $photoPath = $request->file('photo')->store('profile-photos', 'public');
+                $validatedData['photo'] = $photoPath;
+            }
+
+            // Set default values
+            $validatedData['password'] = bcrypt($validatedData['password']);
+            $validatedData['position'] = $employee->position;
+            $validatedData['email_verified_at'] = now();
+
+            // Create user account
+            $user = User::create($validatedData);
+            
+            // Update employee record to link to user
+            $employee->update(['user_id' => $user->id]);
+
+            return redirect()->route('employee-management.employees')
+                ->with('success', "User account created successfully for {$employee->employee_id}.");
+        } catch (\Exception $e) {
+            return redirect()->route('employee-management.employees')
+                ->with('error', 'An error occurred while creating the user account. Please try again.');
+        }
+    }
+
+    /**
      * Update user account information
      */
     public function updateUser(Request $request, User $user): RedirectResponse
@@ -165,8 +235,8 @@ class EmployeeManagementController extends Controller
             // Handle photo upload
             if ($request->hasFile('photo')) {
                 // Delete old photo if exists
-                if ($user->photo && \Storage::disk('public')->exists($user->photo)) {
-                    \Storage::disk('public')->delete($user->photo);
+                if ($user->photo && Storage::disk('public')->exists($user->photo)) {
+                    Storage::disk('public')->delete($user->photo);
                 }
                 
                 // Store new photo

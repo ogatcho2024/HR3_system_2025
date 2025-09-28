@@ -52,10 +52,9 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
                 <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     <option>All Departments</option>
-                    <option>Human Resources</option>
-                    <option>Information Technology</option>
-                    <option>Marketing</option>
-                    <option>Finance</option>
+                    @foreach($departments as $department)
+                        <option value="{{ $department->department_code }}">{{ $department->department_name }}</option>
+                    @endforeach
                 </select>
             </div>
             <div class="flex items-end">
