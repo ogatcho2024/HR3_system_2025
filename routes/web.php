@@ -493,6 +493,189 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/start-break', [\App\Http\Controllers\AttendanceController::class, 'startBreak'])->name('start-break');
         Route::post('/end-break', [\App\Http\Controllers\AttendanceController::class, 'endBreak'])->name('end-break');
         
+        // Bulk Actions
+        Route::post('/bulk-clock-in', function(\Illuminate\Http\Request $request) {
+            $employeeIds = $request->input('employee_ids', []);
+            $today = now()->toDateString();
+            $currentTime = now()->format('H:i:s');
+            $successCount = 0;
+            
+            foreach ($employeeIds as $employeeId) {
+                // Find the employee's user_id
+                $employee = \App\Models\Employee::find($employeeId);
+                if (!$employee || !$employee->user_id) {
+                    continue;
+                }
+                
+                // Check if attendance record exists for today
+                $attendance = \App\Models\Attendance::where('user_id', $employee->user_id)
+                    ->whereDate('date', $today)
+                    ->first();
+                
+                if ($attendance) {
+                    // Update existing record
+                    if (!$attendance->clock_in_time) {
+                        $attendance->update([
+                            'clock_in_time' => $currentTime,
+                            'status' => 'present'
+                        ]);
+                        $successCount++;
+                    }
+                } else {
+                    // Create new attendance record
+                    \App\Models\Attendance::create([
+                        'user_id' => $employee->user_id,
+                        'date' => $today,
+                        'clock_in_time' => $currentTime,
+                        'status' => 'present',
+                        'created_by' => auth()->id()
+                    ]);
+                    $successCount++;
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => $successCount . ' employee(s) clocked in successfully',
+                'employee_ids' => $employeeIds,
+                'timestamp' => now()->format('H:i')
+            ]);
+        })->name('bulk-clock-in');
+        
+        Route::post('/bulk-clock-out', function(\Illuminate\Http\Request $request) {
+            try {
+                \Log::info('Bulk clock-out started', ['employee_ids' => $request->input('employee_ids', [])]);
+                
+                $employeeIds = $request->input('employee_ids', []);
+                $today = now()->toDateString();
+                $currentTime = now()->format('H:i:s');
+                $successCount = 0;
+                $errors = [];
+                
+                foreach ($employeeIds as $employeeId) {
+                    try {
+                        $employee = \App\Models\Employee::find($employeeId);
+                        if (!$employee || !$employee->user_id) {
+                            $errors[] = "Employee {$employeeId} not found or has no user";
+                            continue;
+                        }
+                        
+                        $attendance = \App\Models\Attendance::where('user_id', $employee->user_id)
+                            ->whereDate('date', $today)
+                            ->first();
+                        
+                        if ($attendance && $attendance->clock_in_time && !$attendance->clock_out_time) {
+                            // Keep the existing status (present/late) - don't change it when clocking out
+                            $attendance->update([
+                                'clock_out_time' => $currentTime
+                            ]);
+                            $successCount++;
+                            \Log::info("Clocked out employee {$employeeId}");
+                        } else {
+                            $errors[] = "Employee {$employeeId} not eligible for clock out";
+                        }
+                    } catch (\Exception $e) {
+                        $errors[] = "Error with employee {$employeeId}: " . $e->getMessage();
+                        \Log::error("Error clocking out employee {$employeeId}", ['error' => $e->getMessage()]);
+                    }
+                }
+                
+                \Log::info('Bulk clock-out completed', [
+                    'success_count' => $successCount,
+                    'errors' => $errors
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => $successCount . ' employee(s) clocked out successfully',
+                    'employee_ids' => $employeeIds,
+                    'timestamp' => now()->format('H:i'),
+                    'errors' => $errors,
+                    'debug' => [
+                        'total_requested' => count($employeeIds),
+                        'success_count' => $successCount
+                    ]
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Bulk clock-out failed completely', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Server error: ' . $e->getMessage(),
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+        })->name('bulk-clock-out');
+        
+        Route::post('/bulk-start-break', function(\Illuminate\Http\Request $request) {
+            $employeeIds = $request->input('employee_ids', []);
+            $today = now()->toDateString();
+            $currentTime = now()->format('H:i:s');
+            $successCount = 0;
+            
+            foreach ($employeeIds as $employeeId) {
+                $employee = \App\Models\Employee::find($employeeId);
+                if (!$employee || !$employee->user_id) {
+                    continue;
+                }
+                
+                $attendance = \App\Models\Attendance::where('user_id', $employee->user_id)
+                    ->whereDate('date', $today)
+                    ->first();
+                
+                if ($attendance && $attendance->clock_in_time && !$attendance->clock_out_time) {
+                    $attendance->update([
+                        'break_start' => $currentTime,
+                        'status' => 'on_break'
+                    ]);
+                    $successCount++;
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => $successCount . ' employee(s) started break',
+                'employee_ids' => $employeeIds,
+                'timestamp' => now()->format('H:i')
+            ]);
+        })->name('bulk-start-break');
+        
+        Route::post('/bulk-end-break', function(\Illuminate\Http\Request $request) {
+            $employeeIds = $request->input('employee_ids', []);
+            $today = now()->toDateString();
+            $currentTime = now()->format('H:i:s');
+            $successCount = 0;
+            
+            foreach ($employeeIds as $employeeId) {
+                $employee = \App\Models\Employee::find($employeeId);
+                if (!$employee || !$employee->user_id) {
+                    continue;
+                }
+                
+                $attendance = \App\Models\Attendance::where('user_id', $employee->user_id)
+                    ->whereDate('date', $today)
+                    ->first();
+                
+                if ($attendance && $attendance->status === 'on_break') {
+                    $attendance->update([
+                        'break_end' => $currentTime,
+                        'status' => 'present'
+                    ]);
+                    $successCount++;
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => $successCount . ' employee(s) ended break',
+                'employee_ids' => $employeeIds,
+                'timestamp' => now()->format('H:i')
+            ]);
+        })->name('bulk-end-break');
+        
         // Activities View
         Route::get('/activities', [\App\Http\Controllers\AttendanceController::class, 'getAllActivities'])->name('all-activities');
         

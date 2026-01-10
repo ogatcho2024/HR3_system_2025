@@ -235,16 +235,6 @@
                             </svg>
                             Weekly Trends
                         </h5>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-green-400">+2.3%</div>
-                                <div class="text-xs text-gray-300">Attendance vs last week</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-blue-400">-5 min</div>
-                                <div class="text-xs text-gray-300">Avg arrival improvement</div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -507,118 +497,207 @@
             <div x-show="showBulkActions" x-transition class="mt-4 p-4 bg-gray-50 rounded-lg border">
                 <div class="flex flex-wrap gap-3 items-center">
                     <span class="text-sm font-medium text-gray-700">Bulk Actions:</span>
-                    <button class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors">Clock In Selected</button>
-                    <button class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors">Clock Out Selected</button>
-                    <button class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors">Start Break</button>
-                    <button class="bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700 transition-colors">End Break</button>
+                    <button @click="bulkClockIn()" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" :disabled="bulkActionProcessing">
+                        <span x-show="!bulkActionProcessing">Clock In Selected</span>
+                        <span x-show="bulkActionProcessing">Processing...</span>
+                    </button>
+                    <button @click="bulkClockOut()" class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" :disabled="bulkActionProcessing">
+                        <span x-show="!bulkActionProcessing">Clock Out Selected</span>
+                        <span x-show="bulkActionProcessing">Processing...</span>
+                    </button>
+                    <button @click="bulkStartBreak()" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" :disabled="bulkActionProcessing">
+                        <span x-show="!bulkActionProcessing">Start Break</span>
+                        <span x-show="bulkActionProcessing">Processing...</span>
+                    </button>
+                    <button @click="bulkEndBreak()" class="bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" :disabled="bulkActionProcessing">
+                        <span x-show="!bulkActionProcessing">End Break</span>
+                        <span x-show="bulkActionProcessing">Processing...</span>
+                    </button>
                     <span class="text-sm text-gray-500 ml-auto" x-text="selectedEmployees.length + ' employee(s) selected'"></span>
+                </div>
+                
+                <!-- Bulk Action Feedback Messages -->
+                <div x-show="bulkActionMessage" x-transition class="mt-3 p-3 rounded-lg" :class="{
+                    'bg-green-100 text-green-800': bulkActionSuccess,
+                    'bg-red-100 text-red-800': !bulkActionSuccess
+                }">
+                    <p class="text-sm font-medium" x-text="bulkActionMessage"></p>
                 </div>
             </div>
         </div>
 
         <!-- Main Content Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-1 gap-6">
-            <!-- Employee List -->
-            <div class="lg:col-span-2 bg-white rounded-lg shadow-lg">
-                <div class="p-6 border-b border-gray-200">
+        <div class="grid grid-cols-1 gap-6">
+            <!-- Employee Directory Table -->
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-gray-900">Employee Directory</h3>
-                        <div class="text-sm text-gray-500">
-                            <span x-text="clockInOutFilteredEmployees.length"></span> of <span x-text="employeeData.length"></span> employees
+                        <div class="text-sm text-gray-600">
+                            <span class="font-medium" x-text="clockInOutFilteredEmployees.length"></span> 
+                            <span class="text-gray-500">of</span> 
+                            <span class="font-medium" x-text="employeeData.length"></span> 
+                            <span class="text-gray-500">employees</span>
                         </div>
                     </div>
                 </div>
                 
-                <div class="max-h-96 overflow-y-auto">
-                    <template x-for="employee in clockInOutFilteredEmployees" :key="employee.id">
-                        <div class="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-4">
-                                    <div class="flex items-center space-x-3">
+                <!-- Table Container -->
+                <div class="overflow-x-auto">
+                    <div class="max-h-[600px] overflow-y-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-100 sticky top-0 z-10">
+                                <tr>
+                                    <th scope="col" class="w-12 px-4 py-3">
                                         <input 
                                             type="checkbox" 
-                                            :value="employee.id" 
-                                            x-model="selectedEmployees" 
-                                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                        <div :class="'w-12 h-12 bg-' + employee.color + '-500 rounded-full flex items-center justify-center text-white font-medium'" x-text="employee.avatar"></div>
-                                    </div>
-                                    <div>
-                                        <div class="font-medium text-gray-900" x-text="employee.name"></div>
-                                        <div class="text-sm text-gray-500" x-text="employee.position"></div>
-                                        <div class="text-xs text-gray-400" x-text="employee.department"></div>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-center space-x-3">
-                                    <!-- Status Badge -->
-                                    <span :class="{
-                                        'bg-green-100 text-green-800': employee.status === 'present',
-                                        'bg-yellow-100 text-yellow-800': employee.status === 'late',
-                                        'bg-red-100 text-red-800': employee.status === 'absent',
-                                        'bg-blue-100 text-blue-800': employee.status === 'break'
-                                    }" class="px-2 py-1 text-xs font-medium rounded-full capitalize" x-text="employee.status === 'break' ? 'On Break' : employee.status"></span>
-                                    
-                                    <!-- Check-in Time -->
-                                    <div class="text-right">
-                                        <div class="text-sm font-medium" x-text="employee.checkIn ? employee.checkIn : 'Not checked in'"></div>
-                                        <div class="text-xs text-gray-500" x-text="employee.hours ? 'Hours: ' + employee.hours : ''"></div>
-                                    </div>
-                                    
-                                    <!-- Action Buttons -->
-                                    <div class="flex space-x-1">
-                                        <template x-if="employee.status === 'absent'">
-                                            <button class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors flex items-center space-x-1">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                                                </svg>
-                                                <span>Clock In</span>
-                                            </button>
-                                        </template>
+                                            @change="selectedEmployees = $event.target.checked ? clockInOutFilteredEmployees.map(e => e.id) : []" 
+                                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                            title="Select all">
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                        Name
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                        Department
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                        Status
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                        Hours
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <template x-for="employee in clockInOutFilteredEmployees" :key="employee.id">
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <!-- Checkbox Column -->
+                                        <td class="px-4 py-4">
+                                            <input 
+                                                type="checkbox" 
+                                                :value="employee.id" 
+                                                x-model="selectedEmployees" 
+                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                        </td>
                                         
-                                        <template x-if="employee.status === 'present' || employee.status === 'late'">
-                                            <div class="flex space-x-1">
-                                                <button class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors flex items-center space-x-1">
-                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        <!-- Name Column -->
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center space-x-3">
+                                                <div :class="'w-10 h-10 bg-' + employee.color + '-500 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm'" x-text="employee.avatar"></div>
+                                                <div>
+                                                    <div class="text-sm font-semibold text-gray-900" x-text="employee.name"></div>
+                                                    <div class="text-xs text-gray-500" x-text="employee.position"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        
+                                        <!-- Department Column -->
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900" x-text="employee.department"></div>
+                                        </td>
+                                        
+                                        <!-- Status Column -->
+                                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                                            <span :class="{
+                                                'bg-green-100 text-green-800 ring-1 ring-green-600/20': employee.status === 'present',
+                                                'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-600/20': employee.status === 'late',
+                                                'bg-red-100 text-red-800 ring-1 ring-red-600/20': employee.status === 'absent',
+                                                'bg-blue-100 text-blue-800 ring-1 ring-blue-600/20': employee.status === 'break'
+                                            }" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize">
+                                                <span class="w-1.5 h-1.5 mr-1.5 rounded-full" :class="{
+                                                    'bg-green-600': employee.status === 'present',
+                                                    'bg-yellow-600': employee.status === 'late',
+                                                    'bg-red-600': employee.status === 'absent',
+                                                    'bg-blue-600': employee.status === 'break'
+                                                }"></span>
+                                                <span x-text="employee.status === 'break' ? 'On Break' : employee.status"></span>
+                                            </span>
+                                        </td>
+                                        
+                                        <!-- Hours Column -->
+                                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                                            <div class="space-y-1">
+                                                <div class="text-xs text-gray-500">
+                                                    <span class="font-medium">In:</span> 
+                                                    <span class="text-gray-900" x-text="employee.checkIn || '--:--'"></span>
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    <span class="font-medium">Total:</span> 
+                                                    <span class="text-gray-900 font-semibold" x-text="employee.hours ? employee.hours + 'h' : '--'"></span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        
+                                        <!-- Actions Column -->
+                                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                                            <div class="flex justify-end space-x-2">
+                                                <!-- Clock In Button (Absent) -->
+                                                <template x-if="employee.status === 'absent'">
+                                                    <button @click="singleClockIn(employee.id)" class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :disabled="employee.processing || false">
+                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                                                        </svg>
+                                                        <span x-show="!(employee.processing || false)">Clock In</span>
+                                                        <span x-show="employee.processing || false" x-cloak>...</span>
+                                                    </button>
+                                                </template>
+                                                
+                                                <!-- Break & Clock Out Buttons (Present/Late) -->
+                                                <template x-if="employee.status === 'present' || employee.status === 'late'">
+                                                    <div class="flex space-x-2">
+                                                        <button @click="singleStartBreak(employee.id)" class="inline-flex items-center px-2.5 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :disabled="employee.processing || false">
+                                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                            </svg>
+                                                            <span x-show="!(employee.processing || false)">Break</span>
+                                                            <span x-show="employee.processing || false" x-cloak>...</span>
+                                                        </button>
+                                                        <button @click="singleClockOut(employee.id)" class="inline-flex items-center px-2.5 py-1.5 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :disabled="employee.processing || false">
+                                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                                                            </svg>
+                                                            <span x-show="!(employee.processing || false)">Clock Out</span>
+                                                            <span x-show="employee.processing || false" x-cloak>...</span>
+                                                        </button>
+                                                    </div>
+                                                </template>
+                                                
+                                                <!-- End Break Button (On Break) -->
+                                                <template x-if="employee.status === 'break'">
+                                                    <button @click="singleEndBreak(employee.id)" class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :disabled="employee.processing || false">
+                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                        </svg>
+                                                        <span x-show="!(employee.processing || false)">End Break</span>
+                                                        <span x-show="employee.processing || false" x-cloak>...</span>
+                                                    </button>
+                                                </template>
+                                                
+                                                <!-- More Options Button -->
+                                                <button class="inline-flex items-center px-2 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-colors" title="More options">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
                                                     </svg>
-                                                    <span>Break</span>
-                                                </button>
-                                                <button class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors flex items-center space-x-1">
-                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                                                    </svg>
-                                                    <span>Clock Out</span>
                                                 </button>
                                             </div>
-                                        </template>
-                                        
-                                        <template x-if="employee.status === 'break'">
-                                            <button class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors flex items-center space-x-1">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                </svg>
-                                                <span>End Break</span>
-                                            </button>
-                                        </template>
-                                        
-                                        <button class="bg-gray-500 text-white px-2 py-1 rounded text-sm hover:bg-gray-600 transition-colors" title="More options">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        
+                        <!-- No Data Available -->
+                        <div x-show="clockInOutFilteredEmployees.length === 0" class="p-12 text-center">
+                            <svg class="mx-auto h-16 w-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                            <p class="text-lg font-medium text-gray-900 mb-1">No Employees Found</p>
+                            <p class="text-sm text-gray-500">No employee data matches your current search. Try adjusting your filters.</p>
                         </div>
-                    </template>
-                    
-                    <!-- No Data Available -->
-                    <div x-show="clockInOutFilteredEmployees.length === 0" class="p-8 text-center text-gray-500">
-                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        <p class="text-lg font-medium mb-1">No Data Available</p>
-                        <p class="text-sm">No employee data found for the current search. Try adjusting your search terms or check back later.</p>
                     </div>
                 </div>
             </div>
@@ -1466,6 +1545,9 @@ function attendanceTracker() {
         searchQuery: '',
         selectedEmployees: [],
         showBulkActions: false,
+        bulkActionProcessing: false,
+        bulkActionMessage: '',
+        bulkActionSuccess: false,
         
         // Computed properties
         get filteredEmployees() {
@@ -1758,6 +1840,411 @@ function attendanceTracker() {
                 console.error('Error submitting entry:', error);
             } finally {
                 this.modalSubmitting = false;
+            }
+        },
+        
+        // Bulk action methods
+        async bulkClockIn() {
+            if (this.selectedEmployees.length === 0) {
+                this.showBulkActionMessage('Please select at least one employee', false);
+                return;
+            }
+            
+            console.log('Starting bulk clock in for employees:', this.selectedEmployees);
+            this.bulkActionProcessing = true;
+            this.bulkActionMessage = '';
+            
+            try {
+                const url = this.getApiBaseUrl() + '/attendance/bulk-clock-in';
+                console.log('Bulk clock in URL:', url);
+                
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                console.log('CSRF Token found:', !!csrfToken);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || ''
+                    },
+                    body: JSON.stringify({
+                        employee_ids: this.selectedEmployees
+                    })
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
+                const result = await response.json();
+                console.log('Response data:', result);
+                
+                if (result.success) {
+                    this.showBulkActionMessage(result.message, true);
+                    // Update employee statuses locally
+                    this.updateEmployeeStatuses(this.selectedEmployees, 'present', result.timestamp);
+                    // Reload data immediately
+                    await this.loadSimpleCounts();
+                    await this.loadClockInOutEmployeeData();
+                    // Clear selection after a delay
+                    setTimeout(() => {
+                        this.selectedEmployees = [];
+                        this.bulkActionMessage = '';
+                    }, 3000);
+                } else {
+                    this.showBulkActionMessage('Failed to clock in employees', false);
+                }
+            } catch (error) {
+                console.error('Error during bulk clock in:', error);
+                this.showBulkActionMessage('Network error: ' + error.message, false);
+            } finally {
+                this.bulkActionProcessing = false;
+            }
+        },
+        
+        async bulkClockOut() {
+            if (this.selectedEmployees.length === 0) {
+                this.showBulkActionMessage('Please select at least one employee', false);
+                return;
+            }
+            
+            console.log('Starting bulk clock out for employees:', this.selectedEmployees);
+            this.bulkActionProcessing = true;
+            this.bulkActionMessage = '';
+            
+            try {
+                const url = this.getApiBaseUrl() + '/attendance/bulk-clock-out';
+                console.log('Bulk clock out URL:', url);
+                
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                console.log('CSRF Token found:', !!csrfToken);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || ''
+                    },
+                    body: JSON.stringify({
+                        employee_ids: this.selectedEmployees
+                    })
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
+                // Check if response is ok before trying to parse JSON
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Server error response:', errorText);
+                    throw new Error(`Server returned ${response.status}: ${errorText.substring(0, 200)}`);
+                }
+                
+                const result = await response.json();
+                console.log('Response data:', result);
+                
+                if (result.success) {
+                    this.showBulkActionMessage(result.message, true);
+                    this.updateEmployeeStatuses(this.selectedEmployees, 'absent', result.timestamp);
+                    await this.loadSimpleCounts();
+                    await this.loadClockInOutEmployeeData();
+                    setTimeout(() => {
+                        this.selectedEmployees = [];
+                        this.bulkActionMessage = '';
+                    }, 3000);
+                } else {
+                    this.showBulkActionMessage('Failed to clock out employees', false);
+                }
+            } catch (error) {
+                console.error('Error during bulk clock out:', error);
+                this.showBulkActionMessage('Network error: ' + error.message, false);
+            } finally {
+                this.bulkActionProcessing = false;
+            }
+        },
+        
+        async bulkStartBreak() {
+            if (this.selectedEmployees.length === 0) {
+                this.showBulkActionMessage('Please select at least one employee', false);
+                return;
+            }
+            
+            this.bulkActionProcessing = true;
+            this.bulkActionMessage = '';
+            
+            try {
+                const response = await fetch(this.getApiBaseUrl() + '/attendance/bulk-start-break', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    body: JSON.stringify({
+                        employee_ids: this.selectedEmployees
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    this.showBulkActionMessage(result.message, true);
+                    this.updateEmployeeStatuses(this.selectedEmployees, 'break', result.timestamp);
+                    await this.loadSimpleCounts();
+                    await this.loadClockInOutEmployeeData();
+                    setTimeout(() => {
+                        this.selectedEmployees = [];
+                        this.bulkActionMessage = '';
+                    }, 3000);
+                } else{
+                    this.showBulkActionMessage('Failed to start break for employees', false);
+                }
+            } catch (error) {
+                console.error('Error during bulk start break:', error);
+                this.showBulkActionMessage('Network error. Please try again.', false);
+            } finally {
+                this.bulkActionProcessing = false;
+            }
+        },
+        
+        async bulkEndBreak() {
+            if (this.selectedEmployees.length === 0) {
+                this.showBulkActionMessage('Please select at least one employee', false);
+                return;
+            }
+            
+            this.bulkActionProcessing = true;
+            this.bulkActionMessage = '';
+            
+            try {
+                const response = await fetch(this.getApiBaseUrl() + '/attendance/bulk-end-break', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    body: JSON.stringify({
+                        employee_ids: this.selectedEmployees
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    this.showBulkActionMessage(result.message, true);
+                    this.updateEmployeeStatuses(this.selectedEmployees, 'present', result.timestamp);
+                    await this.loadSimpleCounts();
+                    await this.loadClockInOutEmployeeData();
+                    setTimeout(() => {
+                        this.selectedEmployees = [];
+                        this.bulkActionMessage = '';
+                    }, 3000);
+                } else {
+                    this.showBulkActionMessage('Failed to end break for employees', false);
+                }
+            } catch (error) {
+                console.error('Error during bulk end break:', error);
+                this.showBulkActionMessage('Network error. Please try again.', false);
+            } finally {
+                this.bulkActionProcessing = false;
+            }
+        },
+        
+        showBulkActionMessage(message, success) {
+            this.bulkActionMessage = message;
+            this.bulkActionSuccess = success;
+            
+            // Auto-hide message after 5 seconds
+            setTimeout(() => {
+                this.bulkActionMessage = '';
+            }, 5000);
+        },
+        
+        updateEmployeeStatuses(employeeIds, newStatus, timestamp) {
+            // Update employee data locally for instant UI feedback
+            if (this.employeeData && Array.isArray(this.employeeData)) {
+                this.employeeData = this.employeeData.map(emp => {
+                    if (employeeIds.includes(emp.id)) {
+                        return {
+                            ...emp,
+                            status: newStatus,
+                            checkIn: newStatus !== 'absent' ? (emp.checkIn || timestamp) : null
+                        };
+                    }
+                    return emp;
+                });
+            }
+        },
+        
+        // Single employee action methods
+        setEmployeeProcessing(employeeId, processing) {
+            if (this.employeeData && Array.isArray(this.employeeData)) {
+                this.employeeData = this.employeeData.map(emp => {
+                    if (emp.id === employeeId) {
+                        return { ...emp, processing: processing };
+                    }
+                    return emp;
+                });
+            }
+        },
+        
+        async singleClockIn(employeeId) {
+            console.log('Single clock in for employee:', employeeId);
+            this.setEmployeeProcessing(employeeId, true);
+            
+            try {
+                const url = this.getApiBaseUrl() + '/attendance/bulk-clock-in';
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || ''
+                    },
+                    body: JSON.stringify({
+                        employee_ids: [employeeId]
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server returned ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('Single clock in response:', result);
+                
+                if (result.success) {
+                    // Update employee status locally
+                    this.updateEmployeeStatuses([employeeId], 'present', result.timestamp);
+                    // Reload data
+                    await this.loadSimpleCounts();
+                    await this.loadClockInOutEmployeeData();
+                }
+            } catch (error) {
+                console.error('Error during single clock in:', error);
+                alert('Failed to clock in employee: ' + error.message);
+            } finally {
+                this.setEmployeeProcessing(employeeId, false);
+            }
+        },
+        
+        async singleClockOut(employeeId) {
+            console.log('Single clock out for employee:', employeeId);
+            this.setEmployeeProcessing(employeeId, true);
+            
+            try {
+                const url = this.getApiBaseUrl() + '/attendance/bulk-clock-out';
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || ''
+                    },
+                    body: JSON.stringify({
+                        employee_ids: [employeeId]
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server returned ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('Single clock out response:', result);
+                
+                if (result.success) {
+                    // Keep the status as is (present/late) when clocking out
+                    await this.loadSimpleCounts();
+                    await this.loadClockInOutEmployeeData();
+                }
+            } catch (error) {
+                console.error('Error during single clock out:', error);
+                alert('Failed to clock out employee: ' + error.message);
+            } finally {
+                this.setEmployeeProcessing(employeeId, false);
+            }
+        },
+        
+        async singleStartBreak(employeeId) {
+            console.log('Single start break for employee:', employeeId);
+            this.setEmployeeProcessing(employeeId, true);
+            
+            try {
+                const url = this.getApiBaseUrl() + '/attendance/bulk-start-break';
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || ''
+                    },
+                    body: JSON.stringify({
+                        employee_ids: [employeeId]
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server returned ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('Single start break response:', result);
+                
+                if (result.success) {
+                    this.updateEmployeeStatuses([employeeId], 'break', result.timestamp);
+                    await this.loadSimpleCounts();
+                    await this.loadClockInOutEmployeeData();
+                }
+            } catch (error) {
+                console.error('Error during single start break:', error);
+                alert('Failed to start break: ' + error.message);
+            } finally {
+                this.setEmployeeProcessing(employeeId, false);
+            }
+        },
+        
+        async singleEndBreak(employeeId) {
+            console.log('Single end break for employee:', employeeId);
+            this.setEmployeeProcessing(employeeId, true);
+            
+            try {
+                const url = this.getApiBaseUrl() + '/attendance/bulk-end-break';
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || ''
+                    },
+                    body: JSON.stringify({
+                        employee_ids: [employeeId]
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server returned ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('Single end break response:', result);
+                
+                if (result.success) {
+                    this.updateEmployeeStatuses([employeeId], 'present', result.timestamp);
+                    await this.loadSimpleCounts();
+                    await this.loadClockInOutEmployeeData();
+                }
+            } catch (error) {
+                console.error('Error during single end break:', error);
+                alert('Failed to end break: ' + error.message);
+            } finally {
+                this.setEmployeeProcessing(employeeId, false);
             }
         }
     }

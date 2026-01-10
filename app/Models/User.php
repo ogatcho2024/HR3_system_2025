@@ -10,6 +10,12 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    // Account type constants
+    public const ACCOUNT_TYPE_SUPER_ADMIN = 'Super admin';
+    public const ACCOUNT_TYPE_ADMIN = 'Admin';
+    public const ACCOUNT_TYPE_STAFF = 'Staff';
+    public const ACCOUNT_TYPE_EMPLOYEE = 'Employee';
+
     /**
      * Get the employee record associated with the user.
      */
@@ -75,11 +81,35 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user is super admin.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->account_type === self::ACCOUNT_TYPE_SUPER_ADMIN;
+    }
+
+    /**
      * Check if user is admin.
      */
     public function isAdmin(): bool
     {
-        return $this->account_type === 'admin' || $this->account_type === 'hr';
+        return $this->account_type === self::ACCOUNT_TYPE_ADMIN || $this->isSuperAdmin();
+    }
+
+    /**
+     * Check if user is staff.
+     */
+    public function isStaff(): bool
+    {
+        return $this->account_type === self::ACCOUNT_TYPE_STAFF;
+    }
+
+    /**
+     * Check if user is employee.
+     */
+    public function isEmployee(): bool
+    {
+        return $this->account_type === self::ACCOUNT_TYPE_EMPLOYEE;
     }
 
     /**

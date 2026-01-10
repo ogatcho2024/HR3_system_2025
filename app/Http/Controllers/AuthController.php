@@ -129,11 +129,12 @@ class AuthController extends Controller
         Auth::login($user);
         
         // Role-based redirection
-        if ($user->account_type === 'admin' || $user->account_type === '1') {
-            // Admin users go to admin dashboard
-            return redirect()->route('dashboard')->with('success', 'Welcome back, Admin!');
+        if ($user->account_type === 'Super admin' || $user->account_type === 'Admin' || $user->account_type === 'admin' || $user->account_type === '1') {
+            // Admin and Super Admin users go to main dashboard
+            $welcomeMessage = $user->account_type === 'Super admin' ? 'Welcome back, Super Admin!' : 'Welcome back, Admin!';
+            return redirect()->route('dashboard')->with('success', $welcomeMessage);
         } else {
-            // Regular employees go to employee dashboard
+            // Regular employees and staff go to employee dashboard
             return redirect()->route('employee.dashboard')->with('success', 'Welcome back!');
         }
     }

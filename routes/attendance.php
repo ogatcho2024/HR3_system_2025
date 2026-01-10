@@ -304,4 +304,61 @@ Route::prefix('attendance')->group(function () {
             'error' => 'PDF generation not implemented yet. This would generate a yearly attendance report PDF.'
         ], 501);
     });
+
+    // Bulk action endpoints
+    Route::post('/bulk-clock-in', function (Request $request) {
+        $employeeIds = $request->input('employee_ids', []);
+        
+        // In a real implementation, you would update the database
+        // For now, we'll return a success response
+        return response()->json([
+            'success' => true,
+            'message' => count($employeeIds) . ' employee(s) clocked in successfully',
+            'employee_ids' => $employeeIds,
+            'timestamp' => now()->format('H:i')
+        ]);
+    });
+
+    Route::post('/bulk-clock-out', function (Request $request) {
+        $employeeIds = $request->input('employee_ids', []);
+        
+        return response()->json([
+            'success' => true,
+            'message' => count($employeeIds) . ' employee(s) clocked out successfully',
+            'employee_ids' => $employeeIds,
+            'timestamp' => now()->format('H:i')
+        ]);
+    });
+
+    Route::post('/bulk-start-break', function (Request $request) {
+        $employeeIds = $request->input('employee_ids', []);
+        
+        return response()->json([
+            'success' => true,
+            'message' => count($employeeIds) . ' employee(s) started break',
+            'employee_ids' => $employeeIds,
+            'timestamp' => now()->format('H:i')
+        ]);
+    });
+
+    Route::post('/bulk-end-break', function (Request $request) {
+        $employeeIds = $request->input('employee_ids', []);
+        
+        return response()->json([
+            'success' => true,
+            'message' => count($employeeIds) . ' employee(s) ended break',
+            'employee_ids' => $employeeIds,
+            'timestamp' => now()->format('H:i')
+        ]);
+    });
+
+    // Simple counts endpoint for clock in/out tab
+    Route::get('/simple-counts', function () {
+        return response()->json([
+            'clockedIn' => 120,
+            'clockedOut' => 25,
+            'onBreak' => 15,
+            'totalEmployees' => 150
+        ]);
+    });
 });
