@@ -161,8 +161,9 @@
                         <div class="relative z-0 w-full mb-5 group">
                             <select name="account_type" id="account_type" class="block py-2.5 px-0 w-full text-xs text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-black peer" required>
                                 <option value="" disabled selected></option>
-                                <option value="1">Admin</option>
-                                <option value="2">User</option>
+                                @foreach($accountTypes ?? [] as $type)
+                                    <option value="{{ $type }}" {{ old('account_type') == $type ? 'selected' : '' }}>{{ $type }}</option>
+                                @endforeach
                             </select>
                             <label for="account_type" class="peer-focus:font-medium absolute text-sm text-blue-950 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:text-blue-950 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6">Account Type</label>
                         </div>

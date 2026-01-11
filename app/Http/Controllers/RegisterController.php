@@ -20,7 +20,14 @@ class RegisterController extends Controller
 
     public function showRegisterForm()
     {
-        return view('auth.register');
+        // Fetch distinct account types from users table
+        $accountTypes = User::select('account_type')
+            ->distinct()
+            ->whereNotNull('account_type')
+            ->pluck('account_type')
+            ->toArray();
+        
+        return view('auth.register', compact('accountTypes'));
     }
 
 
@@ -42,7 +49,7 @@ class RegisterController extends Controller
             ],
             'phone' => 'required|string|max:20',
             'position' => 'required|string|max:100',
-            'account_type' => 'required|in:1,2',
+            'account_type' => 'required|string|exists:users,account_type',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
 
