@@ -140,6 +140,33 @@ class LoginAttempt extends Model
     }
 
     /**
+     * Get current attempt count for email/IP combination
+     */
+    public static function getAttemptCount($email, $ipAddress)
+    {
+        try {
+            $attempt = self::where(function ($query) use ($email, $ipAddress) {
+                $query->where('email', $email)
+                      ->orWhere('ip_address', $ipAddress);
+            })->first();
+
+            if ($attempt) {
+                // If more than 15 minutes have passed since last attempt, count is reset
+                if ($attempt->last_attempt->diffInMinutes(now()) > 15) {
+                    return 1;
+                }
+                return $attempt->attempts;
+            }
+
+            return 1; // First attempt
+        } catch (\Exception $e) {
+            // If table doesn't exist or error occurs, return 1
+            \Log::warning('Could not get attempt count: ' . $e->getMessage());
+            return 1;
+        }
+    }
+
+    /**
      * Clear login attempts for successful login
      */
     public static function clearAttempts($email, $ipAddress)

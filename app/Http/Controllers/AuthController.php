@@ -84,28 +84,11 @@ class AuthController extends Controller
 
         $user = User::where('email', $email)->first();
 
-        // If user doesn't exist
-        if (!$user) {
-            // If already throttled, show throttle message instead of specific error
-            if ($isThrottled) {
-                return back()->withErrors([
-                    'throttle' => "Account temporarily locked due to multiple failed attempts. Please try again in {$throttleTime} minutes."
-                ])->withInput($request->only('email'));
-            }
-            
-            // Record failed attempt for non-existent email
-            LoginAttempt::recordFailedAttempt($email, $ipAddress);
-            RateLimiter::hit('login-attempts:' . $ipAddress . ':' . $email, 300); // 5 minutes
-            
-            // Log failed login attempt
-            $attemptCount = LoginAttempt::getAttemptCount($email, $ipAddress);
-            $this->auditLog->logFailedLogin($email, $attemptCount);
-            
-            return back()->withErrors(['email' => 'Email is not registered!'])->withInput();
-        }
+        // Check credentials
+        $credentialsValid = $user && Hash::check($request->password, $user->password);
 
-        // If password is wrong
-        if (!Hash::check($request->password, $user->password)) {
+        // If user doesn't exist or password is wrong
+        if (!$credentialsValid) {
             // If already throttled, show throttle message instead of specific error
             if ($isThrottled) {
                 return back()->withErrors([
@@ -113,7 +96,7 @@ class AuthController extends Controller
                 ])->withInput($request->only('email'));
             }
             
-            // Record failed attempt for wrong password
+            // Record failed attempt
             LoginAttempt::recordFailedAttempt($email, $ipAddress);
             RateLimiter::hit('login-attempts:' . $ipAddress . ':' . $email, 300); // 5 minutes
             
@@ -121,7 +104,8 @@ class AuthController extends Controller
             $attemptCount = LoginAttempt::getAttemptCount($email, $ipAddress);
             $this->auditLog->logFailedLogin($email, $attemptCount);
             
-            return back()->withErrors(['password' => 'Incorrect password!'])->withInput();
+            // Generic error message (better for security - doesn't reveal if email exists)
+            return back()->withErrors(['email' => 'Invalid email or password.'])->withInput($request->only('email'));
         }
         
         // Login successful - even if throttled, correct credentials should work
