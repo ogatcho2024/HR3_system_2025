@@ -125,6 +125,10 @@ class User extends Authenticatable
         'photo',
         'account_type',
         'otp_status',
+        'otp_code',
+        'otp_expires_at',
+        'otp_verified',
+        'require_2fa',
         'phone',
         'position',
     ];
@@ -147,6 +151,9 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'otp_status' => 'boolean',
+        'otp_verified' => 'boolean',
+        'require_2fa' => 'boolean',
+        'otp_expires_at' => 'datetime',
         'password' => 'hashed',
     ];
 }

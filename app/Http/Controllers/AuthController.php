@@ -6,15 +6,25 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\OtpMail;
 use App\Models\User;
 use App\Models\Employee;
 use App\Models\Attendance;
 use App\Models\LoginAttempt;
 use App\Models\LeaveRequest;
 use App\Models\ShiftRequest;
+use App\Services\AuditLogService;
+use Carbon\Carbon;
 
 class AuthController extends Controller
 {
+    protected $auditLog;
+
+    public function __construct(AuditLogService $auditLog)
+    {
+        $this->auditLog = $auditLog;
+    }
     public function showLoginForm()
     {
         return view('auth.login');
@@ -87,6 +97,10 @@ class AuthController extends Controller
             LoginAttempt::recordFailedAttempt($email, $ipAddress);
             RateLimiter::hit('login-attempts:' . $ipAddress . ':' . $email, 300); // 5 minutes
             
+            // Log failed login attempt
+            $attemptCount = LoginAttempt::getAttemptCount($email, $ipAddress);
+            $this->auditLog->logFailedLogin($email, $attemptCount);
+            
             return back()->withErrors(['email' => 'Email is not registered!'])->withInput();
         }
 
@@ -102,6 +116,10 @@ class AuthController extends Controller
             // Record failed attempt for wrong password
             LoginAttempt::recordFailedAttempt($email, $ipAddress);
             RateLimiter::hit('login-attempts:' . $ipAddress . ':' . $email, 300); // 5 minutes
+            
+            // Log failed login attempt
+            $attemptCount = LoginAttempt::getAttemptCount($email, $ipAddress);
+            $this->auditLog->logFailedLogin($email, $attemptCount);
             
             return back()->withErrors(['password' => 'Incorrect password!'])->withInput();
         }
@@ -127,6 +145,44 @@ class AuthController extends Controller
         RateLimiter::clear('login-attempts:' . $ipAddress . ':' . $email);
         
         Auth::login($user);
+        
+        // Check if 2FA is required
+        if ($user->require_2fa) {
+            // Generate OTP
+            $otp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            $expiresAt = Carbon::now()->addMinutes(5);
+            
+            // Save OTP to user record
+            $user->update([
+                'otp_code' => $otp,
+                'otp_expires_at' => $expiresAt,
+                'otp_verified' => false,
+            ]);
+            
+            // Send OTP via email
+            try {
+                Mail::to($user->email)->send(new OtpMail(
+                    $otp,
+                    $user->name . ' ' . $user->lastname,
+                    $expiresAt
+                ));
+                
+                logger()->info('OTP sent successfully to: ' . $user->email);
+            } catch (\Exception $e) {
+                logger()->error('Failed to send OTP email: ' . $e->getMessage());
+                // Still redirect to OTP page even if email fails
+                // User can request resend
+            }
+            
+            // Redirect to OTP verification page
+            return redirect()->route('otp.show')->with('success', 'OTP sent to your email. Please verify to continue.');
+        }
+        
+        // If 2FA is not required, proceed with normal login
+        $user->update(['otp_verified' => true]);
+        
+        // Log successful login
+        $this->auditLog->logLogin($user);
         
         // Role-based redirection
         if ($user->account_type === 'Super admin' || $user->account_type === 'Admin' || $user->account_type === 'admin' || $user->account_type === '1') {
@@ -165,6 +221,20 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        $user = Auth::user();
+        
+        // Log logout before user session is destroyed
+        if ($user) {
+            $this->auditLog->logLogout($user);
+            
+            // Reset OTP verification status on logout
+            $user->update([
+                'otp_verified' => false,
+                'otp_code' => null,
+                'otp_expires_at' => null,
+            ]);
+        }
+        
         Auth::logout();                      // Logs the user out
         $request->session()->invalidate();  // Invalidate the session
         $request->session()->regenerateToken(); // Prevent CSRF reuse

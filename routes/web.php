@@ -88,7 +88,17 @@ Route::post('/register', [RegisterController::class, 'register'])->name('registe
 Route::get('/auth/google', [GoogleController::class, 'redirectToGoogle'])->name('google.login');
 Route::get('/auth/google/callback', [GoogleController::class, 'handleGoogleCallback']);
 
-Route::get('/dashboard', [AuthController::class, 'showMainPage'])->name('dashboard');
+// OTP Verification Routes (require authentication but not OTP verification)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/otp/verify', [OTPController::class, 'showForm'])->name('otp.show');
+    Route::post('/otp/verify', [OTPController::class, 'verify'])->name('otp.verify');
+    Route::get('/otp/resend', [OTPController::class, 'resend'])->name('otp.resend');
+});
+
+// Protected routes that require both auth and 2FA verification
+Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->group(function () {
+    Route::get('/dashboard', [AuthController::class, 'showMainPage'])->name('dashboard');
+});
 
 // Profile route
 Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
@@ -106,8 +116,8 @@ Route::get('/success', function () {
 
 Route::resource('posts',PostController::class);
 
-// Employee Self Service Routes (Protected by auth middleware)
-Route::middleware(['auth'])->group(function () {
+// Employee Self Service Routes (Protected by auth and 2FA middleware)
+Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->group(function () {
     Route::prefix('employee')->name('employee.')->group(function () {
         // Dashboard
         Route::get('/dashboard', [EmployeeSelfServiceController::class, 'index'])->name('dashboard');
@@ -131,8 +141,8 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-// Notification Routes (Protected by auth middleware)
-Route::middleware(['auth'])->group(function () {
+// Notification Routes (Protected by auth and 2FA middleware)
+Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->group(function () {
     Route::prefix('notifications')->name('notifications.')->group(function () {
         // List all notifications
         Route::get('/', [NotificationController::class, 'index'])->name('index');
@@ -155,8 +165,8 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-// Leave Management Routes (Protected by auth middleware - for HR/Managers)
-Route::middleware(['auth'])->group(function () {
+// Leave Management Routes (Protected by auth and 2FA middleware - for HR/Managers)
+Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->group(function () {
     Route::prefix('leave-management')->name('leave-management.')->group(function () {
         // Dashboard and Overview
         Route::get('/dashboard', [LeaveManagementController::class, 'index'])->name('dashboard');
@@ -194,8 +204,8 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-// Employee Management Routes (Main Access Point)
-Route::middleware(['auth'])->group(function () {
+// Employee Management Routes (Main Access Point with 2FA)
+Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->group(function () {
     Route::prefix('employee-management')->name('employee-management.')->group(function () {
         // Main Dashboard
         Route::get('/', [EmployeeManagementController::class, 'dashboard'])->name('dashboard');
@@ -307,6 +317,29 @@ Route::middleware(['auth'])->group(function () {
         
         // Monthly Summary
         Route::get('/monthly', [ReportsController::class, 'monthlyReport'])->name('monthly');
+    });
+});
+
+// Audit Log Routes (Protected by auth and 2FA - Admin/Super Admin only)
+Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->group(function () {
+    Route::prefix('audit-logs')->name('audit-logs.')->group(function () {
+        // Main audit log viewer
+        Route::get('/', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('index');
+        
+        // View specific audit log entry
+        Route::get('/{id}', [\App\Http\Controllers\AuditLogController::class, 'show'])->name('show');
+        
+        // Export audit logs (CSV)
+        Route::get('/export/csv', [\App\Http\Controllers\AuditLogController::class, 'export'])->name('export');
+        
+        // User activity timeline
+        Route::get('/user/{userId}/activity', [\App\Http\Controllers\AuditLogController::class, 'userActivity'])->name('user-activity');
+        
+        // Security report
+        Route::get('/security/report', [\App\Http\Controllers\AuditLogController::class, 'securityReport'])->name('security-report');
+        
+        // Delete audit log entry (Super Admin only)
+        Route::delete('/{id}', [\App\Http\Controllers\AuditLogController::class, 'destroy'])->name('destroy');
     });
 });
 

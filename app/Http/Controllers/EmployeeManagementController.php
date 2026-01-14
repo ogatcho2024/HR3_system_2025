@@ -10,6 +10,7 @@ use App\Models\LeaveRequest;
 use App\Models\ShiftRequest;
 use App\Models\Alert;
 use App\Models\Timesheet;
+use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +18,12 @@ use Illuminate\Support\Facades\Storage;
 
 class EmployeeManagementController extends Controller
 {
+    protected $auditLog;
+
+    public function __construct(AuditLogService $auditLog)
+    {
+        $this->auditLog = $auditLog;
+    }
     /**
      * Display the main dashboard with card boxes
      */
@@ -208,6 +215,19 @@ class EmployeeManagementController extends Controller
             // Update employee record to link to user
             $employee->update(['user_id' => $user->id]);
 
+            // Log account creation
+            $this->auditLog->logAccountCreated(
+                $user->id,
+                [
+                    'name' => $user->name,
+                    'lastname' => $user->lastname,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                    'position' => $user->position
+                ],
+                "Created user account for employee {$employee->employee_id}: {$user->name} {$user->lastname}"
+            );
+
             return redirect()->route('employee-management.employees')
                 ->with('success', "User account created successfully for {$employee->employee_id}.");
         } catch (\Exception $e) {
@@ -232,6 +252,15 @@ class EmployeeManagementController extends Controller
         ]);
 
         try {
+            // Capture old values for audit log
+            $oldData = [
+                'name' => $user->name,
+                'lastname' => $user->lastname,
+                'email' => $user->email,
+                'account_type' => $user->account_type,
+                'position' => $user->position
+            ];
+
             // Handle photo upload
             if ($request->hasFile('photo')) {
                 // Delete old photo if exists
@@ -246,6 +275,33 @@ class EmployeeManagementController extends Controller
 
             // Update user
             $user->update($validatedData);
+
+            // Log account update
+            $this->auditLog->logAccountUpdated(
+                $user->id,
+                $oldData,
+                [
+                    'name' => $user->name,
+                    'lastname' => $user->lastname,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                    'position' => $user->position
+                ],
+                "Updated user account: {$user->name} {$user->lastname}"
+            );
+
+            // Log specific changes
+            if ($oldData['email'] !== $user->email) {
+                $this->auditLog->logEmailChanged($user, $oldData['email'], $user->email);
+            }
+            if ($oldData['account_type'] !== $user->account_type) {
+                $this->auditLog->logRoleChanged(
+                    $user->id,
+                    $oldData['account_type'],
+                    $user->account_type,
+                    "{$user->name} {$user->lastname}"
+                );
+            }
 
             return redirect()->route('employee-management.employees')
                 ->with('success', "User account for {$user->name} {$user->lastname} has been updated successfully.");
@@ -263,6 +319,16 @@ class EmployeeManagementController extends Controller
         try {
             $userName = $user->name . ' ' . ($user->lastname ?? '');
             
+            // Capture user data for audit log before deletion
+            $userData = [
+                'name' => $user->name,
+                'lastname' => $user->lastname,
+                'email' => $user->email,
+                'account_type' => $user->account_type,
+                'position' => $user->position
+            ];
+            $userId = $user->id;
+            
             // Delete associated employee record if it exists
             if ($user->employee) {
                 $user->employee->delete();
@@ -270,6 +336,9 @@ class EmployeeManagementController extends Controller
             
             // Delete the user account
             $user->delete();
+            
+            // Log account deletion
+            $this->auditLog->logAccountDeleted($userId, $userData, "Deleted user account: {$userName}");
             
             return redirect()->route('employee-management.employees')
                 ->with('success', "User account for {$userName} has been deleted successfully.");

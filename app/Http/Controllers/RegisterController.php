@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Rules\StrongPassword;
 use App\Services\NotificationService;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -12,10 +13,12 @@ use Illuminate\Support\Facades\Storage;
 class RegisterController extends Controller
 {
     protected $notificationService;
+    protected $auditLog;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(NotificationService $notificationService, AuditLogService $auditLog)
     {
         $this->notificationService = $notificationService;
+        $this->auditLog = $auditLog;
     }
 
     public function showRegisterForm()
@@ -74,6 +77,19 @@ class RegisterController extends Controller
 
             // Create welcome notification
             $this->notificationService->createWelcomeNotification($user);
+
+            // Log account creation
+            $this->auditLog->logAccountCreated(
+                $user->id,
+                [
+                    'name' => $user->name,
+                    'lastname' => $user->lastname,
+                    'email' => $user->email,
+                    'account_type' => $user->account_type,
+                    'position' => $user->position
+                ],
+                "New user account registered: {$user->name} {$user->lastname} ({$user->account_type})"
+            );
 
             // Redirect on success
             return redirect()->route('auth.success')->with('success', 'Account created successfully.');
