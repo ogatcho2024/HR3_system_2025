@@ -8,6 +8,27 @@ class AuditLog extends Model
 {
     const UPDATED_AT = null; // Audit logs are immutable, no updated_at
 
+    // Valid action types
+    const ACTION_TYPES = [
+        'login',
+        'logout',
+        'failed_login',
+        'otp_verified',
+        'otp_failed',
+        'create',
+        'update',
+        'delete',
+        'view',
+        'export',
+        'account_created',
+        'account_updated',
+        'account_deleted',
+        'password_changed',
+        'email_changed',
+        'role_changed',
+        'other',
+    ];
+
     protected $fillable = [
         'user_id',
         'action_type',
@@ -156,6 +177,13 @@ class AuditLog extends Model
     protected static function boot()
     {
         parent::boot();
+
+        // Validate action_type before creating
+        static::creating(function ($model) {
+            if (!in_array($model->action_type, self::ACTION_TYPES)) {
+                throw new \InvalidArgumentException("Invalid action type: {$model->action_type}");
+            }
+        });
 
         // Prevent updates to audit logs
         static::updating(function ($model) {

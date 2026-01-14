@@ -14,19 +14,11 @@ return new class extends Migration
         Schema::create('audit_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->enum('action_type', [
-                'login',
-                'logout',
-                'failed_login',
-                'otp_verified',
-                'otp_failed',
-                'create',
-                'update',
-                'delete',
-                'view',
-                'export',
-                'other'
-            ])->index();
+            // Using string instead of enum for SQLite compatibility
+            // Valid values: login, logout, failed_login, otp_verified, otp_failed, 
+            // create, update, delete, view, export, account_created, account_updated,
+            // account_deleted, password_changed, email_changed, role_changed, other
+            $table->string('action_type', 50)->index();
             $table->text('description');
             $table->string('ip_address', 45)->nullable()->index();
             $table->text('user_agent')->nullable();
