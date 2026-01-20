@@ -130,20 +130,48 @@ class AuthController extends Controller
         
         Auth::login($user);
         
-        // Check if 2FA is required
-        if ($user->require_2fa) {
+        // Force refresh user from database to get latest values
+        $user->refresh();
+        
+        // Get OTP enabled configuration (default to true for security)
+        $otpEnabled = config('auth.otp_enabled', true);
+        $userRequires2FA = $user->require_2fa ?? true; // Default to true if null
+        
+        // Comprehensive logging for debugging
+        logger()->info('=== OTP DECISION POINT ===', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'require_2fa_db_value' => $user->require_2fa,
+            'require_2fa_resolved' => $userRequires2FA,
+            'otp_enabled_config' => $otpEnabled,
+            'environment' => app()->environment(),
+            'session_driver' => config('session.driver'),
+        ]);
+        
+        // Check if 2FA is required (explicit boolean check)
+        if ($otpEnabled && $userRequires2FA === true) {
+            logger()->info('OTP TRIGGERED: Generating OTP for user', ['user_id' => $user->id]);
+            
             // Generate OTP
             $otp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
             $expiresAt = Carbon::now()->addMinutes(5);
             
-            // Save OTP to user record
-            $user->update([
-                'otp_code' => $otp,
-                'otp_expires_at' => $expiresAt,
-                'otp_verified' => false,
+            // Save OTP to user record - use save() instead of update() for reliability
+            $user->otp_code = $otp;
+            $user->otp_expires_at = $expiresAt;
+            $user->otp_verified = false;
+            $user->save();
+            
+            // Verify the save was successful
+            $user->refresh();
+            logger()->info('OTP saved to database', [
+                'user_id' => $user->id,
+                'otp_set' => !empty($user->otp_code),
+                'otp_verified' => $user->otp_verified,
+                'expires_at' => $user->otp_expires_at,
             ]);
             
-            // Send OTP via email
+            // Send OTP via email synchronously (not queued)
             try {
                 Mail::to($user->email)->send(new OtpMail(
                     $otp,
@@ -151,19 +179,44 @@ class AuthController extends Controller
                     $expiresAt
                 ));
                 
-                logger()->info('OTP sent successfully to: ' . $user->email);
+                logger()->info('OTP email sent successfully', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'otp_code' => $otp,
+                ]);
             } catch (\Exception $e) {
-                logger()->error('Failed to send OTP email: ' . $e->getMessage());
-                // Still redirect to OTP page even if email fails
-                // User can request resend
+                logger()->error('CRITICAL: Failed to send OTP email', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                // Still redirect to OTP page - user can request resend
             }
             
+            // Store session flag for OTP requirement
+            session()->put('requires_otp_verification', true);
+            session()->put('otp_user_id', $user->id);
+            session()->save(); // Force session save
+            
+            logger()->info('REDIRECTING to OTP verification page', ['user_id' => $user->id]);
+            
             // Redirect to OTP verification page
-            return redirect()->route('otp.show')->with('success', 'OTP sent to your email. Please verify to continue.');
+            return redirect()->route('otp.show')
+                ->with('success', 'OTP sent to your email. Please verify to continue.')
+                ->with('otp_email', $user->email);
         }
         
-        // If 2FA is not required, proceed with normal login
-        $user->update(['otp_verified' => true]);
+        // OTP not required - proceed with normal login
+        logger()->info('OTP BYPASSED: User does not require 2FA', [
+            'user_id' => $user->id,
+            'require_2fa' => $userRequires2FA,
+            'otp_enabled' => $otpEnabled,
+        ]);
+        
+        // Mark as verified for users who don't need OTP
+        $user->otp_verified = true;
+        $user->save();
         
         // Log successful login
         $this->auditLog->logLogin($user);

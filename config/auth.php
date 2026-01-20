@@ -148,4 +148,20 @@ return [
         'require_special_char' => env('PASSWORD_REQUIRE_SPECIAL_CHAR', true),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | OTP (One-Time Password) Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Here you may configure the OTP settings for two-factor authentication.
+    | This includes whether OTP is enabled globally, expiry time, and other
+    | security settings related to OTP verification.
+    |
+    */
+
+    'otp_enabled' => env('OTP_ENABLED', true),
+    'otp_expiry_minutes' => env('OTP_EXPIRY_MINUTES', 5),
+    'otp_resend_cooldown_seconds' => env('OTP_RESEND_COOLDOWN', 60),
+    'otp_length' => env('OTP_LENGTH', 6),
+
 ];
