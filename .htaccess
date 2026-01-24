@@ -1,6 +1,10 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
+    # SECURITY: Block access to sensitive files and directories
+    RewriteCond %{REQUEST_URI} "(^\.env$|^\.env\.|\.git/|/storage/|/vendor/|/bootstrap/cache/|/database/|/node_modules/|composer\.(json|lock)|package\.(json|lock)|artisan|phpunit\.xml|webpack\.mix\.js)" [NC]
+    RewriteRule .* - [F,L]
+    
     # Redirect Trailing Slashes If Not A Folder
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
