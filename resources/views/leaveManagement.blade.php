@@ -3,7 +3,7 @@
 @section('title', 'Leave Management')
 
 @section('content')
-<div class="p-6 bg-gray-600" x-data="leaveManagement()">
+<div class="p-6 bg-gray-300" x-data="leaveManagement()">
     <!-- Breadcrumbs -->
     @include('partials.breadcrumbs', ['breadcrumbs' => [
         ['label' => 'Dashboard', 'url' => route('dashb')],
