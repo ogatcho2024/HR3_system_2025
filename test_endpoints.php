@@ -6,7 +6,20 @@ echo "=====================================\n\n";
 
 // Test different analytics periods
 $periods = ['daily', 'weekly', 'monthly', 'yearly'];
-$baseUrl = 'http://localhost/dashboard/HumanResources3/public';
+
+// Determine base URL - checks for .env or uses localhost as fallback
+if (file_exists(__DIR__ . '/.env')) {
+    $envContent = file_get_contents(__DIR__ . '/.env');
+    if (preg_match('/^APP_URL=(.+)$/m', $envContent, $matches)) {
+        $baseUrl = trim($matches[1]);
+    } else {
+        $baseUrl = 'http://localhost/dashboard/HumanResources3/public';
+    }
+} else {
+    $baseUrl = 'http://localhost/dashboard/HumanResources3/public';
+}
+
+echo "Using base URL: {$baseUrl}\n\n";
 
 foreach ($periods as $period) {
     echo "Testing {$period} analytics...\n";

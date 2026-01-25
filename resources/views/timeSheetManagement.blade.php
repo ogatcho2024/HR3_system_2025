@@ -641,6 +641,9 @@
   </div>
 
   <script>
+  // API Base URL - uses Laravel's url() helper to work in any environment
+  const TIMESHEET_API_BASE_URL = '{{ url("") }}';
+  
   function hrTimesheetApp() {
     return {
       activeTab: 'employees',
@@ -1361,7 +1364,7 @@
             department: this.timesheetDepartmentFilter
           });
           
-          const response = await fetch(`http://localhost/dashboard/HumanResources3/public/attendance/employee-timesheets?${params}`);
+          const response = await fetch(`${TIMESHEET_API_BASE_URL}/attendance/employee-timesheets?${params}`);
           const result = await response.json();
           
           if (result.success) {
@@ -1439,10 +1442,10 @@
         };
         
         console.log('Update data:', updateData);
-        console.log('Request URL:', `http://localhost/dashboard/HumanResources3/public/attendance/${this.editingTimesheet.id}`);
+        console.log('Request URL:', `${TIMESHEET_API_BASE_URL}/attendance/${this.editingTimesheet.id}`);
         
         try {
-          const response = await fetch(`http://localhost/dashboard/HumanResources3/public/attendance/${this.editingTimesheet.id}`, {
+          const response = await fetch(`${TIMESHEET_API_BASE_URL}/attendance/${this.editingTimesheet.id}`, {
             method: 'PUT',
             headers: {
               'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -1480,7 +1483,7 @@
         }
         
         try {
-          const response = await fetch(`http://localhost/dashboard/HumanResources3/public/attendance/${timesheetId}`, {
+          const response = await fetch(`${TIMESHEET_API_BASE_URL}/attendance/${timesheetId}`, {
             method: 'DELETE',
             headers: {
               'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

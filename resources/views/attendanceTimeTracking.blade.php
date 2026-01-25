@@ -1520,12 +1520,15 @@
 </div>
 
 <script>
+// API Base URL - uses Laravel's url() helper to work in any environment
+const ATTENDANCE_API_BASE_URL = '{{ url("") }}';
+
 function attendanceTracker() {
     return {
         // Dynamic API base URL detection
         getApiBaseUrl() {
-            // For your XAMPP setup, use the full path
-            return 'http://localhost/dashboard/HumanResources3/public';
+            // Use the global base URL constant
+            return ATTENDANCE_API_BASE_URL;
         },
         
         // Main properties
