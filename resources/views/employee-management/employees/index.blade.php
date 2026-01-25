@@ -1,5 +1,8 @@
 @extends('dashboard')
 
+@section('noFooter', true)
+
+
 @section('title', 'User Profile Management')
 
 @section('content')

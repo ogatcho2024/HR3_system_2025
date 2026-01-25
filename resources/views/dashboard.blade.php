@@ -37,12 +37,14 @@
             </div>
             
             <!-- Footer at bottom of page content -->
+             @if (!View::hasSection('noFooter'))
             <footer class="bg-[#111111] text-white py-2 shadow-lg" id="main-footer">
                 <div class="flex items-center justify-center gap-3">
                     <img class="rounded-full w-10 h-10" src="{{ asset('images/logo.png') }}" alt="Logo">
                     <p class="text-sm text-gray-300">© 2025 Rest & Feast — All rights reserved.</p>
                 </div>
             </footer>
+            @endif
         </main>
     </div>
 </div>

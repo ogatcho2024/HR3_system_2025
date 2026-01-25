@@ -326,20 +326,24 @@ class ShiftManagementController extends Controller
             ], 404);
         }
 
-        // Check if template has assigned employees
-        if ($shiftTemplate->assigned_employees_count > 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot delete shift template with assigned employees. Please reassign employees first.'
-            ], 422);
-        }
-
         try {
+            // Automatically remove all shift assignments for this template
+            $assignmentCount = ShiftAssignment::where('shift_template_id', $id)->count();
+            
+            if ($assignmentCount > 0) {
+                ShiftAssignment::where('shift_template_id', $id)->delete();
+            }
+            
+            // Delete the shift template
             $shiftTemplate->delete();
+
+            $message = $assignmentCount > 0 
+                ? "Shift template deleted successfully. {$assignmentCount} assignment(s) removed."
+                : 'Shift template deleted successfully';
 
             return response()->json([
                 'success' => true,
-                'message' => 'Shift template deleted successfully'
+                'message' => $message
             ]);
         } catch (\Exception $e) {
             Log::error('Error deleting shift template: ' . $e->getMessage());
@@ -662,14 +666,21 @@ class ShiftManagementController extends Controller
     }
     
     /**
-     * Get all employees for assignment dropdown
+     * Get all employees for assignment dropdown (API endpoint)
+     * Excludes employees who are already assigned to any shift
      */
     public function getEmployeesForAssignment()
     {
         try {
+            // Get IDs of employees who already have shift assignments
+            $assignedEmployeeIds = ShiftAssignment::distinct('employee_id')
+                ->pluck('employee_id')
+                ->toArray();
+            
             $employees = Employee::with('user')
                 ->whereHas('user')
                 ->where('status', 'active')
+                ->whereNotIn('id', $assignedEmployeeIds)
                 ->get()
                 ->map(function ($employee) {
                     $fullName = trim($employee->user->name . ' ' . ($employee->user->lastname ?? ''));
@@ -704,13 +715,20 @@ class ShiftManagementController extends Controller
     
     /**
      * Get employees for dropdown (simple method for blade template)
+     * Excludes employees who are already assigned to any shift
      */
     private function getEmployeesForDropdown()
     {
         try {
+            // Get IDs of employees who already have shift assignments
+            $assignedEmployeeIds = ShiftAssignment::distinct('employee_id')
+                ->pluck('employee_id')
+                ->toArray();
+            
             return Employee::with('user')
                 ->whereHas('user')
                 ->where('status', 'active')
+                ->whereNotIn('id', $assignedEmployeeIds)
                 ->get()
                 ->map(function ($employee) {
                     $fullName = trim($employee->user->name . ' ' . ($employee->user->lastname ?? ''));
@@ -757,6 +775,18 @@ class ShiftManagementController extends Controller
                     'success' => false,
                     'message' => 'Employee or shift template not found'
                 ], 404);
+            }
+            
+            // Check if employee is already assigned to any shift
+            $existingAssignment = ShiftAssignment::where('employee_id', $request->employee_id)
+                ->with('shiftTemplate')
+                ->first();
+            
+            if ($existingAssignment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Employee is already assigned to "' . $existingAssignment->shiftTemplate->name . '". Please remove the existing assignment first or reassign the employee.'
+                ], 422);
             }
 
             // Create shift assignment based on the template schedule type
@@ -1025,6 +1055,154 @@ class ShiftManagementController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error removing assignment. Please try again.'
+            ], 500);
+        }
+    }
+    
+    /**
+     * Reassign an employee from one shift to another
+     */
+    public function reassignEmployee(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'employee_id' => 'required|exists:employees,id',
+            'new_shift_template_id' => 'required|exists:shift_templates,id',
+            'start_date' => 'required|date|after_or_equal:today',
+            'notes' => 'nullable|string|max:500'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $employee = Employee::with('user')->find($request->employee_id);
+            $newShiftTemplate = ShiftTemplate::find($request->new_shift_template_id);
+            
+            if (!$employee || !$newShiftTemplate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Employee or shift template not found'
+                ], 404);
+            }
+            
+            // Find existing assignment
+            $existingAssignment = ShiftAssignment::where('employee_id', $request->employee_id)
+                ->with('shiftTemplate')
+                ->first();
+            
+            if (!$existingAssignment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No existing assignment found for this employee'
+                ], 404);
+            }
+            
+            $oldShiftTemplate = $existingAssignment->shiftTemplate;
+            
+            // Check if trying to reassign to the same shift
+            if ($existingAssignment->shift_template_id == $request->new_shift_template_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Employee is already assigned to this shift'
+                ], 422);
+            }
+            
+            // Delete all old assignments
+            ShiftAssignment::where('employee_id', $request->employee_id)->delete();
+            
+            // Decrease the count on old shift template
+            if ($oldShiftTemplate && $oldShiftTemplate->assigned_employees_count > 0) {
+                $oldShiftTemplate->decrement('assigned_employees_count');
+            }
+            
+            // Create new assignments based on the template schedule type
+            $startDate = Carbon::parse($request->start_date);
+            $assignments = [];
+            
+            if ($newShiftTemplate->schedule_type === 'weekly' && !empty($newShiftTemplate->days)) {
+                // Create assignments for the next 4 weeks for weekly schedules
+                $endDate = $startDate->copy()->addWeeks(4);
+                
+                for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+                    $dayName = $date->format('l');
+                    
+                    if (in_array($dayName, $newShiftTemplate->days)) {
+                        $assignments[] = [
+                            'employee_id' => $request->employee_id,
+                            'shift_template_id' => $request->new_shift_template_id,
+                            'assignment_date' => $date->toDateString(),
+                            'status' => 'scheduled',
+                            'notes' => $request->notes,
+                            'assigned_by' => auth()->id() ?? 1,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ];
+                    }
+                }
+            } elseif ($newShiftTemplate->schedule_type === 'dates' && !empty($newShiftTemplate->selected_dates)) {
+                // Create assignments for specific dates
+                foreach ($newShiftTemplate->selected_dates as $dateString) {
+                    $date = Carbon::parse($dateString);
+                    if ($date->gte($startDate)) {
+                        $assignments[] = [
+                            'employee_id' => $request->employee_id,
+                            'shift_template_id' => $request->new_shift_template_id,
+                            'assignment_date' => $date->toDateString(),
+                            'status' => 'scheduled',
+                            'notes' => $request->notes,
+                            'assigned_by' => auth()->id() ?? 1,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ];
+                    }
+                }
+            } else {
+                // Fallback: create single assignment for start date
+                $assignments[] = [
+                    'employee_id' => $request->employee_id,
+                    'shift_template_id' => $request->new_shift_template_id,
+                    'assignment_date' => $startDate->toDateString(),
+                    'status' => 'scheduled',
+                    'notes' => $request->notes,
+                    'assigned_by' => auth()->id() ?? 1,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ];
+            }
+            
+            if (!empty($assignments)) {
+                ShiftAssignment::insert($assignments);
+                
+                // Increment the count on new shift template
+                $newShiftTemplate->increment('assigned_employees_count');
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => "Employee reassigned from '{$oldShiftTemplate->name}' to '{$newShiftTemplate->name}' successfully",
+                    'data' => [
+                        'assignments_created' => count($assignments),
+                        'employee_name' => $employee->user->name,
+                        'old_shift_name' => $oldShiftTemplate->name,
+                        'new_shift_name' => $newShiftTemplate->name
+                    ]
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No valid dates found for reassignment'
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error reassigning employee: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error reassigning employee. Please try again.'
             ], 500);
         }
     }

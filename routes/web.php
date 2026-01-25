@@ -64,7 +64,9 @@ Route::prefix('shift-management/api')->name('shift-management.api.')->group(func
     Route::patch('templates/{id}/toggle-status', [ShiftManagementController::class, 'toggleStatus'])->name('templates.toggle-status');
     
     // Employee Assignment Routes (TEMPORARY: Public for debugging)
+    Route::get('available-employees', [ShiftManagementController::class, 'getEmployeesForAssignment'])->name('available-employees');
     Route::post('assignments', [ShiftManagementController::class, 'storeAssignment'])->name('assignments.store');
+    Route::post('assignments/reassign', [ShiftManagementController::class, 'reassignEmployee'])->name('assignments.reassign');
     Route::put('assignments/{id}', [ShiftManagementController::class, 'updateAssignment'])->name('assignments.update');
     Route::delete('assignments/{id}', [ShiftManagementController::class, 'removeAssignment'])->name('assignments.destroy');
     
