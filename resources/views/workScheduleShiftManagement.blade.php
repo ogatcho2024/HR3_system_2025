@@ -1005,6 +1005,9 @@
 </style>
 
 <script>
+// API Base URL - uses Laravel's url() helper to work in any environment
+const API_BASE_URL = '{{ url("/shift-management/api") }}';
+
 function shiftManagement() {
     return {
         activeTab: '{{ $activeTab }}',
@@ -1115,7 +1118,7 @@ function shiftManagement() {
             }
             
             try {
-                const response = await fetch(`http://localhost/dashboard/HumanResources3/public/shift-management/api/assignments/${assignmentId}`, {
+                const response = await fetch(`${API_BASE_URL}/assignments/${assignmentId}`, {
                     method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -1202,8 +1205,8 @@ function shiftManagement() {
 
             try {
                 const url = this.isEditMode 
-                    ? `http://localhost/dashboard/HumanResources3/public/shift-management/api/templates/${this.shiftForm.id}`
-                    : 'http://localhost/dashboard/HumanResources3/public/shift-management/api/templates';
+                    ? `${API_BASE_URL}/templates/${this.shiftForm.id}`
+                    : `${API_BASE_URL}/templates`;
                 const method = this.isEditMode ? 'PUT' : 'POST';
 
                 const requestData = {
@@ -1284,7 +1287,7 @@ function shiftManagement() {
             }
 
             try {
-                const response = await fetch(`http://localhost/dashboard/HumanResources3/public/shift-management/api/templates/${shiftId}`, {
+                const response = await fetch(`${API_BASE_URL}/templates/${shiftId}`, {
                     method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
@@ -1389,8 +1392,8 @@ function shiftManagement() {
             try {
                 const isEditing = this.editingAssignmentId !== null;
                 const url = isEditing 
-                    ? `http://localhost/dashboard/HumanResources3/public/shift-management/api/assignments/${this.editingAssignmentId}`
-                    : 'http://localhost/dashboard/HumanResources3/public/shift-management/api/assignments';
+                    ? `${API_BASE_URL}/assignments/${this.editingAssignmentId}`
+                    : `${API_BASE_URL}/assignments`;
                 const method = isEditing ? 'PUT' : 'POST';
                 
                 const response = await fetch(url, {
