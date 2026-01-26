@@ -252,9 +252,13 @@ Route::middleware(['auth'])->group(function () {
         
         // Leave Management
         Route::get('/leave-requests', [EmployeeDashboardController::class, 'leaveRequests'])->name('leave-requests');
+        Route::post('/leave-requests', [EmployeeDashboardController::class, 'storeLeaveRequest'])->name('leave-requests.store');
+        Route::delete('/leave-requests/{leaveRequest}', [EmployeeDashboardController::class, 'destroyLeaveRequest'])->name('leave-requests.destroy');
         
         // Shift Management
         Route::get('/shift-requests', [EmployeeDashboardController::class, 'shiftRequests'])->name('shift-requests');
+        Route::post('/shift-requests', [EmployeeDashboardController::class, 'storeShiftRequest'])->name('shift-requests.store');
+        Route::delete('/shift-requests/{shiftRequest}', [EmployeeDashboardController::class, 'destroyShiftRequest'])->name('shift-requests.destroy');
         
         // Reimbursements
         Route::get('/reimbursements', [EmployeeDashboardController::class, 'reimbursements'])->name('reimbursements');
@@ -264,6 +268,7 @@ Route::middleware(['auth'])->group(function () {
         
         // Profile Management
         Route::get('/profile', [EmployeeDashboardController::class, 'profile'])->name('profile');
+        Route::put('/profile', [EmployeeDashboardController::class, 'updateProfile'])->name('profile.update');
         
         // Attendance & Performance Analytics
         Route::get('/attendance', [EmployeeDashboardController::class, 'attendance'])->name('attendance');

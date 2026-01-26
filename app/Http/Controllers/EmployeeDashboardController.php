@@ -23,11 +23,36 @@ class EmployeeDashboardController extends Controller
     {
         $user = Auth::user();
         $employee = $user->employee;
+        $today = Carbon::today();
+        $now = Carbon::now();
         
-        // Get current month data
+        // Get current month and week data
         $currentMonth = Carbon::now();
         $startOfMonth = $currentMonth->copy()->startOfMonth();
         $endOfMonth = $currentMonth->copy()->endOfMonth();
+        $startOfWeek = $now->copy()->startOfWeek();
+        $endOfWeek = $now->copy()->endOfWeek();
+        
+        // Today's Attendance
+        $todayAttendance = Attendance::where('user_id', $user->id)
+            ->whereDate('date', $today)
+            ->first();
+        
+        // Today's Shift/Schedule
+        $todayShift = null;
+        if (class_exists('App\Models\ShiftAssignment') && $employee) {
+            $todayShift = \App\Models\ShiftAssignment::where('employee_id', $employee->id)
+                ->whereDate('assignment_date', $today)
+                ->with('shiftTemplate')
+                ->first();
+        }
+        
+        // Check if today is leave, rest day, or holiday
+        $todayLeave = LeaveRequest::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->first();
         
         // Dashboard statistics
         $stats = [
@@ -44,66 +69,50 @@ class EmployeeDashboardController extends Controller
                 ->whereBetween('date', [$startOfMonth, $endOfMonth])
                 ->count(),
             'leave_balance' => $this->calculateLeaveBalance($user->id),
+            'leave_balance_detailed' => $this->calculateDetailedLeaveBalance($user->id),
             'current_month' => $currentMonth->format('F Y'),
+            'hours_this_week' => $this->calculateWeekHours($user->id, $startOfWeek, $endOfWeek),
         ];
         
-        // Recent activities from real data
-        $recentActivities = collect();
+        // Recent attendance records (last 5)
+        $recentAttendanceRecords = Attendance::where('user_id', $user->id)
+            ->orderBy('date', 'desc')
+            ->take(5)
+            ->get();
         
-        // Add recent leave requests
+        // Recent leave requests (last 3)
         $recentLeaveRequests = LeaveRequest::where('user_id', $user->id)
             ->latest()
             ->take(3)
             ->get();
-            
-        foreach ($recentLeaveRequests as $request) {
-            $recentActivities->push([
-                'type' => 'leave',
-                'title' => 'Leave Request ' . ucfirst($request->status),
-                'description' => ucfirst(str_replace('_', ' ', $request->leave_type)) . ' leave for ' . $request->days_requested . ' day(s)',
-                'date' => $request->created_at,
-                'status' => $request->status,
-                'icon' => 'calendar'
-            ]);
-        }
         
-        // Add recent shift requests
+        // Recent shift requests (last 3)
         $recentShiftRequests = ShiftRequest::where('user_id', $user->id)
             ->latest()
-            ->take(2)
+            ->take(3)
             ->get();
-            
-        foreach ($recentShiftRequests as $request) {
-            $recentActivities->push([
-                'type' => 'shift',
-                'title' => 'Shift Request ' . ucfirst($request->status),
-                'description' => ucfirst(str_replace('_', ' ', $request->request_type)) . ' request for ' . $request->request_date->format('M j'),
-                'date' => $request->created_at,
-                'status' => $request->status,
-                'icon' => 'clock'
-            ]);
-        }
         
-        // Add recent attendance if available
-        $recentAttendance = Attendance::where('user_id', $user->id)
-            ->latest('date')
-            ->first();
-                
-        if ($recentAttendance) {
-            $recentActivities->push([
-                'type' => 'attendance',
-                'title' => 'Attendance Recorded',
-                'description' => 'Status: ' . ucfirst($recentAttendance->status) . ' on ' . $recentAttendance->date->format('M j'),
-                'date' => $recentAttendance->created_at,
-                'status' => $recentAttendance->status,
-                'icon' => 'clock'
-            ]);
-        }
+        // Announcements (using Alert model)
+        $announcements = \App\Models\Alert::active()
+            ->orderBy('priority', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->take(3)
+            ->get();
         
-        // Sort by date and take the most recent 5
-        $recentActivities = $recentActivities->sortByDesc('date')->take(5);
-        
-        return view('employee.dashboard', compact('user', 'employee', 'stats', 'recentActivities'));
+        return view('employee.dashboard', compact(
+            'user',
+            'employee', 
+            'stats',
+            'todayAttendance',
+            'todayShift',
+            'todayLeave',
+            'recentAttendanceRecords',
+            'recentLeaveRequests',
+            'recentShiftRequests',
+            'announcements',
+            'today',
+            'now'
+        ));
     }
     
     /**
@@ -119,6 +128,64 @@ class EmployeeDashboardController extends Controller
         $leaveBalance = $this->calculateLeaveBalance($user->id);
         
         return view('employee.leave-requests', compact('leaveRequests', 'leaveBalance'));
+    }
+    
+    /**
+     * Store a new leave request
+     */
+    public function storeLeaveRequest(Request $request)
+    {
+        $user = Auth::user();
+        
+        $validatedData = $request->validate([
+            'leave_type' => 'required|string|in:annual_leave,sick_leave,emergency_leave,maternity_paternity_leave,personal_leave',
+            'start_date' => 'required|date|after_or_equal:today',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'reason' => 'required|string|max:1000',
+        ]);
+        
+        // Calculate days requested
+        $startDate = Carbon::parse($validatedData['start_date']);
+        $endDate = Carbon::parse($validatedData['end_date']);
+        $daysRequested = $startDate->diffInDays($endDate) + 1;
+        
+        // Create leave request
+        LeaveRequest::create([
+            'user_id' => $user->id,
+            'leave_type' => $validatedData['leave_type'],
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'days_requested' => $daysRequested,
+            'reason' => $validatedData['reason'],
+            'status' => 'pending',
+        ]);
+        
+        return redirect()->route('employee.leave-requests')
+            ->with('success', 'Leave request submitted successfully!');
+    }
+    
+    /**
+     * Cancel/delete a leave request
+     */
+    public function destroyLeaveRequest(LeaveRequest $leaveRequest)
+    {
+        $user = Auth::user();
+        
+        // Ensure the user owns this request and it's still pending
+        if ($leaveRequest->user_id !== $user->id) {
+            return redirect()->route('employee.leave-requests')
+                ->with('error', 'Unauthorized action.');
+        }
+        
+        if ($leaveRequest->status !== 'pending') {
+            return redirect()->route('employee.leave-requests')
+                ->with('error', 'Cannot cancel a request that has already been processed.');
+        }
+        
+        $leaveRequest->delete();
+        
+        return redirect()->route('employee.leave-requests')
+            ->with('success', 'Leave request cancelled successfully.');
     }
     
     /**
@@ -147,6 +214,68 @@ class EmployeeDashboardController extends Controller
         return view('employee.shift-requests', compact(
             'pendingShiftRequests', 'approvedShiftRequests', 'rejectedShiftRequests'
         ));
+    }
+    
+    /**
+     * Store a new shift request
+     */
+    public function storeShiftRequest(Request $request)
+    {
+        $user = Auth::user();
+        
+        $validatedData = $request->validate([
+            'request_type' => 'required|string|in:swap,cover,overtime,schedule_change',
+            'requested_date' => 'required|date|after_or_equal:today',
+            'current_start_time' => 'nullable|date_format:H:i',
+            'current_end_time' => 'nullable|date_format:H:i',
+            'requested_start_time' => 'nullable|date_format:H:i',
+            'requested_end_time' => 'nullable|date_format:H:i',
+            'swap_with_user_id' => 'nullable|exists:users,id',
+            'reason' => 'required|string|max:1000',
+        ]);
+        
+        // Prepare data for insertion
+        $data = [
+            'user_id' => $user->id,
+            'request_type' => $validatedData['request_type'],
+            'requested_date' => $validatedData['requested_date'],
+            'current_start_time' => $validatedData['current_start_time'] ?? null,
+            'current_end_time' => $validatedData['current_end_time'] ?? null,
+            'requested_start_time' => $validatedData['requested_start_time'] ?? null,
+            'requested_end_time' => $validatedData['requested_end_time'] ?? null,
+            'swap_with_user_id' => $validatedData['swap_with_user_id'] ?? null,
+            'reason' => $validatedData['reason'],
+            'status' => 'pending',
+        ];
+        
+        ShiftRequest::create($data);
+        
+        return redirect()->route('employee.shift-requests')
+            ->with('success', 'Shift request submitted successfully!');
+    }
+    
+    /**
+     * Cancel/delete a shift request
+     */
+    public function destroyShiftRequest(ShiftRequest $shiftRequest)
+    {
+        $user = Auth::user();
+        
+        // Ensure the user owns this request and it's still pending
+        if ($shiftRequest->user_id !== $user->id) {
+            return redirect()->route('employee.shift-requests')
+                ->with('error', 'Unauthorized action.');
+        }
+        
+        if ($shiftRequest->status !== 'pending') {
+            return redirect()->route('employee.shift-requests')
+                ->with('error', 'Cannot cancel a request that has already been processed.');
+        }
+        
+        $shiftRequest->delete();
+        
+        return redirect()->route('employee.shift-requests')
+            ->with('success', 'Shift request cancelled successfully.');
     }
     
     /**
@@ -193,6 +322,68 @@ class EmployeeDashboardController extends Controller
         $employee = $user->employee;
         
         return view('employee.profile', compact('user', 'employee'));
+    }
+    
+    /**
+     * Update profile
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+        $employee = $user->employee;
+        
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'lastname' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|max:20',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'emergency_contact_name' => 'nullable|string|max:255',
+            'emergency_contact_phone' => 'nullable|string|max:20',
+            'current_password' => 'nullable|required_with:password',
+            'password' => 'nullable|min:8|confirmed',
+        ]);
+        
+        // Update user fields
+        $user->name = $validatedData['name'];
+        $user->lastname = $validatedData['lastname'];
+        $user->email = $validatedData['email'];
+        $user->phone = $validatedData['phone'] ?? null;
+        
+        // Handle photo upload
+        if ($request->hasFile('photo')) {
+            // Delete old photo if exists
+            if ($user->photo) {
+                \Storage::disk('public')->delete($user->photo);
+            }
+            
+            $path = $request->file('photo')->store('profile-photos', 'public');
+            $user->photo = $path;
+        }
+        
+        // Handle password change
+        if ($request->filled('password')) {
+            // Verify current password
+            if (!\Hash::check($validatedData['current_password'], $user->password)) {
+                return redirect()->back()
+                    ->withErrors(['current_password' => 'Current password is incorrect.'])
+                    ->withInput();
+            }
+            
+            $user->password = \Hash::make($validatedData['password']);
+        }
+        
+        $user->save();
+        
+        // Update employee fields if employee profile exists
+        if ($employee) {
+            $employee->emergency_contact_name = $validatedData['emergency_contact_name'] ?? null;
+            $employee->emergency_contact_phone = $validatedData['emergency_contact_phone'] ?? null;
+            $employee->save();
+        }
+        
+        return redirect()->route('employee.profile')
+            ->with('success', 'Profile updated successfully!');
     }
     
     /**
@@ -251,34 +442,30 @@ class EmployeeDashboardController extends Controller
         $schedule = collect();
         
         if (class_exists('App\Models\ShiftAssignment')) {
-            // Try employee_id first, then fallback to user_id
+            // ShiftAssignment requires employee_id
             $employeeId = $employee ? $employee->id : null;
-            $query = \App\Models\ShiftAssignment::query();
             
             if ($employeeId) {
-                $query->where('employee_id', $employeeId);
-            } else {
-                $query->where('user_id', $user->id);
+                $schedule = \App\Models\ShiftAssignment::query()
+                    ->where('employee_id', $employeeId)
+                    ->with(['shiftTemplate'])
+                    ->whereDate('assignment_date', '>=', Carbon::now())
+                    ->whereDate('assignment_date', '<=', Carbon::now()->addDays(14))
+                    ->orderBy('assignment_date')
+                    ->get()
+                    ->map(function ($assignment) {
+                        return [
+                            'date' => $assignment->assignment_date,
+                            'shift' => $assignment->shiftTemplate->name ?? 'Regular',
+                            'time' => ($assignment->shiftTemplate->start_time ?? '9:00') . ' - ' . ($assignment->shiftTemplate->end_time ?? '17:00'),
+                            'location' => 'Office', // Default location as it's not in the table
+                            'status' => $assignment->status ?? 'scheduled'
+                        ];
+                    });
             }
-            
-            $schedule = $query
-                ->with(['shiftTemplate'])
-                ->whereDate('shift_date', '>=', Carbon::now())
-                ->whereDate('shift_date', '<=', Carbon::now()->addDays(14))
-                ->orderBy('shift_date')
-                ->get()
-                ->map(function ($assignment) {
-                    return [
-                        'date' => $assignment->shift_date,
-                        'shift' => $assignment->shiftTemplate->name ?? 'Regular',
-                        'time' => ($assignment->shiftTemplate->start_time ?? '9:00') . ' - ' . ($assignment->shiftTemplate->end_time ?? '17:00'),
-                        'location' => $assignment->location ?? 'Office',
-                        'status' => $assignment->status ?? 'scheduled'
-                    ];
-                });
         }
         
-        // Fallback to mock data if no shift management system
+        // Fallback to mock data if no shift management system or no employee profile
         if ($schedule->isEmpty()) {
             for ($i = 1; $i <= 7; $i++) {
                 $schedule->push([
@@ -338,5 +525,62 @@ class EmployeeDashboardController extends Controller
         $finalScore = max(0, min(10, $baseScore - $punctualityPenalty + $overtimeBonus));
         
         return round($finalScore, 1);
+    }
+    
+    /**
+     * Calculate detailed leave balance by type
+     */
+    private function calculateDetailedLeaveBalance($userId): array
+    {
+        $leaveTypes = [
+            'annual_leave' => ['total' => 15, 'used' => 0],
+            'sick_leave' => ['total' => 7, 'used' => 0],
+            'emergency_leave' => ['total' => 3, 'used' => 0],
+        ];
+        
+        // Calculate used leave per type
+        $usedLeaves = LeaveRequest::where('user_id', $userId)
+            ->where('status', 'approved')
+            ->whereYear('start_date', Carbon::now()->year)
+            ->selectRaw('leave_type, SUM(days_requested) as total_days')
+            ->groupBy('leave_type')
+            ->get();
+        
+        foreach ($usedLeaves as $leave) {
+            if (isset($leaveTypes[$leave->leave_type])) {
+                $leaveTypes[$leave->leave_type]['used'] = $leave->total_days;
+            }
+        }
+        
+        // Calculate remaining
+        foreach ($leaveTypes as $type => $balance) {
+            $leaveTypes[$type]['remaining'] = $balance['total'] - $balance['used'];
+        }
+        
+        return $leaveTypes;
+    }
+    
+    /**
+     * Calculate total hours worked for the week
+     */
+    private function calculateWeekHours($userId, $startOfWeek, $endOfWeek): float
+    {
+        $attendances = Attendance::where('user_id', $userId)
+            ->whereBetween('date', [$startOfWeek, $endOfWeek])
+            ->get();
+        
+        $totalHours = 0;
+        foreach ($attendances as $attendance) {
+            if ($attendance->clock_in && $attendance->clock_out) {
+                $clockIn = Carbon::parse($attendance->clock_in);
+                $clockOut = Carbon::parse($attendance->clock_out);
+                $totalHours += $clockIn->diffInHours($clockOut);
+            } else {
+                // Default 8 hours if no clock times
+                $totalHours += 8;
+            }
+        }
+        
+        return round($totalHours, 1);
     }
 }

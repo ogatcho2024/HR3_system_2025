@@ -91,4 +91,20 @@ class ShiftRequest extends Model
             default => 'bg-gray-100 text-gray-800',
         };
     }
+    
+    /**
+     * Accessor for request_date (alias for requested_date)
+     */
+    public function getRequestDateAttribute()
+    {
+        return $this->requested_date;
+    }
+    
+    /**
+     * Accessor for rejection_reason (alias for manager_comments)
+     */
+    public function getRejectionReasonAttribute()
+    {
+        return $this->manager_comments;
+    }
 }

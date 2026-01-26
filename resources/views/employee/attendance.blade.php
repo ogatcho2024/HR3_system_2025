@@ -132,7 +132,7 @@
 
         <!-- Attendance Records -->
         <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-            <div class="px-6 py-4 border-b border-gray-200">
+            <div class="px-6 py-4 bg-gray-200 border-b border-gray-200">
                 <h3 class="text-lg font-medium text-gray-900">Monthly Attendance Records</h3>
                 <p class="text-sm text-gray-500 mt-1">Your attendance records for the current month</p>
             </div>

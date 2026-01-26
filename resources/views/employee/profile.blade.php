@@ -22,6 +22,29 @@
     </div>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Success/Error Messages -->
+        @if(session('success'))
+        <div class="mb-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md">
+            {{ session('success') }}
+        </div>
+        @endif
+        
+        @if(session('error'))
+        <div class="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md">
+            {{ session('error') }}
+        </div>
+        @endif
+        
+        @if($errors->any())
+        <div class="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md">
+            <ul class="list-disc list-inside">
+                @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+        @endif
+        
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Profile Card -->
             <div class="lg:col-span-1">
@@ -40,7 +63,7 @@
                             <div class="flex-1 min-w-0">
                                 <h2 class="text-xl font-bold text-gray-900 truncate">{{ $user->name }} {{ $user->lastname }}</h2>
                                 <p class="text-sm text-gray-500 truncate">{{ $employee->position ?? 'Employee' }}</p>
-                                <p class="text-sm text-gray-500">{{ $employee->department ?? 'Department' }}</p>
+                                <p class="text-sm text-gray-500">{{ $employee->department ?? 'N/A' }}</p>
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $user->account_type == 'employee' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
                                     {{ ucfirst($user->account_type) }}
                                 </span>
@@ -63,7 +86,7 @@
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Hire Date</dt>
-                                    <dd class="text-sm text-gray-900">{{ $employee->hire_date ? $employee->hire_date->format('M j, Y') : 'Not specified' }}</dd>
+                                    <dd class="text-sm text-gray-900">{{ ($employee && $employee->hire_date) ? $employee->hire_date->format('M j, Y') : 'Not specified' }}</dd>
                                 </div>
                             </dl>
                         </div>

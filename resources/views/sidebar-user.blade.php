@@ -33,7 +33,7 @@
                                 </g>
                             </svg>
                         </span>
-                        <span class="nav-text flex-fill text-truncate">Dashboard</span>
+                        <span class="nav-text flex-fill text-truncate text-white font-bold">Dashboard</span>
                     </a>
                 </li>
 
@@ -45,7 +45,7 @@
                                 <path d="M0 16q0-3.232 1.28-6.208t3.392-5.12 5.12-3.392 6.208-1.28q3.264 0 6.24 1.28t5.088 3.392 3.392 5.12 1.28 6.208q0 3.264-1.28 6.208t-3.392 5.12-5.12 3.424-6.208 1.248-6.208-1.248-5.12-3.424-3.392-5.12-1.28-6.208zM4 16q0 3.264 1.6 6.048t4.384 4.352 6.016 1.6 6.016-1.6 4.384-4.352 1.6-6.048-1.6-6.016-4.384-4.352-6.016-1.632-6.016 1.632-4.384 4.352-1.6 6.016zM14.016 16v-5.984q0-0.832 0.576-1.408t1.408-0.608 1.408 0.608 0.608 1.408v4h4q0.8 0 1.408 0.576t0.576 1.408-0.576 1.44-1.408 0.576h-6.016q-0.832 0-1.408-0.576t-0.576-1.44z"></path>
                             </svg>
                         </span>
-                        <span class="nav-text flex-fill text-truncate">My Attendance</span>
+                        <span class="nav-text flex-fill text-truncate text-white font-bold">My Attendance</span>
                     </a>
                 </li>
 
@@ -70,7 +70,7 @@
                                 </g>
                             </svg>
                         </span>
-                        <span class="nav-text flex-fill text-truncate">Work Schedule</span>
+                        <span class="nav-text flex-fill text-truncate text-white font-bold">Work Schedule</span>
                     </a>
                 </li>
 
@@ -96,7 +96,7 @@
                                 </g>
                             </svg>
                         </span>
-                        <span class="nav-text flex-fill text-truncate">Leave Requests</span>
+                        <span class="nav-text flex-fill text-truncate text-white font-bold">Leave Requests</span>
                     </a>
                 </li>
 
@@ -108,31 +108,7 @@
                                 <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                             </svg>
                         </span>
-                        <span class="nav-text flex-fill text-truncate">Shift Requests</span>
-                    </a>
-                </li>
-
-                <!-- Payroll -->
-                <li class="nav-item">
-                    <a href="{{ route('employee.payroll') }}" class="nav-link d-flex align-items-center {{ request()->routeIs('employee.payroll') ? 'active' : '' }}">
-                        <span class="nav-icon d-inline-flex align-items-center justify-content-center mr-2">
-                            <svg fill="#ffffff" viewBox="0 0 24 24" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                            </svg>
-                        </span>
-                        <span class="nav-text flex-fill text-truncate">My Payroll</span>
-                    </a>
-                </li>
-
-                <!-- Reimbursements -->
-                <li class="nav-item">
-                    <a href="{{ route('employee.reimbursements') }}" class="nav-link d-flex align-items-center {{ request()->routeIs('employee.reimbursements') ? 'active' : '' }}">
-                        <span class="nav-icon d-inline-flex align-items-center justify-content-center mr-2">
-                            <svg fill="#ffffff" viewBox="0 0 24 24" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                            </svg>
-                        </span>
-                        <span class="nav-text flex-fill text-truncate">Reimbursements</span>
+                        <span class="nav-text flex-fill text-truncate text-white font-bold">Shift Requests</span>
                     </a>
                 </li>
 
@@ -144,7 +120,7 @@
                                 <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" fill="#ffffff"/>
                             </svg>
                         </span>
-                        <span class="nav-text flex-fill text-truncate">My Profile</span>
+                        <span class="nav-text flex-fill text-truncate text-white font-bold">My Profile</span>
                     </a>
                 </li>
 
@@ -159,7 +135,7 @@
                                 <path d="M15 16.5V19C15 20.1046 14.1046 21 13 21H6C4.89543 21 4 20.1046 4 19V5C4 3.89543 4.89543 3 6 3H13C14.1046 3 15 3.89543 15 5V8.0625M11 12H21M21 12L18.5 9.5M21 12L18.5 14.5" stroke="#ffffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
                             </svg>
                         </span>
-                        <span class="nav-text flex-fill text-truncate">Logout</span>
+                        <span class="nav-text flex-fill text-truncate text-white font-bold">Logout</span>
                     </a>
                 </li>
             </ul>

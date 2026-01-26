@@ -25,6 +25,29 @@
     </div>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Success/Error Messages -->
+        @if(session('success'))
+        <div class="mb-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md">
+            {{ session('success') }}
+        </div>
+        @endif
+        
+        @if(session('error'))
+        <div class="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md">
+            {{ session('error') }}
+        </div>
+        @endif
+        
+        @if($errors->any())
+        <div class="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md">
+            <ul class="list-disc list-inside">
+                @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+        @endif
+        
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Leave Balance Card -->
             <div class="lg:col-span-1">
@@ -59,33 +82,33 @@
                 <div id="leave-form" class="bg-white overflow-hidden shadow rounded-lg mt-6">
                     <div class="p-6">
                         <h3 class="text-lg font-medium text-gray-900 mb-4">New Leave Request</h3>
-                        <form class="space-y-4">
+                        <form action="{{ route('employee.leave-requests.store') }}" method="POST" class="space-y-4">
                             @csrf
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Leave Type</label>
-                                <select class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                    <option>Annual Leave</option>
-                                    <option>Sick Leave</option>
-                                    <option>Emergency Leave</option>
-                                    <option>Maternity/Paternity Leave</option>
-                                    <option>Personal Leave</option>
+                                <select name="leave_type" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                    <option value="annual_leave">Annual Leave</option>
+                                    <option value="sick_leave">Sick Leave</option>
+                                    <option value="emergency_leave">Emergency Leave</option>
+                                    <option value="maternity_paternity_leave">Maternity/Paternity Leave</option>
+                                    <option value="personal_leave">Personal Leave</option>
                                 </select>
                             </div>
                             
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Start Date</label>
-                                    <input type="date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" min="{{ date('Y-m-d') }}">
+                                    <input type="date" name="start_date" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" min="{{ date('Y-m-d') }}">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">End Date</label>
-                                    <input type="date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" min="{{ date('Y-m-d') }}">
+                                    <input type="date" name="end_date" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" min="{{ date('Y-m-d') }}">
                                 </div>
                             </div>
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Reason</label>
-                                <textarea rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Please provide a brief reason for your leave request..."></textarea>
+                                <textarea name="reason" required rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Please provide a brief reason for your leave request..."></textarea>
                             </div>
                             
                             <div>
@@ -143,8 +166,8 @@
                                             <p><strong>Duration:</strong> {{ $request->days_requested }} day{{ $request->days_requested > 1 ? 's' : '' }}</p>
                                             <p><strong>Dates:</strong> {{ $request->start_date->format('M j, Y') }} - {{ $request->end_date->format('M j, Y') }}</p>
                                             <p><strong>Reason:</strong> {{ $request->reason }}</p>
-                                            @if($request->status == 'rejected' && $request->rejection_reason)
-                                            <p class="mt-2"><strong class="text-red-600">Rejection Reason:</strong> <span class="text-red-600">{{ $request->rejection_reason }}</span></p>
+                                            @if($request->status == 'rejected' && $request->manager_comments)
+                                            <p class="mt-2"><strong class="text-red-600">Manager Comments:</strong> <span class="text-red-600">{{ $request->manager_comments }}</span></p>
                                             @endif
                                         </div>
                                         <p class="mt-2 text-xs text-gray-500">
@@ -154,6 +177,17 @@
                                             @endif
                                         </p>
                                     </div>
+                                    @if($request->status == 'pending')
+                                    <div class="ml-4">
+                                        <form action="{{ route('employee.leave-requests.destroy', $request) }}" method="POST" onsubmit="return confirm('Are you sure you want to cancel this leave request?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-900 text-sm font-medium">
+                                                Cancel Request
+                                            </button>
+                                        </form>
+                                    </div>
+                                    @endif
                                 </div>
                             </div>
                         </li>
