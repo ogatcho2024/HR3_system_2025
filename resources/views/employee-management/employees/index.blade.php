@@ -219,22 +219,17 @@
                                 <!-- User Role Column -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                        @if($user->account_type == '1') bg-red-100 text-red-800
-                                        @elseif($user->account_type == '3') bg-yellow-100 text-yellow-800
+                                        @if($user->account_type == 'Super admin') bg-purple-100 text-purple-800
+                                        @elseif($user->account_type == 'Admin') bg-red-100 text-red-800
+                                        @elseif($user->account_type == 'Staff') bg-yellow-100 text-yellow-800
                                         @else bg-blue-100 text-blue-800
                                         @endif">
-                                        @if($user->account_type == '1')
+                                        @if($user->account_type == 'Super admin' || $user->account_type == 'Admin')
                                             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
                                             </svg>
                                         @endif
-                                        @if($user->account_type == '1')
-                                            Admin
-                                        @elseif($user->account_type == '3')
-                                            Manager
-                                        @else
-                                            User
-                                        @endif
+                                        {{ $user->account_type }}
                                     </span>
                                 </td>
                                 
@@ -365,9 +360,10 @@
                             <div class="relative z-0 w-full mb-5 group">
                                 <select name="account_type" id="editAccountType" class="block py-2.5 px-0 w-full text-sm text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-blue-600 peer" required>
                                     <option value="" disabled></option>
-                                    <option value="1">Admin</option>
-                                    <option value="2">User</option>
-                                    <option value="3">Manager</option>
+                                    <option value="Super admin">Super Admin</option>
+                                    <option value="Admin">Admin</option>
+                                    <option value="Staff">Staff</option>
+                                    <option value="Employee">Employee</option>
                                 </select>
                                 <label for="editAccountType" class="peer-focus:font-medium absolute text-sm text-gray-500 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:text-blue-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6">Account Type</label>
                             </div>

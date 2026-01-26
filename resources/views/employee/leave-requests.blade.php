@@ -124,7 +124,7 @@
             <!-- Leave Requests History -->
             <div class="lg:col-span-2">
                 <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-                    <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="px-6 py-4 border-b bg-gray-200 border-gray-200">
                         <h3 class="text-lg font-medium text-gray-900">Leave Request History</h3>
                     </div>
                     

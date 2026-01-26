@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SimpleAuthController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\EmployeeSyncController;
+use App\Http\Controllers\Api\TimesheetController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -85,4 +86,15 @@ Route::prefix('employee-sync')->group(function () {
     Route::post('/retry-failed', [EmployeeSyncController::class, 'retryFailedSyncs'])
         ->middleware('simple.api.auth')
         ->name('employee-sync.retry-failed');
+});
+
+// Timesheet API Routes (for subdomain system integration)
+Route::prefix('timesheets')->middleware('simple.api.auth')->group(function () {
+    // Get all timesheets with filtering and pagination
+    Route::get('/', [TimesheetController::class, 'index'])
+        ->name('api.timesheets.index');
+    
+    // Get a specific timesheet by ID
+    Route::get('/{id}', [TimesheetController::class, 'show'])
+        ->name('api.timesheets.show');
 });
