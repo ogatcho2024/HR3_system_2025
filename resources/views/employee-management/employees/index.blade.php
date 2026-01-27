@@ -135,29 +135,39 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            @foreach($employees as $user)
+                            @foreach($employees as $employee)
                             <tr class="hover:bg-gray-50">
                                 <!-- User Column -->
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0 h-10 w-10">
-                                            @if($user->photo)
-                                                <img class="h-10 w-10 rounded-full object-cover" src="{{ asset('storage/' . $user->photo) }}" alt="{{ $user->name }}">
+                                            @if($employee->user && $employee->user->photo)
+                                                <img class="h-10 w-10 rounded-full object-cover" src="{{ asset('storage/' . $employee->user->photo) }}" alt="{{ $employee->user->name ?? 'User' }}">
                                             @else
                                                 <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                                    <span class="text-sm font-medium text-gray-700">{{ substr($user->name, 0, 1) }}{{ substr($user->lastname ?? '', 0, 1) }}</span>
+                                                    <span class="text-sm font-medium text-gray-700">
+                                                        @if($employee->user)
+                                                            {{ substr($employee->user->name ?? '', 0, 1) }}{{ substr($employee->user->lastname ?? '', 0, 1) }}
+                                                        @else
+                                                            ??
+                                                        @endif
+                                                    </span>
                                                 </div>
                                             @endif
                                         </div>
                                         <div class="ml-4">
                                             <div class="text-sm font-medium text-gray-900">
-                                                {{ $user->name }} {{ $user->lastname }}
+                                                @if($employee->user)
+                                                    {{ $employee->user->name ?? '' }} {{ $employee->user->lastname ?? '' }}
+                                                @else
+                                                    <span class="text-gray-400 italic">No User Account</span>
+                                                @endif
                                             </div>
                                             <div class="text-sm text-gray-500">
-                                                {{ $user->email }}
+                                                {{ $employee->user->email ?? 'N/A' }}
                                             </div>
                                             <div class="text-xs text-gray-400">
-                                                ID: {{ $user->employee->employee_id ?? 'Not Assigned' }}
+                                                ID: {{ $employee->employee_id ?? 'Not Assigned' }}
                                             </div>
                                         </div>
                                     </div>
@@ -165,7 +175,7 @@
                                 
                                 <!-- Department Column -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    @if($user->employee && $user->employee->department)
+                                    @if($employee->department)
                                         @php
                                             $colors = [
                                                 'Information Technology' => 'bg-blue-100 text-blue-800',
@@ -177,10 +187,10 @@
                                                 'Logistics' => 'bg-orange-100 text-orange-800',
                                                 'Maintenance' => 'bg-yellow-100 text-yellow-800',
                                             ];
-                                            $colorClass = $colors[$user->employee->department] ?? 'bg-gray-100 text-gray-800';
+                                            $colorClass = $colors[$employee->department] ?? 'bg-gray-100 text-gray-800';
                                         @endphp
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $colorClass }}">
-                                            {{ $user->employee->department }}
+                                            {{ $employee->department }}
                                         </span>
                                     @else
                                         <span class="text-xs text-gray-400 italic">Not Assigned</span>
@@ -190,7 +200,7 @@
                                 <!-- Profile Status Column -->
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
-                                        @if($user->id) {{-- User exists in database --}}
+                                        @if($employee->user) {{-- User exists in database --}}
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                 <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
@@ -211,34 +221,38 @@
                                 <!-- Date Created Column -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     <div class="flex flex-col">
-                                        <span class="font-medium text-sm">{{ $user->created_at->format('M j, Y') }}</span>
-                                        <span class="text-xs text-gray-500">{{ $user->created_at->format('g:i A') }}</span>
+                                        <span class="font-medium text-sm">{{ $employee->created_at->format('M j, Y') }}</span>
+                                        <span class="text-xs text-gray-500">{{ $employee->created_at->format('g:i A') }}</span>
                                     </div>
                                 </td>
                                 
                                 <!-- User Role Column -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                        @if($user->account_type == 'Super admin') bg-purple-100 text-purple-800
-                                        @elseif($user->account_type == 'Admin') bg-red-100 text-red-800
-                                        @elseif($user->account_type == 'Staff') bg-yellow-100 text-yellow-800
-                                        @else bg-blue-100 text-blue-800
-                                        @endif">
-                                        @if($user->account_type == 'Super admin' || $user->account_type == 'Admin')
-                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
-                                            </svg>
-                                        @endif
-                                        {{ $user->account_type }}
-                                    </span>
+                                    @if($employee->user)
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                            @if($employee->user->account_type == 'Super admin') bg-purple-100 text-purple-800
+                                            @elseif($employee->user->account_type == 'Admin') bg-red-100 text-red-800
+                                            @elseif($employee->user->account_type == 'Staff') bg-yellow-100 text-yellow-800
+                                            @else bg-blue-100 text-blue-800
+                                            @endif">
+                                            @if($employee->user->account_type == 'Super admin' || $employee->user->account_type == 'Admin')
+                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+                                                </svg>
+                                            @endif
+                                            {{ $employee->user->account_type }}
+                                        </span>
+                                    @else
+                                        <span class="text-xs text-gray-400 italic">No Account</span>
+                                    @endif
                                 </td>
                                 
                                 <!-- Actions Column -->
                                 <td class="px-6 py-4 text-right text-sm font-medium">
                                     <div class="flex items-center justify-end space-x-1 min-w-max">
-                                        @if($user->id) {{-- User exists in database --}}
+                                        @if($employee->user) {{-- User exists in database --}}
                                             <!-- Edit and Delete for existing users -->
-                                            <button onclick="openEditModal({{ $user->id }}, '{{ $user->name }}', '{{ $user->lastname }}', '{{ $user->email }}', '{{ $user->phone }}', '{{ $user->position }}', '{{ $user->account_type }}', '{{ $user->photo }}')" 
+                                            <button onclick="openEditModal({{ $employee->user->id }}, '{{ $employee->user->name }}', '{{ $employee->user->lastname }}', '{{ $employee->user->email }}', '{{ $employee->user->phone }}', '{{ $employee->user->position }}', '{{ $employee->user->account_type }}', '{{ $employee->user->photo }}')" 
                                                class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                                                title="Edit User">
                                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,7 +260,7 @@
                                                 </svg>
                                                 <span class="ml-1 hidden sm:inline">Edit</span>
                                             </button>
-                                            <button onclick="deleteUser({{ $user->id }}, '{{ $user->name }} {{ $user->lastname }}')" 
+                                            <button onclick="deleteUser({{ $employee->user->id }}, '{{ $employee->user->name }} {{ $employee->user->lastname }}')" 
                                                     class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                                                     title="Delete User">
                                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,14 +269,14 @@
                                                 <span class="ml-1 hidden sm:inline">Delete</span>
                                             </button>
                                         @else
-                                            <!-- Setup Profile for incomplete users -->
-                                            <button onclick="openSetupModal()" 
+                                            <!-- Create User Account for employees without users -->
+                                            <button onclick="openCreateUserModal({{ $employee->id }})" 
                                                class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                                               title="Setup Profile">
+                                               title="Create User Account">
                                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                                 </svg>
-                                                <span class="ml-1">Setup</span>
+                                                <span class="ml-1">Create User</span>
                                             </button>
                                         @endif
                                     </div>
@@ -444,13 +458,13 @@
         // Set profile photo
         const profilePreview = document.getElementById('editProfilePreview');
         if (photo && photo !== 'null') {
-            profilePreview.src = `/storage/${photo}`;
+            profilePreview.src = `{{ url('storage') }}/${photo}`;
         } else {
             profilePreview.src = '{{ asset('images/uploadprof.png') }}';
         }
         
         // Set form action
-        document.getElementById('editUserForm').action = `/employee-management/users/${userId}`;
+        document.getElementById('editUserForm').action = `{{ url('employee-management/users') }}/${userId}`;
         
         // Show modal
         document.getElementById('editModal').classList.remove('hidden');
@@ -486,7 +500,7 @@
             // Create a form to submit the DELETE request
             const form = document.createElement('form');
             form.method = 'POST';
-            form.action = `/employee-management/users/${userToDelete}`;
+            form.action = `{{ url('employee-management/users') }}/${userToDelete}`;
             
             // Add CSRF token
             const csrfToken = document.createElement('input');

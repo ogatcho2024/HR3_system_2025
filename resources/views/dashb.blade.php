@@ -36,13 +36,13 @@
             </div>
 
             <!-- Active Leave Requests -->
-            <div class="bg-yellow-500 rounded-2xl shadow-lg p-6 text-white">
+            <div class="bg-blue-500 rounded-2xl shadow-lg p-6 text-white">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-white-100 text-sm">Pending Requests</p>
                         <p class="text-3xl font-bold">{{ $pendingRequests ?? '0' }}</p>
                     </div>
-                    <div class="p-3 bg-yellow-400 rounded-full">
+                    <div class="p-3 bg-blue-400 rounded-full">
                         <svg width="40px" height="40px" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path fill-rule="evenodd" clip-rule="evenodd" d="M15.6666 8L17.75 10.5L15.6666 8Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             <path fill-rule="evenodd" clip-rule="evenodd" d="M15.6666 13L17.75 10.5L15.6666 13Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -58,13 +58,13 @@
             </div>
 
             <!-- Today's Attendance -->
-            <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-green-100 text-sm">Attendance</p>
+                        <p class="text-blue-100 text-sm">Attendance</p>
                         <p class="text-3xl font-bold">{{ $todayAttendance ?? '0' }}</p>
                     </div>
-                    <div class="p-3 bg-green-400 rounded-full">
+                    <div class="p-3 bg-blue-400 rounded-full">
                         <svg width="40px" height="40px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" mirror-in-rtl="true">
                             <path fill="#494c4e" d="M7 11c-1.1 0-2-.9-2-2V8c0-1.1.9-2 2-2s2 .9 2 2v1c0 1.1-.9 2-2 2zm-2 6.993L9 18c.55 0 1-.45 1-1v-2c0-1.65-1.35-3-3-3s-3 1.35-3 3v2c0 .552.448.993 1 .993zM19 18h-6c-.553 0-1-.447-1-1s.447-1 1-1h6c.553 0 1 .447 1 1s-.447 1-1 1zm0-4h-6c-.553 0-1-.448-1-1s.447-1 1-1h6c.553 0 1 .448 1 1s-.447 1-1 1zm0-4h-6c-.553 0-1-.448-1-1s.447-1 1-1h6c.553 0 1 .448 1 1s-.447 1-1 1z"/>
                             <path fill="#494c4e" d="M22 2H2C.9 2 0 2.9 0 4v16c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 17.5c0 .28-.22.5-.5.5h-19c-.28 0-.5-.22-.5.5v-15c0-.28.22-.5.5-.5h19c.28 0 .5.22.5.5v15z"/>
@@ -86,18 +86,18 @@
         
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <!-- Present -->
-            <div class="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                <div class="text-2xl font-bold text-green-600">{{ $attendanceStats['present'] }}</div>
-                <div class="text-sm font-medium text-green-700">Present</div>
+            <div class="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div class="text-2xl font-bold text-blue-600">{{ $attendanceStats['present'] }}</div>
+                <div class="text-sm font-medium text-blue-700">Present</div>
                 <div class="text-xs text-gray-500 mt-1">
                     {{ $totalEmployees > 0 ? round(($attendanceStats['present'] / $totalEmployees) * 100, 1) : 0 }}%
                 </div>
             </div>
             
             <!-- Late -->
-            <div class="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
-                <div class="text-2xl font-bold text-orange-600">{{ $attendanceStats['late'] }}</div>
-                <div class="text-sm font-medium text-orange-700">Late</div>
+            <div class="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div class="text-2xl font-bold text-blue-600">{{ $attendanceStats['late'] }}</div>
+                <div class="text-sm font-medium text-blue-700">Late</div>
                 <div class="text-xs text-gray-500 mt-1">
                     {{ $totalEmployees > 0 ? round(($attendanceStats['late'] / $totalEmployees) * 100, 1) : 0 }}%
                 </div>
@@ -113,9 +113,9 @@
             </div>
             
             <!-- Absent -->
-            <div class="text-center p-4 bg-red-50 rounded-lg border border-red-200">
-                <div class="text-2xl font-bold text-red-600">{{ $attendanceStats['absent'] }}</div>
-                <div class="text-sm font-medium text-red-700">Absent</div>
+            <div class="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div class="text-2xl font-bold text-blue-600">{{ $attendanceStats['absent'] }}</div>
+                <div class="text-sm font-medium text-blue-700">Absent</div>
                 <div class="text-xs text-gray-500 mt-1">
                     {{ $totalEmployees > 0 ? round(($attendanceStats['absent'] / $totalEmployees) * 100, 1) : 0 }}%
                 </div>
@@ -144,7 +144,7 @@
             <div class="bg-gray-100 rounded-2xl shadow-lg p-6 mb-8">
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <a href="{{ route('reports.index') }}" class="flex flex-col items-center border border-gray-400 p-4 rounded-lg group">
-                <div class="p-3 bg-green-600 rounded-full mb-3 group-hover:bg-green-700">
+                <div class="p-3 bg-blue-600 rounded-full mb-3 group-hover:bg-blue-700">
                     <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 32 32" xml:space="preserve">
                         <path d="M24 7V5H4v18a4 4 0 0 0 4 4h16a4 4 0 0 0 4-4V7zm2 16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h16v16h2V9h2zM14 9H8v6h6zm-2 4h-2v-2h2zm4-4h4v2h-4zm0 4h4v2h-4zm-8 4h12v2H8zm0 4h12v2H8z" style="fill:#111918"/>
                     </svg>
@@ -153,7 +153,7 @@
             </a>
 
             <a href="{{ route('leave-management.admin-dashboard') }}" class="flex flex-col items-center border border-gray-400 p-4 group">
-                <div class="p-3 bg-yellow-600 rounded-full mb-3 group-hover:bg-yellow-700">
+                <div class="p-3 bg-blue-600 rounded-full mb-3 group-hover:bg-blue-700">
                     <svg width="30" height="30" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M15.6666 8L17.75 10.5L15.6666 8Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M15.6666 13L17.75 10.5L15.6666 13Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -169,7 +169,7 @@
             </a>
 
             <a href="{{ route('workScheduleShiftManagement') }}" class="flex flex-col items-center p-4 border border-gray-400 rounded-lg">
-                <div class="p-3 bg-indigo-600 rounded-full mb-3 group-hover:bg-indigo-800">
+                <div class="p-3 bg-blue-600 rounded-full mb-3 group-hover:bg-blue-800">
                     <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M9 20H6C3.79086 20 2 18.2091 2 16V7C2 4.79086 3.79086 3 6 3H17C19.2091 3 21 4.79086 21 7V10" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M8 2V4" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

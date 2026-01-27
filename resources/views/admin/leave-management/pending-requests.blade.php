@@ -6,6 +6,50 @@
 <div class="min-h-screen bg-gray-50">
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Success Message -->
+            @if(session('success'))
+                <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+                    <span class="block sm:inline">{{ session('success') }}</span>
+                    <span class="absolute top-0 bottom-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">
+                        <svg class="fill-current h-6 w-6 text-green-500 cursor-pointer" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <title>Close</title>
+                            <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
+                        </svg>
+                    </span>
+                </div>
+            @endif
+
+            <!-- Error Message -->
+            @if(session('error'))
+                <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <span class="block sm:inline">{{ session('error') }}</span>
+                    <span class="absolute top-0 bottom-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">
+                        <svg class="fill-current h-6 w-6 text-red-500 cursor-pointer" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <title>Close</title>
+                            <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
+                        </svg>
+                    </span>
+                </div>
+            @endif
+
+            <!-- Validation Errors -->
+            @if($errors->any())
+                <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <strong class="font-bold">Please fix the following errors:</strong>
+                    <ul class="mt-2 list-disc list-inside">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                    <span class="absolute top-0 bottom-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">
+                        <svg class="fill-current h-6 w-6 text-red-500 cursor-pointer" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <title>Close</title>
+                            <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
+                        </svg>
+                    </span>
+                </div>
+            @endif
+
             <!-- Header -->
             <div class="mb-8">
                 <div class="flex items-center justify-between">
@@ -13,9 +57,17 @@
                         <h3 class="text-3xl font-bold text-gray-900">Pending Leave Requests</h3>
                         <p class="text-gray-600 mt-1">Review and approve/reject leave requests</p>
                     </div>
-                    <div class="bg-white rounded-lg shadow px-4 py-3 text-center">
-                        <p class="text-sm text-gray-600">Total Pending</p>
-                        <p class="text-2xl font-bold text-yellow-600">{{ $pendingRequests->count() }}</p>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="showAddLeaveModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Add Leave Request
+                        </button>
+                        <div class="bg-white rounded-lg shadow px-4 py-3 text-center">
+                            <p class="text-sm text-gray-600">Total Pending</p>
+                            <p class="text-2xl font-bold text-yellow-600">{{ $pendingRequests->count() }}</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -107,8 +159,121 @@
     </div>
 </div>
 
+<!-- Add Leave Request Modal -->
+<div id="addLeaveModal" class="absolute inset-0 hidden items-center flex justify-center z-50" style="background: rgba(0, 0, 0, 0.4);">
+    <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">Add Leave Request</h3>
+        </div>
+        <form id="addLeaveForm" method="POST" action="{{ route('leave-management.requests.create') }}">
+            @csrf
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Employee Selection -->
+                    <div class="md:col-span-2">
+                        <label for="user_id" class="block text-sm font-medium text-gray-700 mb-2">
+                            Employee <span class="text-red-500">*</span>
+                        </label>
+                        <select id="user_id" name="user_id" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select an employee</option>
+                            @foreach($employees as $employee)
+                                <option value="{{ $employee->id }}">
+                                    {{ $employee->name }} {{ $employee->lastname }} 
+                                    @if($employee->employee && $employee->employee->department)
+                                        ({{ $employee->employee->department }})
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Leave Type -->
+                    <div>
+                        <label for="leave_type" class="block text-sm font-medium text-gray-700 mb-2">
+                            Leave Type <span class="text-red-500">*</span>
+                        </label>
+                        <select id="leave_type" name="leave_type" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select leave type</option>
+                            <option value="sick">Sick Leave</option>
+                            <option value="vacation">Vacation Leave</option>
+                            <option value="personal">Personal Leave</option>
+                            <option value="maternity">Maternity Leave</option>
+                            <option value="paternity">Paternity Leave</option>
+                            <option value="emergency">Emergency Leave</option>
+                            <option value="bereavement">Bereavement Leave</option>
+                            <option value="annual">Annual Leave</option>
+                            <option value="unpaid">Unpaid Leave</option>
+                        </select>
+                    </div>
+
+                    <!-- Initial Status -->
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
+                            Initial Status <span class="text-red-500">*</span>
+                        </label>
+                        <select id="status" name="status" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+
+                    <!-- Start Date -->
+                    <div>
+                        <label for="start_date" class="block text-sm font-medium text-gray-700 mb-2">
+                            Start Date <span class="text-red-500">*</span>
+                        </label>
+                        <input type="date" id="start_date" name="start_date" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- End Date -->
+                    <div>
+                        <label for="end_date" class="block text-sm font-medium text-gray-700 mb-2">
+                            End Date <span class="text-red-500">*</span>
+                        </label>
+                        <input type="date" id="end_date" name="end_date" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- Reason -->
+                    <div class="md:col-span-2">
+                        <label for="reason" class="block text-sm font-medium text-gray-700 mb-2">
+                            Reason <span class="text-red-500">*</span>
+                        </label>
+                        <textarea id="reason" name="reason" rows="4" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" 
+                            placeholder="Reason for leave request..."></textarea>
+                    </div>
+
+                    <!-- Manager Comments (optional) -->
+                    <div class="md:col-span-2">
+                        <label for="manager_comments_add" class="block text-sm font-medium text-gray-700 mb-2">
+                            Manager Comments (Optional)
+                        </label>
+                        <textarea id="manager_comments_add" name="manager_comments" rows="3" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" 
+                            placeholder="Additional comments from manager..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+                <button type="button" onclick="closeAddLeaveModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    Create Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Reject Modal -->
-<div id="rejectModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+<div id="rejectModal" class="fixed inset-0 hidden items-center justify-center z-50" style="background: rgba(0, 0, 0, 0.4);">
     <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div class="px-6 py-4 border-b border-gray-200">
             <h3 class="text-lg font-semibold text-gray-900">Reject Leave Request</h3>
@@ -136,10 +301,25 @@
 </div>
 
 <script>
+function showAddLeaveModal() {
+    const modal = document.getElementById('addLeaveModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeAddLeaveModal() {
+    const modal = document.getElementById('addLeaveModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    
+    // Clear the form
+    document.getElementById('addLeaveForm').reset();
+}
+
 function showRejectModal(requestId) {
     const modal = document.getElementById('rejectModal');
     const form = document.getElementById('rejectForm');
-    form.action = `/leave-management/requests/${requestId}/reject`;
+    form.action = '{{ url("/leave-management/requests") }}/' + requestId + '/reject';
     
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -155,10 +335,28 @@ function closeRejectModal() {
 }
 
 function showRequestDetails(requestId) {
-    window.location.href = `/leave-management/requests/${requestId}`;
+    window.location.href = '{{ url("/leave-management/requests") }}/' + requestId;
 }
 
-// Close modal when clicking outside
+// Auto-calculate minimum end date based on start date
+document.getElementById('start_date').addEventListener('change', function() {
+    const startDate = this.value;
+    const endDateInput = document.getElementById('end_date');
+    endDateInput.min = startDate;
+    
+    // Clear end date if it's before the new start date
+    if (endDateInput.value && endDateInput.value < startDate) {
+        endDateInput.value = '';
+    }
+});
+
+// Close modals when clicking outside
+document.getElementById('addLeaveModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeAddLeaveModal();
+    }
+});
+
 document.getElementById('rejectModal').addEventListener('click', function(e) {
     if (e.target === this) {
         closeRejectModal();

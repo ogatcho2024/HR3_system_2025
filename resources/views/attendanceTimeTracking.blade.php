@@ -24,14 +24,14 @@
         <!-- Statistics Cards -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <!-- Present Today -->
-            <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-md p-4 text-white">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-md p-4 text-white">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-green-100 text-lg">Present Today</p>
+                        <p class="text-blue-100 text-lg">Present Today</p>
                         <p class="text-2xl font-bold" x-text="attendanceData.todayPresent || 0"></p>
-                        <p class="text-green-200 text-xs mt-0.5">Present employees</p>
+                        <p class="text-blue-200 text-xs mt-0.5">Present employees</p>
                     </div>
-                    <div class="p-2 bg-green-400 rounded-full">
+                    <div class="p-2 bg-blue-400 rounded-full">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
@@ -40,14 +40,14 @@
             </div>
 
             <!-- Late Arrivals -->
-            <div class="bg-yellow-500 rounded-lg shadow-md p-4 text-white">
+            <div class="bg-blue-500 rounded-lg shadow-md p-4 text-white">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-white-100 text-lg">Late Arrivals</p>
+                        <p class="text-blue-100 text-lg">Late Arrivals</p>
                         <p class="text-2xl font-bold" x-text="attendanceData.todayLate || 0"></p>
-                        <p class="text-white-200 text-xs mt-0.5">Late employees</p>
+                        <p class="text-blue-200 text-xs mt-0.5">Late employees</p>
                     </div>
-                    <div class="p-2 bg-yellow-400 rounded-full">
+                    <div class="p-2 bg-blue-400 rounded-full">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
@@ -72,14 +72,14 @@
             </div>
 
             <!-- Absent Today -->
-            <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg shadow-md p-4 text-white">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-md p-4 text-white">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-red-100 text-lg">Absent Today</p>
+                        <p class="text-blue-100 text-lg">Absent Today</p>
                         <p class="text-2xl font-bold" x-text="attendanceData.todayAbsent || 0"></p>
-                        <p class="text-red-200 text-xs mt-0.5">Absent employees</p>
+                        <p class="text-blue-200 text-xs mt-0.5">Absent employees</p>
                     </div>
-                    <div class="p-2 bg-red-400 rounded-full">
+                    <div class="p-2 bg-blue-400 rounded-full">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
@@ -88,14 +88,14 @@
             </div>
 
             <!-- Overtime Today -->
-            <div class="bg-orange-500 to-orange-600 rounded-lg shadow-md p-4 text-white">
+            <div class="bg-blue-500 to-blue-600 rounded-lg shadow-md p-4 text-white">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-orange-100 text-lg">Overtime Today</p>
+                        <p class="text-blue-100 text-lg">Overtime Today</p>
                         <p class="text-2xl font-bold" x-text="attendanceData.overtimeToday || 0"></p>
-                        <p class="text-orange-200 text-xs mt-0.5">Overtime hours</p>
+                        <p class="text-blue-200 text-xs mt-0.5">Overtime hours</p>
                     </div>
-                    <div class="p-2 bg-orange-400 rounded-full">
+                    <div class="p-2 bg-blue-400 rounded-full">
                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
@@ -104,14 +104,14 @@
             </div>
 
             <!-- Total Employees -->
-            <div class="bg-purple-500 to-purple-600 rounded-lg shadow-md p-4 text-white">
+            <div class="bg-blue-500 to-blue-600 rounded-lg shadow-md p-4 text-white">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-purple-100 text-lg">Total Employees</p>
+                        <p class="text-blue-100 text-lg">Total Employees</p>
                         <p class="text-2xl font-bold" x-text="attendanceData.totalEmployees || 0"></p>
-                        <p class="text-purple-200 text-xs mt-0.5">Company workforce</p>
+                        <p class="text-blue-200 text-xs mt-0.5">Company workforce</p>
                     </div>
-                    <div class="p-2 bg-purple-400 rounded-full">
+                    <div class="p-2 bg-blue-400 rounded-full">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7 m10 0v-2c0-.656-.126-1.283-.356-1.857 M7 20H2v-2a3 3 0 015.356-1.857 M7 20v-2c0-.656.126-1.283.356-1.857 m0 0a5.002 5.002 0 019.288 0 M15 7a3 3 0 11-6 0 3 3 0 016 0 m6 3a2 2 0 11-4 0 2 2 0 014 0 M7 10a2 2 0 11-4 0 2 2 0 014 0" />
                         </svg>

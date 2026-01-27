@@ -1359,4 +1359,44 @@ class ShiftManagementController extends Controller
             return back()->with('error', 'Error rejecting shift request. Please try again.');
         }
     }
+    
+    /**
+     * Create a new shift request manually (Admin only)
+     */
+    public function createShiftRequest(Request $request)
+    {
+        $validatedData = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'request_type' => 'required|string|in:time_off,shift_change,swap',
+            'requested_date' => 'required|date',
+            'requested_start_time' => 'required|date_format:H:i',
+            'requested_end_time' => 'required|date_format:H:i',
+            'reason' => 'required|string|max:1000',
+            'status' => 'required|in:pending,approved,rejected',
+            'manager_comments' => 'nullable|string|max:1000',
+        ]);
+        
+        try {
+            $shiftRequest = ShiftRequest::create([
+                'user_id' => $validatedData['user_id'],
+                'request_type' => $validatedData['request_type'],
+                'requested_date' => $validatedData['requested_date'],
+                'requested_start_time' => $validatedData['requested_start_time'],
+                'requested_end_time' => $validatedData['requested_end_time'],
+                'reason' => $validatedData['reason'],
+                'status' => $validatedData['status'],
+                'manager_comments' => $validatedData['manager_comments'] ?? null,
+                'approved_by' => ($validatedData['status'] !== 'pending') ? auth()->id() : null,
+                'approved_at' => ($validatedData['status'] !== 'pending') ? now() : null,
+            ]);
+            
+            return redirect()->route('workScheduleShiftManagement', ['tab' => 'requests'])
+                ->with('success', 'Shift request created successfully!');
+                
+        } catch (\Exception $e) {
+            Log::error('Error creating shift request: ' . $e->getMessage());
+            return back()->with('error', 'Error creating shift request. Please try again.')
+                ->withInput();
+        }
+    }
 }

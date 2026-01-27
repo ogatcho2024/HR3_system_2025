@@ -92,7 +92,13 @@ class LeaveManagementController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(15);
         
-        return view('admin.leave-management.pending-requests', compact('pendingRequests'));
+        // Get all employees for the add leave request form
+        $employees = User::with('employee')
+            ->orderBy('name')
+            ->orderBy('lastname')
+            ->get();
+        
+        return view('admin.leave-management.pending-requests', compact('pendingRequests', 'employees'));
     }
 
     /**
@@ -155,6 +161,86 @@ class LeaveManagementController extends Controller
         ));
     }
 
+    /**
+     * Create a new leave request manually (Admin/Super Admin only).
+     */
+    public function createLeaveRequest(Request $request): RedirectResponse
+    {
+        $validatedData = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'leave_type' => 'required|string|in:sick,vacation,personal,maternity,paternity,emergency,bereavement,annual,unpaid',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'reason' => 'required|string|max:1000',
+            'status' => 'required|in:pending,approved,rejected',
+            'manager_comments' => 'nullable|string|max:1000',
+        ]);
+        
+        // Calculate days requested
+        $startDate = Carbon::parse($validatedData['start_date']);
+        $endDate = Carbon::parse($validatedData['end_date']);
+        $daysRequested = $startDate->diffInDays($endDate) + 1;
+        
+        // Create the leave request
+        $leaveRequest = LeaveRequest::create([
+            'user_id' => $validatedData['user_id'],
+            'leave_type' => $validatedData['leave_type'],
+            'start_date' => $validatedData['start_date'],
+            'end_date' => $validatedData['end_date'],
+            'days_requested' => $daysRequested,
+            'reason' => $validatedData['reason'],
+            'status' => $validatedData['status'],
+            'manager_comments' => $validatedData['manager_comments'] ?? null,
+            'approved_by' => ($validatedData['status'] !== 'pending') ? Auth::id() : null,
+            'approved_at' => ($validatedData['status'] !== 'pending') ? now() : null,
+        ]);
+        
+        // Update leave balance based on status
+        if ($validatedData['status'] === 'approved') {
+            $this->updateLeaveBalance($leaveRequest, 'approved');
+        } elseif ($validatedData['status'] === 'pending') {
+            $this->updateLeaveBalance($leaveRequest, 'pending');
+        }
+        
+        // Create notification for the employee
+        $employee = User::find($validatedData['user_id']);
+        $statusMessage = match($validatedData['status']) {
+            'approved' => 'approved',
+            'rejected' => 'rejected',
+            'pending' => 'created',
+            default => 'created'
+        };
+        
+        $notificationType = match($validatedData['status']) {
+            'approved' => 'success',
+            'rejected' => 'error',
+            'pending' => 'info',
+            default => 'info'
+        };
+        
+        $this->notificationService->create(
+            $employee,
+            'Leave Request ' . ucfirst($statusMessage),
+            "A leave request has been {$statusMessage} by " . Auth::user()->name . ' ' . Auth::user()->lastname,
+            $notificationType,
+            'leave',
+            [
+                'leave_type' => $leaveRequest->leave_type,
+                'start_date' => $leaveRequest->start_date->format('Y-m-d'),
+                'end_date' => $leaveRequest->end_date->format('Y-m-d'),
+                'days_requested' => $leaveRequest->days_requested,
+                'status' => $validatedData['status'],
+                'created_by' => Auth::user()->name . ' ' . Auth::user()->lastname,
+            ],
+            true,
+            route('employee.leave-requests'),
+            'View Leave Requests'
+        );
+        
+        return redirect()->route('leave-management.pending-requests')
+            ->with('success', 'Leave request created successfully!');
+    }
+    
     /**
      * Approve a leave request.
      */

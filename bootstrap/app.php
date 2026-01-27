@@ -5,6 +5,9 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
 return Application::configure(basePath: dirname(__DIR__))
+    ->withProviders([
+        App\Providers\AuthServiceProvider::class,
+    ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -18,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'cors' => \App\Http\Middleware\CorsMiddleware::class,
             'simple.api.auth' => \App\Http\Middleware\SimpleApiAuth::class,
             '2fa.verified' => \App\Http\Middleware\Ensure2FAVerified::class,
+            'account.type' => \App\Http\Middleware\EnsureAccountType::class,
         ]);
         
         // Add CORS middleware to API routes

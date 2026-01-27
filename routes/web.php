@@ -72,6 +72,17 @@ Route::prefix('shift-management/api')->name('shift-management.api.')->group(func
     
     // Calendar Data
     Route::get('calendar-data', [ShiftManagementController::class, 'getShiftCalendarDataApi'])->name('calendar-data');
+    
+    // Shift Request Actions
+    Route::patch('shift-requests/{id}/approve', [ShiftManagementController::class, 'approveShiftRequest'])->name('shift-requests.approve');
+    Route::patch('shift-requests/{id}/reject', [ShiftManagementController::class, 'rejectShiftRequest'])->name('shift-requests.reject');
+});
+
+// Shift Request Management Routes (Protected by auth middleware)
+Route::middleware(['auth'])->group(function () {
+    Route::prefix('shift-management')->name('shift-management.')->group(function () {
+        Route::post('/requests/create', [ShiftManagementController::class, 'createShiftRequest'])->name('requests.create');
+    });
 });
 Route::view('/employeeSelfService', 'employeeSelfService')->name('employeeSelfService');
 Route::get('/timeSheetManagement', [\App\Http\Controllers\TimesheetController::class, 'managementDashboard'])->name('timeSheetManagement');
@@ -184,6 +195,7 @@ Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->grou
         
         // Individual Request Actions
         Route::get('/requests/{leaveRequest}', [LeaveManagementController::class, 'show'])->name('requests.show');
+        Route::post('/requests/create', [LeaveManagementController::class, 'createLeaveRequest'])->name('requests.create');
         Route::post('/requests/{leaveRequest}/approve', [LeaveManagementController::class, 'approveRequest'])->name('requests.approve');
         Route::post('/requests/{leaveRequest}/reject', [LeaveManagementController::class, 'rejectRequest'])->name('requests.reject');
         
@@ -327,26 +339,32 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-// Audit Log Routes (Protected by auth and 2FA - Admin/Super Admin only)
+// Audit Log Routes (Protected by auth, 2FA, and account type RBAC)
 Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->group(function () {
     Route::prefix('audit-logs')->name('audit-logs.')->group(function () {
-        // Main audit log viewer
-        Route::get('/', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('index');
+        // View-only routes: Super Admin and Admin can access
+        Route::middleware(['account.type:Super admin,Admin'])->group(function () {
+            // Main audit log viewer
+            Route::get('/', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('index');
+            
+            // View specific audit log entry
+            Route::get('/{id}', [\App\Http\Controllers\AuditLogController::class, 'show'])->name('show');
+            
+            // Export audit logs (CSV)
+            Route::get('/export/csv', [\App\Http\Controllers\AuditLogController::class, 'export'])->name('export');
+            
+            // User activity timeline
+            Route::get('/user/{userId}/activity', [\App\Http\Controllers\AuditLogController::class, 'userActivity'])->name('user-activity');
+            
+            // Security report
+            Route::get('/security/report', [\App\Http\Controllers\AuditLogController::class, 'securityReport'])->name('security-report');
+        });
         
-        // View specific audit log entry
-        Route::get('/{id}', [\App\Http\Controllers\AuditLogController::class, 'show'])->name('show');
-        
-        // Export audit logs (CSV)
-        Route::get('/export/csv', [\App\Http\Controllers\AuditLogController::class, 'export'])->name('export');
-        
-        // User activity timeline
-        Route::get('/user/{userId}/activity', [\App\Http\Controllers\AuditLogController::class, 'userActivity'])->name('user-activity');
-        
-        // Security report
-        Route::get('/security/report', [\App\Http\Controllers\AuditLogController::class, 'securityReport'])->name('security-report');
-        
-        // Delete audit log entry (Super Admin only)
-        Route::delete('/{id}', [\App\Http\Controllers\AuditLogController::class, 'destroy'])->name('destroy');
+        // Mutating routes: Super Admin only
+        Route::middleware(['account.type:Super admin'])->group(function () {
+            // Delete audit log entry (Super Admin only)
+            Route::delete('/{id}', [\App\Http\Controllers\AuditLogController::class, 'destroy'])->name('destroy');
+        });
     });
 });
 

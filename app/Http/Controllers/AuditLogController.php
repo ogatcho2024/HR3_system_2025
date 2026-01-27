@@ -15,14 +15,6 @@ class AuditLogController extends Controller
 
     public function __construct(AuditLogService $auditLog)
     {
-        // Only allow admins and super admins
-        $this->middleware(function ($request, $next) {
-            if (!Auth::check() || !Auth::user()->isAdmin()) {
-                abort(403, 'Unauthorized access. Admin privileges required.');
-            }
-            return $next($request);
-        });
-
         $this->auditLog = $auditLog;
     }
 
@@ -31,6 +23,8 @@ class AuditLogController extends Controller
      */
     public function index(Request $request)
     {
+        // Authorization check
+        $this->authorize('viewAny', AuditLog::class);
         $query = AuditLog::with('user')->orderBy('created_at', 'desc');
 
         // Filter by category (overrides individual action_type)
@@ -110,6 +104,9 @@ class AuditLogController extends Controller
     public function show($id)
     {
         $log = AuditLog::with('user')->findOrFail($id);
+        
+        // Authorization check
+        $this->authorize('view', $log);
 
         // Log this view action
         $this->auditLog->logView('audit_logs', $id, "Viewed audit log entry #{$id}");
@@ -122,6 +119,8 @@ class AuditLogController extends Controller
      */
     public function export(Request $request)
     {
+        // Authorization check
+        $this->authorize('export', AuditLog::class);
         $query = AuditLog::with('user')->orderBy('created_at', 'desc');
 
         // Apply same filters as index
@@ -195,25 +194,18 @@ class AuditLogController extends Controller
      */
     public function destroy($id)
     {
-        // Only Super Admin can delete audit logs
-        if (!Auth::user()->isSuperAdmin()) {
-            return back()->with('error', 'Only Super Admin can delete audit logs.');
-        }
-
         $log = AuditLog::findOrFail($id);
         
-        // Log the deletion
-        $this->auditLog->log(
-            'delete',
-            "Super Admin deleted audit log entry #{$id}: {$log->description}",
-            Auth::id(),
-            'audit_logs',
-            $id,
-            $log->toArray(),
-            null
-        );
-
+        // Authorization check
+        $this->authorize('delete', $log);
+        
+        // Disable audit logging for this operation to prevent self-logging
+        AuditLogService::skipLogging();
+        
         $log->delete();
+        
+        // Re-enable audit logging for subsequent operations
+        AuditLogService::enableLogging();
 
         return back()->with('success', 'Audit log entry deleted successfully.');
     }
@@ -248,6 +240,9 @@ class AuditLogController extends Controller
      */
     public function userActivity($userId)
     {
+        // Authorization check
+        $this->authorize('viewAny', AuditLog::class);
+        
         $user = User::findOrFail($userId);
         $logs = AuditLog::where('user_id', $userId)
             ->orderBy('created_at', 'desc')
@@ -264,6 +259,8 @@ class AuditLogController extends Controller
      */
     public function securityReport(Request $request)
     {
+        // Authorization check
+        $this->authorize('viewAny', AuditLog::class);
         $days = $request->input('days', 7);
         $startDate = now()->subDays($days);
 

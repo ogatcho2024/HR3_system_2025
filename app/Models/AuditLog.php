@@ -192,6 +192,17 @@ class AuditLog extends Model
                 return false;
             }
         });
+
+        // Prevent self-logging: Do not log operations on audit_logs table itself
+        static::created(function ($model) {
+            // This event is triggered after an audit log is created
+            // No need to log the creation of an audit log
+        });
+
+        static::deleted(function ($model) {
+            // This event is triggered after an audit log is deleted
+            // No need to log the deletion of an audit log
+        });
     }
 
     /**

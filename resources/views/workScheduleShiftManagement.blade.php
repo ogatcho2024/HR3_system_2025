@@ -547,8 +547,14 @@
     <!-- Shift Requests Tab -->
     <div x-show="activeTab === 'requests'" class="space-y-6">
         <div class="bg-white rounded-lg shadow-lg">
-            <div class="px-6 py-4 border-b border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-gray-900">Pending Shift Requests</h3>
+                <button onclick="showAddShiftRequestModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Add Shift Request
+                </button>
             </div>
             
             <!-- Success/Error Messages -->
@@ -561,6 +567,18 @@
             @if(session('error'))
                 <div class="mx-6 mt-4 p-4 bg-red-100 border border-red-300 text-red-700 rounded">
                     {{ session('error') }}
+                </div>
+            @endif
+            
+            <!-- Validation Errors -->
+            @if($errors->any())
+                <div class="mx-6 mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                    <strong class="font-bold">Please fix the following errors:</strong>
+                    <ul class="mt-2 list-disc list-inside">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
                 </div>
             @endif
             <div class="p-6">
@@ -1488,6 +1506,146 @@ function shiftManagement() {
         }
     }
 }
+</script>
+
+<!-- Add Shift Request Modal -->
+<div id="addShiftRequestModal" class="fixed inset-0 hidden items-center justify-center z-50" style="background: rgba(0, 0, 0, 0.4);">
+    <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">Add Shift Request</h3>
+        </div>
+        <form id="addShiftRequestForm" method="POST" action="{{ route('shift-management.requests.create') }}">
+            @csrf
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Employee Selection -->
+                    <div class="md:col-span-2">
+                        <label for="user_id" class="block text-sm font-medium text-gray-700 mb-2">
+                            Employee <span class="text-red-500">*</span>
+                        </label>
+                        <select id="user_id" name="user_id" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select an employee</option>
+                            @foreach($availableEmployees as $employee)
+                                <option value="{{ $employee['id'] }}">
+                                    {{ $employee['name'] }} 
+                                    @if($employee['department'])
+                                        ({{ $employee['department'] }})
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Request Type -->
+                    <div>
+                        <label for="request_type" class="block text-sm font-medium text-gray-700 mb-2">
+                            Request Type <span class="text-red-500">*</span>
+                        </label>
+                        <select id="request_type" name="request_type" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select request type</option>
+                            <option value="time_off">Time Off</option>
+                            <option value="shift_change">Shift Change</option>
+                            <option value="swap">Shift Swap</option>
+                        </select>
+                    </div>
+
+                    <!-- Initial Status -->
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
+                            Initial Status <span class="text-red-500">*</span>
+                        </label>
+                        <select id="status" name="status" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+
+                    <!-- Shift Date -->
+                    <div>
+                        <label for="requested_date" class="block text-sm font-medium text-gray-700 mb-2">
+                            Shift Date <span class="text-red-500">*</span>
+                        </label>
+                        <input type="date" id="requested_date" name="requested_date" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- Start Time -->
+                    <div>
+                        <label for="requested_start_time" class="block text-sm font-medium text-gray-700 mb-2">
+                            Start Time <span class="text-red-500">*</span>
+                        </label>
+                        <input type="time" id="requested_start_time" name="requested_start_time" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- End Time -->
+                    <div>
+                        <label for="requested_end_time" class="block text-sm font-medium text-gray-700 mb-2">
+                            End Time <span class="text-red-500">*</span>
+                        </label>
+                        <input type="time" id="requested_end_time" name="requested_end_time" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- Reason -->
+                    <div class="md:col-span-2">
+                        <label for="reason" class="block text-sm font-medium text-gray-700 mb-2">
+                            Reason <span class="text-red-500">*</span>
+                        </label>
+                        <textarea id="reason" name="reason" rows="4" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" 
+                            placeholder="Reason for shift request..."></textarea>
+                    </div>
+
+                    <!-- Manager Comments (optional) -->
+                    <div class="md:col-span-2">
+                        <label for="manager_comments" class="block text-sm font-medium text-gray-700 mb-2">
+                            Manager Comments (Optional)
+                        </label>
+                        <textarea id="manager_comments" name="manager_comments" rows="3" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" 
+                            placeholder="Additional comments from manager..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+                <button type="button" onclick="closeAddShiftRequestModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white ml-2 rounded-lg hover:bg-blue-700">
+                    Create Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showAddShiftRequestModal() {
+    const modal = document.getElementById('addShiftRequestModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeAddShiftRequestModal() {
+    const modal = document.getElementById('addShiftRequestModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    
+    // Clear the form
+    document.getElementById('addShiftRequestForm').reset();
+}
+
+// Close modal when clicking outside
+document.getElementById('addShiftRequestModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeAddShiftRequestModal();
+    }
+});
 </script>
 
 @endsection

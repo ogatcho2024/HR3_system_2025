@@ -10,6 +10,34 @@ use Illuminate\Support\Facades\Request;
 class AuditLogService
 {
     /**
+     * Flag to temporarily disable audit logging.
+     */
+    protected static bool $skipLogging = false;
+
+    /**
+     * Disable audit logging for the current request.
+     */
+    public static function skipLogging(): void
+    {
+        self::$skipLogging = true;
+    }
+
+    /**
+     * Enable audit logging for the current request.
+     */
+    public static function enableLogging(): void
+    {
+        self::$skipLogging = false;
+    }
+
+    /**
+     * Check if audit logging is currently disabled.
+     */
+    public static function isLoggingSkipped(): bool
+    {
+        return self::$skipLogging;
+    }
+    /**
      * Log an audit entry.
      */
     public function log(
@@ -21,7 +49,12 @@ class AuditLogService
         ?array $oldValues = null,
         ?array $newValues = null,
         int $loginAttemptCount = 0
-    ): AuditLog {
+    ): ?AuditLog {
+        // Skip logging if flag is set or if this is an audit log operation (prevent self-logging)
+        if (self::$skipLogging || $affectedTable === 'audit_logs') {
+            return null;
+        }
+
         return AuditLog::create([
             'user_id' => $userId ?? Auth::id(),
             'action_type' => $actionType,
@@ -39,7 +72,7 @@ class AuditLogService
     /**
      * Log successful login.
      */
-    public function logLogin(?User $user = null): AuditLog
+    public function logLogin(?User $user = null): ?AuditLog
     {
         $user = $user ?? Auth::user();
         
@@ -53,7 +86,7 @@ class AuditLogService
     /**
      * Log logout.
      */
-    public function logLogout(?User $user = null): AuditLog
+    public function logLogout(?User $user = null): ?AuditLog
     {
         $user = $user ?? Auth::user();
         
@@ -67,7 +100,7 @@ class AuditLogService
     /**
      * Log failed login attempt.
      */
-    public function logFailedLogin(string $email, int $attemptCount = 1): AuditLog
+    public function logFailedLogin(string $email, int $attemptCount = 1): ?AuditLog
     {
         return $this->log(
             'failed_login',
@@ -84,7 +117,7 @@ class AuditLogService
     /**
      * Log OTP verification success.
      */
-    public function logOtpVerified(?User $user = null): AuditLog
+    public function logOtpVerified(?User $user = null): ?AuditLog
     {
         $user = $user ?? Auth::user();
         
@@ -98,7 +131,7 @@ class AuditLogService
     /**
      * Log OTP verification failure.
      */
-    public function logOtpFailed(?User $user = null, string $reason = 'Invalid OTP'): AuditLog
+    public function logOtpFailed(?User $user = null, string $reason = 'Invalid OTP'): ?AuditLog
     {
         $user = $user ?? Auth::user();
         
@@ -112,7 +145,7 @@ class AuditLogService
     /**
      * Log record creation.
      */
-    public function logCreate(string $table, int $recordId, array $newValues, string $description = null): AuditLog
+    public function logCreate(string $table, int $recordId, array $newValues, string $description = null): ?AuditLog
     {
         $description = $description ?? "Created new record in {$table}";
         
@@ -130,7 +163,7 @@ class AuditLogService
     /**
      * Log record update.
      */
-    public function logUpdate(string $table, int $recordId, array $oldValues, array $newValues, string $description = null): AuditLog
+    public function logUpdate(string $table, int $recordId, array $oldValues, array $newValues, string $description = null): ?AuditLog
     {
         $description = $description ?? "Updated record in {$table}";
         
@@ -159,7 +192,7 @@ class AuditLogService
     /**
      * Log record deletion.
      */
-    public function logDelete(string $table, int $recordId, array $oldValues, string $description = null): AuditLog
+    public function logDelete(string $table, int $recordId, array $oldValues, string $description = null): ?AuditLog
     {
         $description = $description ?? "Deleted record from {$table}";
         
@@ -177,7 +210,7 @@ class AuditLogService
     /**
      * Log record view.
      */
-    public function logView(string $table, int $recordId, string $description = null): AuditLog
+    public function logView(string $table, int $recordId, string $description = null): ?AuditLog
     {
         $description = $description ?? "Viewed record from {$table}";
         
@@ -193,7 +226,7 @@ class AuditLogService
     /**
      * Log data export.
      */
-    public function logExport(string $description, ?string $table = null): AuditLog
+    public function logExport(string $description, ?string $table = null): ?AuditLog
     {
         return $this->log(
             'export',
@@ -206,7 +239,7 @@ class AuditLogService
     /**
      * Log generic action.
      */
-    public function logOther(string $description, ?array $newValues = null): AuditLog
+    public function logOther(string $description, ?array $newValues = null): ?AuditLog
     {
         return $this->log(
             'other',
@@ -222,7 +255,7 @@ class AuditLogService
     /**
      * Log account creation.
      */
-    public function logAccountCreated(int $accountUserId, array $accountData, string $description = null): AuditLog
+    public function logAccountCreated(int $accountUserId, array $accountData, string $description = null): ?AuditLog
     {
         $description = $description ?? "Created new user account: {$accountData['name']} {$accountData['lastname']}";
         
@@ -240,7 +273,7 @@ class AuditLogService
     /**
      * Log account update.
      */
-    public function logAccountUpdated(int $accountUserId, array $oldData, array $newData, string $description = null): AuditLog
+    public function logAccountUpdated(int $accountUserId, array $oldData, array $newData, string $description = null): ?AuditLog
     {
         $description = $description ?? "Updated user account #{$accountUserId}";
         
@@ -258,7 +291,7 @@ class AuditLogService
     /**
      * Log account deletion.
      */
-    public function logAccountDeleted(int $accountUserId, array $accountData, string $description = null): AuditLog
+    public function logAccountDeleted(int $accountUserId, array $accountData, string $description = null): ?AuditLog
     {
         $description = $description ?? "Deleted user account: {$accountData['name']} {$accountData['lastname']}";
         
@@ -276,7 +309,7 @@ class AuditLogService
     /**
      * Log password change.
      */
-    public function logPasswordChanged(?User $user = null, string $description = null): AuditLog
+    public function logPasswordChanged(?User $user = null, string $description = null): ?AuditLog
     {
         $user = $user ?? Auth::user();
         $description = $description ?? "Password changed for user: {$user->name} {$user->lastname}";
@@ -293,7 +326,7 @@ class AuditLogService
     /**
      * Log email change.
      */
-    public function logEmailChanged(?User $user = null, string $oldEmail, string $newEmail): AuditLog
+    public function logEmailChanged(?User $user = null, string $oldEmail, string $newEmail): ?AuditLog
     {
         $user = $user ?? Auth::user();
         
@@ -311,7 +344,7 @@ class AuditLogService
     /**
      * Log role/account type change.
      */
-    public function logRoleChanged(int $accountUserId, string $oldRole, string $newRole, string $userName): AuditLog
+    public function logRoleChanged(int $accountUserId, string $oldRole, string $newRole, string $userName): ?AuditLog
     {
         return $this->log(
             'role_changed',

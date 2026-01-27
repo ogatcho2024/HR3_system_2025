@@ -192,7 +192,7 @@ class EmployeeManagementController extends Controller
             'lastname' => 'required|string|max:255', 
             'email' => 'required|string|email|max:255|unique:users,email',
             'phone' => 'nullable|string|max:20',
-            'account_type' => 'required|in:1,2,3',
+            'account_type' => 'required|in:Super admin,Admin,Staff,Employee',
             'password' => 'required|string|min:8|confirmed',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
         ]);
@@ -247,7 +247,7 @@ class EmployeeManagementController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
             'position' => 'nullable|string|max:255',
-            'account_type' => 'required|in:1,2,3',
+            'account_type' => 'required|in:Super admin,Admin,Staff,Employee',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
         ]);
 
