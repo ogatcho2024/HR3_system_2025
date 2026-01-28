@@ -53,4 +53,11 @@ return [
         'enabled' => env('PAYROLL_API_ENABLED', false),
     ],
 
+    'timesheet_webhook' => [
+    'url' => env('TIMESHEET_WEBHOOK_URL'),
+    'key' => env('TIMESHEET_API_KEY'),
+    ],
+
+
 ];
+

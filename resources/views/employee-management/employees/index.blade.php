@@ -15,11 +15,8 @@
                 ['label' => 'Employee Self Service Management', 'url' => route('employee-management.dashboard')],
                 ['label' => 'Profile Management', 'url' => route('employee-management.employees')]
             ]])
-        
-        <!-- Header -->
-            <div class="mb-8">
-            </div>
-
+    
+            
             <!-- Success/Error Messages -->
             @if(session('success'))
                 <div class="bg-green-50 border border-green-200 rounded-md p-4 mb-6">
@@ -103,9 +100,6 @@
                         <h2 class="text-lg font-medium text-gray-900">
                             User Profiles Management ({{ $employees->total() }})
                         </h2>
-                        <div class="text-sm text-gray-600">
-                            Manage user accounts and profile setup for system access
-                        </div>
                     </div>
                 </div>
                 
@@ -180,12 +174,12 @@
                                             $colors = [
                                                 'Information Technology' => 'bg-blue-100 text-blue-800',
                                                 'IT' => 'bg-blue-100 text-blue-800',
-                                                'Marketing' => 'bg-green-100 text-green-800',
-                                                'Finance' => 'bg-purple-100 text-purple-800',
-                                                'Human Resources' => 'bg-pink-100 text-pink-800',
-                                                'HR' => 'bg-pink-100 text-pink-800',
-                                                'Logistics' => 'bg-orange-100 text-orange-800',
-                                                'Maintenance' => 'bg-yellow-100 text-yellow-800',
+                                                'Marketing' => 'bg-blue-100 text-blue-800',
+                                                'Finance' => 'bg-blue-100 text-blue-800',
+                                                'Human Resources' => 'bg-blue-100 text-blue-800',
+                                                'HR' => 'bg-blue-100 text-blue-800',
+                                                'Logistics' => 'bg-blue-100 text-blue-800',
+                                                'Maintenance' => 'bg-blue-100 text-blue-800',
                                             ];
                                             $colorClass = $colors[$employee->department] ?? 'bg-gray-100 text-gray-800';
                                         @endphp
@@ -230,9 +224,9 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     @if($employee->user)
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                            @if($employee->user->account_type == 'Super admin') bg-purple-100 text-purple-800
-                                            @elseif($employee->user->account_type == 'Admin') bg-red-100 text-red-800
-                                            @elseif($employee->user->account_type == 'Staff') bg-yellow-100 text-yellow-800
+                                            @if($employee->user->account_type == 'Super admin') bg-blue-100 text-blue-800
+                                            @elseif($employee->user->account_type == 'Admin') bg-blue-100 text-blue-800
+                                            @elseif($employee->user->account_type == 'Staff') bg-blue-100 text-blue-800
                                             @else bg-blue-100 text-blue-800
                                             @endif">
                                             @if($employee->user->account_type == 'Super admin' || $employee->user->account_type == 'Admin')
@@ -261,7 +255,7 @@
                                                 <span class="ml-1 hidden sm:inline">Edit</span>
                                             </button>
                                             <button onclick="deleteUser({{ $employee->user->id }}, '{{ $employee->user->name }} {{ $employee->user->lastname }}')" 
-                                                    class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                                                    class="inline-flex items-center px-2 py-1 border ml-2 border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                                                     title="Delete User">
                                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

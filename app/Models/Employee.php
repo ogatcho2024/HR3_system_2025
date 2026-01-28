@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Str;
 
 class Employee extends Model
 {
@@ -15,6 +16,7 @@ class Employee extends Model
         'user_id',
         'employee_id',
         'external_id',
+        'qr_secret',
         'department',
         'position',
         'manager_name',
@@ -119,5 +121,57 @@ class Employee extends Model
     public function getLastSyncAttribute()
     {
         return $this->syncRecord ? $this->syncRecord->last_sync_at : null;
+    }
+    
+    /**
+     * Get the QR attendance logs for this employee.
+     */
+    public function qrAttendanceLogs(): HasMany
+    {
+        return $this->hasMany(QrAttendanceLog::class);
+    }
+    
+    /**
+     * Boot the model and add event listeners.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        // Auto-generate qr_secret when creating a new employee
+        static::creating(function ($employee) {
+            if (empty($employee->qr_secret)) {
+                $employee->qr_secret = hash('sha256', Str::random(32));
+            }
+        });
+    }
+    
+    /**
+     * Generate today's daily QR token.
+     * Uses HMAC-SHA256 with the employee's secret and current date.
+     * 
+     * @return string
+     */
+    public function generateDailyQrToken(): string
+    {
+        if (empty($this->qr_secret)) {
+            $this->qr_secret = hash('sha256', Str::random(32));
+            $this->save();
+        }
+        
+        $currentDate = date('Y-m-d');
+        return hash_hmac('sha256', $currentDate, $this->qr_secret);
+    }
+    
+    /**
+     * Verify if a given token matches today's expected token.
+     * 
+     * @param string $token
+     * @return bool
+     */
+    public function verifyDailyToken(string $token): bool
+    {
+        $expectedToken = $this->generateDailyQrToken();
+        return hash_equals($expectedToken, $token);
     }
 }

@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'admin.or.staff' => \App\Http\Middleware\AdminOrStaffMiddleware::class,
             'login.throttle' => \App\Http\Middleware\LoginThrottleMiddleware::class,
             'cors' => \App\Http\Middleware\CorsMiddleware::class,
             'simple.api.auth' => \App\Http\Middleware\SimpleApiAuth::class,

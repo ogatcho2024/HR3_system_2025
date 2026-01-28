@@ -58,12 +58,6 @@
                         <p class="text-gray-600 mt-1">Review and approve/reject leave requests</p>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <button onclick="showAddLeaveModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                            </svg>
-                            Add Leave Request
-                        </button>
                         <div class="bg-white rounded-lg shadow px-4 py-3 text-center">
                             <p class="text-sm text-gray-600">Total Pending</p>
                             <p class="text-2xl font-bold text-yellow-600">{{ $pendingRequests->count() }}</p>
@@ -74,9 +68,23 @@
 
             <!-- Pending Requests Table -->
             <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-900">Requests Awaiting Action</h3>
+                <div class="flex px-6 py-4 border-b border-gray-200 items-center">
+                    <h3 class="text-lg font-medium text-gray-900">
+                        Requests Awaiting Action
+                    </h3>
+
+                    <button
+                        onclick="showAddLeaveModal()"
+                        class="ml-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center">
+                        
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Add Leave Request
+                    </button>
                 </div>
+
+                
                 
                 @if($pendingRequests->count() > 0)
                     <div class="overflow-x-auto">
@@ -126,7 +134,7 @@
                                             </button>
                                             <form action="{{ route('leave-management.requests.approve', $request) }}" method="POST" class="inline">
                                                 @csrf
-                                                <button type="submit" class="text-green-600 hover:text-green-900" onclick="return confirm('Are you sure you want to approve this request?')">
+                                                <button type="submit" class="ml-2 text-green-600 hover:text-green-900" onclick="return confirm('Are you sure you want to approve this request?')">
                                                     Approve
                                                 </button>
                                             </form>

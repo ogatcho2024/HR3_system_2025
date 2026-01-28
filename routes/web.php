@@ -27,6 +27,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ShiftManagementController;
 use App\Http\Controllers\EmployeeDashboardController;
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\QrAttendanceController;
 
 
 Route::get('/', [LandingController::class, 'main'])->name('landing');
@@ -151,6 +152,17 @@ Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->grou
         Route::get('/timesheets/{timesheet}/edit', [EmployeeSelfServiceController::class, 'editTimesheet'])->name('timesheets.edit');
         Route::put('/timesheets/{timesheet}', [EmployeeSelfServiceController::class, 'updateTimesheet'])->name('timesheets.update');
         Route::patch('/timesheets/{timesheet}/submit', [EmployeeSelfServiceController::class, 'submitTimesheet'])->name('timesheets.submit');
+        
+        // QR Code Attendance
+        Route::get('/qr-today', [QrAttendanceController::class, 'showEmployeeQr'])->name('qr-today');
+    });
+});
+
+// QR Attendance Scanner Routes (Protected by auth, 2FA, and Admin/Staff middleware)
+Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class, \App\Http\Middleware\AdminOrStaffMiddleware::class])->group(function () {
+    Route::prefix('attendance')->name('attendance.')->group(function () {
+        Route::get('/scanner', [QrAttendanceController::class, 'showScanner'])->name('scanner');
+        Route::post('/qr-scan', [QrAttendanceController::class, 'processScan'])->name('qr-scan');
     });
 });
 
@@ -795,3 +807,4 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/api/shift-requests/{id}/reject', [ShiftManagementController::class, 'rejectShiftRequest'])->name('api.shift-requests.reject');
     });
 });
+
