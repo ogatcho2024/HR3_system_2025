@@ -9,7 +9,7 @@
 @endpush
 
 @section('content')
-<div class="py-2 px-3 md:p-6 max-w-full bg-gray-300" x-data="attendanceTracker()" x-init="init()"
+<div class="py-2 px-3 md:p-6 max-w-full bg-gray-300" x-data="attendanceTracker()" x-init="init()">
     <!-- Header -->
     <div class="mb-8">
         <div class="flex items-center justify-between">
@@ -1526,9 +1526,8 @@
 </div>
 
 <!-- QR Scanner Modal -->
-<div x-show="showQrScanner" 
-     x-cloak 
-     class="fixed inset-0 z-50 overflow-y-auto" 
+<div id="qrScannerModal"
+     x-show="showQrScanner" 
      x-data="qrScannerModal()"
      @keydown.escape.window="closeScanner()"
      x-transition:enter="transition ease-out duration-300"
@@ -1536,21 +1535,23 @@
      x-transition:enter-end="opacity-100"
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="opacity-100"
-     x-transition:leave-end="opacity-0">
+     x-transition:leave-end="opacity-0"
+     style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; overflow-y: auto; display: none;"
+     :style="showQrScanner ? 'display: block !important;' : 'display: none;'">
     <!-- Background Overlay -->
-    <div class="fixed inset-0 bg-black bg-opacity-75 transition-opacity"></div>
+    <div @click="handleOverlayClick($event)" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.75); transition: opacity 0.3s; z-index: 9998;"></div>
     
-    <!-- Modal Container -->
-    <div class="flex min-h-screen items-center justify-center p-4" @click="handleOverlayClick($event)">
-        <div class="relative bg-white rounded-xl shadow-2xl max-w-3xl w-full" @click.stop>
+    <!-- Modal Container - Constrained Height -->
+    <div style="display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 1rem; position: relative; z-index: 9999;">
+        <div style="position: relative; background-color: white; border-radius: 0.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); max-width: 48rem; width: 100%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;" @click.stop>
             <!-- Header -->
-            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4 rounded-t-xl">
-                <div class="flex items-center justify-between">
+            <div style="background: linear-gradient(to right, #9333ea, #4f46e5); padding: 1.5rem; border-top-left-radius: 0.75rem; border-top-right-radius: 0.75rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
-                        <h3 class="text-xl font-bold text-white">QR Code Scanner</h3>
-                        <p class="text-purple-100 text-sm mt-1">Scan employee QR code for attendance</p>
+                        <h3 style="font-size: 1.25rem; font-weight: 700; color: white; margin: 0;">QR Code Scanner</h3>
+                        <p style="color: #e9d5ff; font-size: 0.875rem; margin-top: 0.25rem;">Scan employee QR code for attendance</p>
                     </div>
-                    <button @click="closeScanner()" class="text-white hover:text-gray-200 transition hover:scale-110" title="Close (ESC)">
+                    <button @click="closeScanner()" style="color: white; background: none; border: none; cursor: pointer; font-size: 1.5rem; padding: 0.5rem; transition: all 0.2s;" title="Close (ESC)" onmouseover="this.style.color='#d1d5db'" onmouseout="this.style.color='white'">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
@@ -1558,10 +1559,10 @@
                 </div>
             </div>
             
-            <!-- Content -->
-            <div class="p-6">
+            <!-- Content - Scrollable -->
+            <div style="padding: 1.5rem; overflow-y: auto; flex: 1 1 auto;">
                 <!-- Camera Selection -->
-                <div class="mb-4" x-show="!isScanning">
+                <div style="margin-bottom: 1rem;" x-show="!isScanning">
                     <label for="qrCameraSelect" class="block text-sm font-medium text-gray-700 mb-2">
                         <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
@@ -1576,15 +1577,17 @@
                     </select>
                 </div>
                 
-                <!-- Scanner Container -->
-                <div id="qr-reader" class="rounded-lg border-4 border-gray-200 overflow-hidden bg-black" style="width: 100%; min-height: 300px; max-height: 400px;"></div>
+                <!-- Scanner Container - Full View -->
+                <div id="qr-reader" class="rounded-lg border-4 border-gray-200 overflow-hidden bg-black" style="width: 100%; height: 400px;"></div>
                 
                 <!-- Controls -->
-                <div class="mt-4 flex gap-3 justify-center">
+                <div style="margin-top: 1rem; display: flex; gap: 0.75rem; justify-content: center;">
                     <button 
                         x-show="!isScanning" 
                         @click="startScanning()" 
-                        class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow transition flex items-center gap-2"
+                        style="padding: 0.5rem 1.5rem; background-color: #16a34a; color: white; font-weight: 600; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;"
+                        onmouseover="this.style.backgroundColor='#15803d'" 
+                        onmouseout="this.style.backgroundColor='#16a34a'"
                         :disabled="scanProcessing">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
@@ -1595,7 +1598,9 @@
                     <button 
                         x-show="isScanning" 
                         @click="stopScanning()" 
-                        class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow transition flex items-center gap-2">
+                        style="padding: 0.5rem 1.5rem; background-color: #dc2626; color: white; font-weight: 600; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;"
+                        onmouseover="this.style.backgroundColor='#b91c1c'" 
+                        onmouseout="this.style.backgroundColor='#dc2626'">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
@@ -1686,14 +1691,28 @@ function attendanceTracker() {
             console.log('[Attendance] Opening QR Scanner modal');
             this.showQrScanner = true;
             
-            // Wait for modal to render, then initialize cameras
+            // FORCE modal visible with direct DOM manipulation
             this.$nextTick(() => {
+                const modalEl = document.getElementById('qrScannerModal');
+                if (modalEl) {
+                    console.log('[Attendance] Force showing modal with inline styles');
+                    modalEl.style.display = 'block';
+                    modalEl.style.visibility = 'visible';
+                    modalEl.style.opacity = '1';
+                    modalEl.style.position = 'fixed';
+                    modalEl.style.top = '0';
+                    modalEl.style.left = '0';
+                    modalEl.style.right = '0';
+                    modalEl.style.bottom = '0';
+                    modalEl.style.zIndex = '9999';
+                }
+                
                 setTimeout(() => {
                     console.log('[Attendance] Triggering camera initialization');
                     // Find the QR scanner component and initialize cameras
-                    const modalEl = document.querySelector('[x-data*="qrScannerModal"]');
-                    if (modalEl && modalEl._x_dataStack && modalEl._x_dataStack[0]) {
-                        modalEl._x_dataStack[0].initializeCameras();
+                    const scanner = document.querySelector('[x-data*="qrScannerModal"]');
+                    if (scanner && scanner._x_dataStack && scanner._x_dataStack[0]) {
+                        scanner._x_dataStack[0].initializeCameras();
                     }
                 }, 300);
             });
@@ -2481,9 +2500,31 @@ function attendanceTracker() {
             async initializeCameras() {
                 console.log('[QR Scanner] ======== initializeCameras() called ========');
                 
-                // Prevent multiple initializations
+                // If cameras already initialized, just update the status and return
                 if (this.camerasInitialized) {
-                    console.log('[QR Scanner] Cameras already initialized, skipping');
+                    console.log('[QR Scanner] Cameras already initialized, updating UI...');
+                    
+                    // Update status message
+                    if (this.availableCameras && this.availableCameras.length > 0) {
+                        this.showStatus(`✓ Found ${this.availableCameras.length} camera(s). Click "Start Scanner" to begin`, 'success');
+                    }
+                    
+                    // Make sure dropdown is populated
+                    const select = document.getElementById('qrCameraSelect');
+                    if (select && select.options.length <= 1) {
+                        console.log('[QR Scanner] Repopulating camera dropdown...');
+                        select.innerHTML = '';
+                        this.availableCameras.forEach((device, index) => {
+                            const option = document.createElement('option');
+                            option.value = device.id;
+                            option.text = device.label || `Camera ${index + 1}`;
+                            select.appendChild(option);
+                        });
+                        if (this.selectedCameraId) {
+                            select.value = this.selectedCameraId;
+                        }
+                    }
+                    
                     return;
                 }
                 
@@ -2827,21 +2868,29 @@ function attendanceTracker() {
             
             handleOverlayClick(event) {
                 // Close only if clicking directly on the overlay (not the modal content)
-                if (event.target === event.currentTarget) {
-                    console.log('[QR Scanner] Overlay clicked, closing...');
-                    this.closeScanner();
-                }
+                console.log('[QR Scanner] Overlay click detected on:', event.target);
+                this.closeScanner();
             },
             
             closeScanner() {
                 console.log('[QR Scanner] ======== closeScanner() called ========');
                 
-                // Stop scanning first
-                this.stopScanning();
+                // Stop scanner and release camera FIRST
+                if (this.isScanning || this.html5QrCode) {
+                    console.log('[QR Scanner] Stopping scanner before close...');
+                    this.stopScanning();
+                }
                 
-                // Reset state
+                // Reset all state
                 this.statusMessage = '';
                 this.scanProcessing = false;
+                this.isScanning = false;
+                
+                // Force hide modal immediately
+                const modalEl = document.getElementById('qrScannerModal');
+                if (modalEl) {
+                    modalEl.style.display = 'none';
+                }
                 
                 // Find parent component and close modal
                 const parentEl = document.querySelector('[x-data*="attendanceTracker"]');
