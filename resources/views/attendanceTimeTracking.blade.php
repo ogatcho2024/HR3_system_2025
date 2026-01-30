@@ -483,12 +483,18 @@
                             class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                 </div>
-                <div class="flex space-x-3" x-data="manualEntry()" x-cloak>
-                    <a href="{{ route('attendance.manual-entry') }}" class="flex items-center p-2 bg-blue ml-auto rounded-lg hover:bg-blue-100 transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex flex-wrap gap-3">
+                    <button @click="openQrScanner()" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-lg transition-all shadow-md">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                        </svg>
+                        <span class="whitespace-nowrap">Scan QR Code</span>
+                    </button>
+                    <a href="{{ route('attendance.manual-entry') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-md border border-blue-600 hover:border-blue-700" style="display: inline-flex !important; visibility: visible !important; opacity: 1 !important; background-color: #2563eb !important; color: #ffffff !important; position: relative !important; z-index: 10 !important;">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #ffffff !important;">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
-                        <span>Manual Entry</span>
+                        <span class="whitespace-nowrap" style="color: #ffffff !important;">Manual Entry</span>
                     </a>
                 </div>
             </div>
@@ -1519,6 +1525,128 @@
     </div>
 </div>
 
+<!-- QR Scanner Modal -->
+<div x-show="showQrScanner" 
+     x-cloak 
+     class="fixed inset-0 z-50 overflow-y-auto" 
+     x-data="qrScannerModal()"
+     @keydown.escape.window="closeScanner()"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+    <!-- Background Overlay -->
+    <div class="fixed inset-0 bg-black bg-opacity-75 transition-opacity"></div>
+    
+    <!-- Modal Container -->
+    <div class="flex min-h-screen items-center justify-center p-4" @click="handleOverlayClick($event)">
+        <div class="relative bg-white rounded-xl shadow-2xl max-w-3xl w-full" @click.stop>
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4 rounded-t-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-white">QR Code Scanner</h3>
+                        <p class="text-purple-100 text-sm mt-1">Scan employee QR code for attendance</p>
+                    </div>
+                    <button @click="closeScanner()" class="text-white hover:text-gray-200 transition hover:scale-110" title="Close (ESC)">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Content -->
+            <div class="p-6">
+                <!-- Camera Selection -->
+                <div class="mb-4" x-show="!isScanning">
+                    <label for="qrCameraSelect" class="block text-sm font-medium text-gray-700 mb-2">
+                        <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Select Camera
+                    </label>
+                    <select id="qrCameraSelect" 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            @change="onCameraChange()">
+                        <option value="">Loading cameras...</option>
+                    </select>
+                </div>
+                
+                <!-- Scanner Container -->
+                <div id="qr-reader" class="rounded-lg border-4 border-gray-200 overflow-hidden bg-black" style="width: 100%; min-height: 300px; max-height: 400px;"></div>
+                
+                <!-- Controls -->
+                <div class="mt-4 flex gap-3 justify-center">
+                    <button 
+                        x-show="!isScanning" 
+                        @click="startScanning()" 
+                        class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow transition flex items-center gap-2"
+                        :disabled="scanProcessing">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Start Scanner
+                    </button>
+                    <button 
+                        x-show="isScanning" 
+                        @click="stopScanning()" 
+                        class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow transition flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                        </svg>
+                        Stop Scanner
+                    </button>
+                </div>
+                
+                <!-- Status Messages -->
+                <div x-show="statusMessage" x-transition class="mt-4 p-4 rounded-lg" :class="{
+                    'bg-green-50 border border-green-200 text-green-800': statusType === 'success',
+                    'bg-red-50 border border-red-200 text-red-800': statusType === 'error',
+                    'bg-blue-50 border border-blue-200 text-blue-800': statusType === 'info',
+                    'bg-yellow-50 border border-yellow-200 text-yellow-800': statusType === 'warning'
+                }">
+                    <p class="text-sm font-medium" x-text="statusMessage"></p>
+                </div>
+                
+                <!-- HTTPS Warning -->
+                <div x-show="!isHttps && !isLocalhost" class="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                    <div class="flex">
+                        <svg class="h-5 w-5 text-yellow-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700"><strong>HTTPS Required:</strong> Camera access requires a secure connection. Please use HTTPS or access from localhost.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Instructions -->
+                <div class="mt-4 bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+                    <div class="flex">
+                        <svg class="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                <strong>How to use:</strong> Click "Start Scanner" and allow camera access. Position the employee's QR code within the frame. The system will automatically detect and process it.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include html5-qrcode library -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
 <script>
 // API Base URL - uses Laravel's url() helper to work in any environment
 const ATTENDANCE_API_BASE_URL = '{{ url("") }}';
@@ -1551,6 +1679,39 @@ function attendanceTracker() {
         bulkActionProcessing: false,
         bulkActionMessage: '',
         bulkActionSuccess: false,
+        showQrScanner: false,
+        
+        // QR Scanner methods
+        openQrScanner() {
+            console.log('[Attendance] Opening QR Scanner modal');
+            this.showQrScanner = true;
+            
+            // Wait for modal to render, then initialize cameras
+            this.$nextTick(() => {
+                setTimeout(() => {
+                    console.log('[Attendance] Triggering camera initialization');
+                    // Find the QR scanner component and initialize cameras
+                    const modalEl = document.querySelector('[x-data*="qrScannerModal"]');
+                    if (modalEl && modalEl._x_dataStack && modalEl._x_dataStack[0]) {
+                        modalEl._x_dataStack[0].initializeCameras();
+                    }
+                }, 300);
+            });
+        },
+        
+        closeQrScanner() {
+            console.log('[Attendance] Closing QR Scanner modal');
+            this.showQrScanner = false;
+            
+            // Stop camera when closing modal
+            const modalEl = document.querySelector('[x-data*="qrScannerModal"]');
+            if (modalEl && modalEl._x_dataStack && modalEl._x_dataStack[0]) {
+                const scanner = modalEl._x_dataStack[0];
+                if (scanner.isScanning) {
+                    scanner.stopScanning();
+                }
+            }
+        },
         
         // Computed properties
         get filteredEmployees() {
@@ -2287,6 +2448,409 @@ function attendanceTracker() {
                         link.remove();
                     })
                     .catch(err => console.error("PDF export failed:", err));
+            }
+        }
+    }
+
+    // QR Scanner Modal Component
+    function qrScannerModal() {
+        return {
+            isScanning: false,
+            scanProcessing: false,
+            statusMessage: '',
+            statusType: 'info', // info, success, error, warning
+            html5QrCode: null,
+            lastScanTime: 0,
+            scanCooldown: 3000, // 3 seconds debounce
+            isHttps: window.location.protocol === 'https:',
+            isLocalhost: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
+            camerasInitialized: false,
+            selectedCameraId: null,
+            availableCameras: [],
+            
+            init() {
+                console.log('[QR Scanner] ========================================');
+                console.log('[QR Scanner] Modal component initialized');
+                console.log('[QR Scanner] Protocol:', window.location.protocol);
+                console.log('[QR Scanner] Hostname:', window.location.hostname);
+                console.log('[QR Scanner] Html5Qrcode available:', typeof Html5Qrcode !== 'undefined');
+                console.log('[QR Scanner] ========================================');
+                // DO NOT call initializeCameras() here - wait until modal is actually opened
+            },
+            
+            async initializeCameras() {
+                console.log('[QR Scanner] ======== initializeCameras() called ========');
+                
+                // Prevent multiple initializations
+                if (this.camerasInitialized) {
+                    console.log('[QR Scanner] Cameras already initialized, skipping');
+                    return;
+                }
+                
+                try {
+                    // Check HTTPS requirement
+                    if (!this.isHttps && !this.isLocalhost) {
+                        console.error('[QR Scanner] ✗ HTTPS required (current protocol:', window.location.protocol + ')');
+                        this.showStatus('⚠️ HTTPS is required for camera access. Please use https:// or localhost', 'error');
+                        const select = document.getElementById('qrCameraSelect');
+                        if (select) select.innerHTML = '<option value="">HTTPS Required</option>';
+                        return;
+                    }
+                    
+                    // Check if Html5Qrcode is available
+                    if (typeof Html5Qrcode === 'undefined') {
+                        console.error('[QR Scanner] ✗ Html5Qrcode library not loaded');
+                        this.showStatus('QR library not loaded. Please refresh the page.', 'error');
+                        return;
+                    }
+                    console.log('[QR Scanner] ✓ Html5Qrcode library loaded');
+                    
+                    // Request camera permission and get devices
+                    console.log('[QR Scanner] Requesting camera devices...');
+                    const devices = await Html5Qrcode.getCameras();
+                    console.log('[QR Scanner] ✓ Found', devices.length, 'camera device(s):', devices);
+                    
+                    this.availableCameras = devices;
+                    
+                    const select = document.getElementById('qrCameraSelect');
+                    
+                    if (!select) {
+                        console.error('[QR Scanner] ✗ Camera select element #qrCameraSelect not found in DOM');
+                        return;
+                    }
+                    
+                    select.innerHTML = '';
+                    
+                    if (devices && devices.length > 0) {
+                        devices.forEach((device, index) => {
+                            const option = document.createElement('option');
+                            option.value = device.id;
+                            option.text = device.label || `Camera ${index + 1}`;
+                            select.appendChild(option);
+                        });
+                        
+                        // Auto-select first camera
+                        this.selectedCameraId = devices[0].id;
+                        select.value = this.selectedCameraId;
+                        
+                        console.log(`[QR Scanner] ✓ Successfully loaded ${devices.length} camera(s)`);
+                        console.log('[QR Scanner] ✓ Auto-selected camera:', this.selectedCameraId);
+                        this.showStatus(`✓ Found ${devices.length} camera(s). Click "Start Scanner" to begin`, 'success');
+                        this.camerasInitialized = true;
+                    } else {
+                        select.innerHTML = '<option value="">No cameras found</option>';
+                        console.warn('[QR Scanner] ⚠️ No cameras detected');
+                        this.showStatus('⚠️ No cameras detected. Please check device permissions.', 'warning');
+                    }
+                } catch (error) {
+                    console.error('[QR Scanner] ✗ Error during camera initialization:', error);
+                    console.error('[QR Scanner] Error name:', error.name);
+                    console.error('[QR Scanner] Error message:', error.message);
+                    
+                    if (error.name === 'NotAllowedError' || error.message.includes('Permission denied')) {
+                        this.showStatus('❌ Camera permission denied. Please allow camera access in your browser settings.', 'error');
+                    } else if (error.name === 'NotFoundError') {
+                        this.showStatus('❌ No camera found. Please connect a camera device.', 'error');
+                    } else if (error.name === 'NotReadableError') {
+                        this.showStatus('❌ Camera is in use by another application.', 'error');
+                    } else {
+                        this.showStatus('❌ Camera error: ' + error.message, 'error');
+                    }
+                }
+            },
+            
+            onCameraChange() {
+                const select = document.getElementById('qrCameraSelect');
+                if (select) {
+                    this.selectedCameraId = select.value;
+                    console.log('[QR Scanner] Camera selection changed to:', this.selectedCameraId);
+                }
+            },
+            
+            async startScanning() {
+                console.log('[QR Scanner] ======== START SCANNING clicked ========');
+                
+                const cameraId = this.selectedCameraId || document.getElementById('qrCameraSelect')?.value;
+                console.log('[QR Scanner] Selected camera ID:', cameraId);
+                
+                if (!cameraId) {
+                    console.warn('[QR Scanner] ⚠️ No camera selected');
+                    this.showStatus('⚠️ Please select a camera first', 'warning');
+                    return;
+                }
+                
+                if (!this.isHttps && !this.isLocalhost) {
+                    console.error('[QR Scanner] ✗ HTTPS required (not localhost)');
+                    this.showStatus('❌ HTTPS is required for camera access (except on localhost)', 'error');
+                    return;
+                }
+                
+                // Prevent starting if already scanning
+                if (this.isScanning) {
+                    console.warn('[QR Scanner] ⚠️ Already scanning');
+                    return;
+                }
+                
+                try {
+                    console.log('[QR Scanner] Creating Html5Qrcode instance for element #qr-reader...');
+                    
+                    // Stop any existing scanner first
+                    if (this.html5QrCode) {
+                        console.log('[QR Scanner] Cleaning up existing scanner instance...');
+                        try {
+                            await this.html5QrCode.stop();
+                            this.html5QrCode.clear();
+                        } catch (e) {
+                            console.log('[QR Scanner] Cleanup error (expected):', e.message);
+                        }
+                    }
+                    
+                    // Create new scanner instance - STORE IN WINDOW to prevent garbage collection
+                    this.html5QrCode = new Html5Qrcode('qr-reader');
+                    window.__qrScannerInstance = this.html5QrCode; // Prevent garbage collection
+                    console.log('[QR Scanner] ✓ Html5Qrcode instance created');
+                    
+                    console.log('[QR Scanner] Starting camera stream with config:', {
+                        cameraId,
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 }
+                    });
+                    
+                    await this.html5QrCode.start(
+                        cameraId,
+                        {
+                            fps: 10,
+                            qrbox: { width: 250, height: 250 },
+                            aspectRatio: 1.0
+                        },
+                        (decodedText, decodedResult) => {
+                            console.log('[QR Scanner] 📷 QR Code detected!');
+                            this.onScanSuccess(decodedText, decodedResult);
+                        },
+                        (errorMessage) => {
+                            // Ignore scan errors - they're normal when no QR is visible
+                            // console.log('[QR Scanner] Scan frame error (normal):', errorMessage);
+                        }
+                    );
+                    
+                    this.isScanning = true;
+                    console.log('[QR Scanner] ✓✓✓ Camera started successfully! Scanning active.');
+                    this.showStatus('✓ Scanner active - Ready to scan QR codes', 'success');
+                } catch (error) {
+                    console.error('[QR Scanner] ✗✗✗ Error starting scanner:', error);
+                    console.error('[QR Scanner] Error name:', error.name);
+                    console.error('[QR Scanner] Error message:', error.message);
+                    console.error('[QR Scanner] Error stack:', error.stack);
+                    
+                    this.isScanning = false;
+                    
+                    if (error.name === 'NotAllowedError' || error.message.includes('Permission denied')) {
+                        this.showStatus('❌ Camera permission denied. Click the camera icon in your browser address bar to allow access.', 'error');
+                    } else if (error.name === 'NotReadableError' || error.message.includes('already in use')) {
+                        this.showStatus('❌ Camera is in use by another application. Please close other apps using the camera.', 'error');
+                    } else if (error.name === 'NotFoundError' || error.message.includes('not found')) {
+                        this.showStatus('❌ Camera not found. Please connect a camera and refresh.', 'error');
+                    } else if (error.message.includes('Could not start video source')) {
+                        this.showStatus('❌ Camera access failed. Try refreshing the page or restarting your browser.', 'error');
+                    } else {
+                        this.showStatus('❌ Failed to start scanner: ' + error.message, 'error');
+                    }
+                    
+                    // Clean up failed instance
+                    if (this.html5QrCode) {
+                        try {
+                            this.html5QrCode.clear();
+                        } catch (e) {}
+                        this.html5QrCode = null;
+                        window.__qrScannerInstance = null;
+                    }
+                }
+            },
+            
+            async stopScanning() {
+                console.log('[QR Scanner] ======== STOP SCANNING called ========');
+                
+                if (this.html5QrCode) {
+                    try {
+                        console.log('[QR Scanner] Stopping camera stream...');
+                        await this.html5QrCode.stop();
+                        console.log('[QR Scanner] ✓ Camera stream stopped');
+                        
+                        console.log('[QR Scanner] Clearing scanner instance...');
+                        this.html5QrCode.clear();
+                        this.html5QrCode = null;
+                        window.__qrScannerInstance = null;
+                        console.log('[QR Scanner] ✓ Scanner instance cleared');
+                        
+                        this.isScanning = false;
+                        
+                        console.log('[QR Scanner] ✓ Scanner stopped successfully');
+                        this.showStatus('Scanner stopped', 'info');
+                    } catch (error) {
+                        console.error('[QR Scanner] ✗ Error stopping scanner:', error);
+                        // Force cleanup even on error
+                        this.isScanning = false;
+                        if (this.html5QrCode) {
+                            try { this.html5QrCode.clear(); } catch (e) {}
+                            this.html5QrCode = null;
+                            window.__qrScannerInstance = null;
+                        }
+                    }
+                } else {
+                    console.log('[QR Scanner] No scanner instance to stop');
+                    this.isScanning = false;
+                }
+            },
+            
+            async onScanSuccess(decodedText, decodedResult) {
+                const now = Date.now();
+                
+                console.log('[QR Scanner] 📷 QR Code scanned successfully!');
+                console.log('[QR Scanner] Decoded text:', decodedText);
+                
+                // Debounce - prevent rapid scanning
+                if (now - this.lastScanTime < this.scanCooldown) {
+                    console.log('[QR Scanner] ⏱️ Scan cooldown active, ignoring scan');
+                    return;
+                }
+                this.lastScanTime = now;
+                
+                // Pause scanning during processing
+                if (this.scanProcessing) {
+                    console.log('[QR Scanner] ⏱️ Already processing a scan, ignoring');
+                    return;
+                }
+                
+                // Parse QR code data
+                try {
+                    const qrData = JSON.parse(decodedText);
+                    console.log('[QR Scanner] ✓ QR data parsed:', qrData);
+                    
+                    // Brief visual feedback
+                    this.showStatus('📷 QR Code detected! Processing...', 'info');
+                    
+                    await this.processAttendance(qrData);
+                } catch (error) {
+                    console.error('[QR Scanner] ✗ Invalid QR code format:', error);
+                    this.showStatus('❌ Invalid QR code format. Please use a valid attendance QR code.', 'error');
+                }
+            },
+            
+            async processAttendance(qrData) {
+                this.scanProcessing = true;
+                console.log('[QR Scanner] 📤 Sending attendance data to server:', qrData);
+                this.showStatus('⏳ Processing attendance...', 'info');
+                
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                    
+                    if (!csrfToken) {
+                        console.error('[QR Scanner] ✗ CSRF token not found');
+                        this.showStatus('❌ Security token missing. Please refresh the page.', 'error');
+                        this.scanProcessing = false;
+                        return;
+                    }
+                    
+                    console.log('[QR Scanner] Posting to:', '{{ route("attendance.qr-scan") }}');
+                    const response = await fetch('{{ route("attendance.qr-scan") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(qrData)
+                    });
+                    
+                    console.log('[QR Scanner] Server response status:', response.status);
+                    const result = await response.json();
+                    console.log('[QR Scanner] Server response data:', result);
+                    
+                    if (response.ok && result.success) {
+                        console.log('[QR Scanner] ✓✓✓ Attendance logged successfully!');
+                        this.showStatus(`✅ SUCCESS: ${result.employee.name} - ${result.type} at ${result.time}`, 'success');
+                        
+                        // Play success sound if available
+                        try {
+                            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjGH0fPTgjMGHm7A7+OZUQ4PVK3n77BfHAc9ktjyz4A1Bjh+zPLaizsIGGS56+SdUhENTqfk8bllHgY7k9fzzYQ5CDiEzvPajj0HHnHD8OKcUg8NVq/o8bBfHAc/ltjyz4I1BjiBzfLajj0HH3HE8OSZUQ8PVK7o8bJiHQZAl9nz0II3Bjh+zPLajj0HHnDD8OScUhANVa/o8bFfHAc/ltjyz4I1BjiBzPLajj0HHnHE8OWbURAPVK7n8bBfHAc/ltjyz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bFfHQdAl9jzz4M1BjiBzPLajj0HHnDD8OWbURAPVK7n8bBfHAc/ltjzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQdAl9jzz4M1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQc/ltjyz4I1BjiBzPLajj0HHnHE8OWbURAPVK7o8bBfHQdAl9jzz4M1BjiBzPLajj0HHnDD8OWbURAPVK7n8bBfHAc/ltjzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7n8bBfHAc/ltjzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQdAl9jzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQdAl9jzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQc/ltjyz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQdAl9jzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7n8bBfHAc/ltjzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7n8bBfHAc/ltjzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQdAl9jzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQdAl9jzz4M1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQdAl9jzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQdAl9jzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQdAl9jzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQdAl9jzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQdAl9jzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQdAl9jzz4I1BjiBzPLajj0HHnDD8OWbURAPVK7o8bBfHQc=');
+                            audio.play().catch(e => console.log('[QR Scanner] Audio play failed (expected):', e.message));
+                        } catch (e) {}
+                        
+                        // Reload attendance data in parent component
+                        setTimeout(() => {
+                            const parentEl = document.querySelector('[x-data*="attendanceTracker"]');
+                            if (parentEl && parentEl._x_dataStack && parentEl._x_dataStack[0]) {
+                                console.log('[QR Scanner] Triggering parent data reload...');
+                                const tracker = parentEl._x_dataStack[0];
+                                if (tracker.activeTab === 'clockinout') {
+                                    tracker.loadSimpleCounts();
+                                    tracker.loadClockInOutEmployeeData();
+                                } else {
+                                    tracker.loadOverviewData();
+                                    tracker.loadRecentActivities();
+                                }
+                            }
+                        }, 1000);
+                    } else {
+                        console.error('[QR Scanner] ✗ Scan failed:', result.message);
+                        this.showStatus('❌ ' + (result.message || 'Scan failed'), 'error');
+                    }
+                } catch (error) {
+                    console.error('[QR Scanner] ✗ Network/processing error:', error);
+                    this.showStatus('❌ Network error - please check connection and try again', 'error');
+                } finally {
+                    this.scanProcessing = false;
+                }
+            },
+            
+            showStatus(message, type) {
+                console.log(`[QR Scanner] Status [${type.toUpperCase()}]:`, message);
+                this.statusMessage = message;
+                this.statusType = type;
+                
+                // Auto-hide success/info messages after 7 seconds
+                if (type === 'success') {
+                    setTimeout(() => {
+                        if (this.statusMessage === message) {
+                            this.statusMessage = '';
+                        }
+                    }, 7000);
+                } else if (type === 'info') {
+                    setTimeout(() => {
+                        if (this.statusMessage === message) {
+                            this.statusMessage = '';
+                        }
+                    }, 5000);
+                }
+                // Errors and warnings stay until dismissed
+            },
+            
+            handleOverlayClick(event) {
+                // Close only if clicking directly on the overlay (not the modal content)
+                if (event.target === event.currentTarget) {
+                    console.log('[QR Scanner] Overlay clicked, closing...');
+                    this.closeScanner();
+                }
+            },
+            
+            closeScanner() {
+                console.log('[QR Scanner] ======== closeScanner() called ========');
+                
+                // Stop scanning first
+                this.stopScanning();
+                
+                // Reset state
+                this.statusMessage = '';
+                this.scanProcessing = false;
+                
+                // Find parent component and close modal
+                const parentEl = document.querySelector('[x-data*="attendanceTracker"]');
+                if (parentEl && parentEl._x_dataStack && parentEl._x_dataStack[0]) {
+                    console.log('[QR Scanner] Closing modal via parent...');
+                    parentEl._x_dataStack[0].closeQrScanner();
+                } else {
+                    console.error('[QR Scanner] ✗ Could not find parent attendanceTracker component');
+                }
             }
         }
     }

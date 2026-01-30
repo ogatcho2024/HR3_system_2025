@@ -16,6 +16,7 @@ $allowedOrigins = [
     'http://localhost',
     'http://localhost:3000',
     'http://localhost:8080',
+    'https://hr3.cranecali-ms.com',
     // Add your production/staging domains here
     // 'https://your-subdomain.example.com'
 ];

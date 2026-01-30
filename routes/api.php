@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\SimpleAuthController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\EmployeeSyncController;
 use App\Http\Controllers\Api\TimesheetController;
+use App\Http\Controllers\TimesheetPayrollSyncController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -97,4 +98,27 @@ Route::prefix('timesheets')->middleware('simple.api.auth')->group(function () {
     // Get a specific timesheet by ID
     Route::get('/{id}', [TimesheetController::class, 'show'])
         ->name('api.timesheets.show');
+});
+
+// Payroll Sync API Routes (for sending timesheets to external payroll system)
+Route::prefix('payroll-sync')->middleware(['auth', 'simple.api.auth'])->group(function () {
+    // Send single timesheet to payroll (synchronous)
+    Route::post('/send/{timesheetId}', [TimesheetPayrollSyncController::class, 'sendTimesheet'])
+        ->name('api.payroll-sync.send');
+    
+    // Queue single timesheet for async sending
+    Route::post('/queue/{timesheetId}', [TimesheetPayrollSyncController::class, 'queueTimesheet'])
+        ->name('api.payroll-sync.queue');
+    
+    // Send multiple timesheets (synchronous batch)
+    Route::post('/send-batch', [TimesheetPayrollSyncController::class, 'sendBatch'])
+        ->name('api.payroll-sync.send-batch');
+    
+    // Queue multiple timesheets (async batch)
+    Route::post('/queue-batch', [TimesheetPayrollSyncController::class, 'queueBatch'])
+        ->name('api.payroll-sync.queue-batch');
+    
+    // Auto-sync timesheets by date range
+    Route::post('/sync-date-range', [TimesheetPayrollSyncController::class, 'autoSyncDateRange'])
+        ->name('api.payroll-sync.date-range');
 });

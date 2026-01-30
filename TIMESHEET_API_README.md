@@ -52,7 +52,7 @@ $allowedOrigins = [
     'http://localhost',
     'http://localhost:3000',
     'http://localhost:8080',
-    'https://your-production-domain.com', // Add your domains here
+    'https://hr3.cranecali-ms.com', // Add your domains here
 ];
 ```
 
