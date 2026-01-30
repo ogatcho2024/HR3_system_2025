@@ -27,6 +27,10 @@ class Timesheet extends Model
         'submitted_at',
         'approved_at',
         'approved_by',
+        'sent_to_payroll',
+        'payroll_sent_at',
+        'payroll_send_attempts',
+        'payroll_last_error',
     ];
 
     protected $casts = [
@@ -39,6 +43,9 @@ class Timesheet extends Model
         'overtime_hours' => 'decimal:2',
         'submitted_at' => 'datetime',
         'approved_at' => 'datetime',
+        'sent_to_payroll' => 'boolean',
+        'payroll_sent_at' => 'datetime',
+        'payroll_send_attempts' => 'integer',
     ];
 
     /**

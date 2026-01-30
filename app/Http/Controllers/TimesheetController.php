@@ -12,6 +12,8 @@ use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use App\Jobs\SendTimesheetToPayrollJob;
 
 class TimesheetController extends Controller
 {
@@ -290,11 +292,38 @@ class TimesheetController extends Controller
                 return back()->with('error', 'Only submitted timesheets can be approved');
             }
             
+            // Store old status before updating
+            $oldStatus = $timesheet->status;
+            
             $timesheet->update([
                 'status' => 'approved',
                 'approved_at' => now(),
                 'approved_by' => Auth::id() ?? 1
             ]);
+            
+            Log::info('[Timesheet] Timesheet approved', [
+                'timesheet_id' => $timesheet->id,
+                'old_status' => $oldStatus,
+                'new_status' => 'approved',
+                'approved_by' => Auth::id() ?? 1,
+            ]);
+            
+            // ============================================================
+            // REAL-TIME PAYROLL SYNC: Dispatch job immediately
+            // ============================================================
+            if ($oldStatus !== 'approved' && !$timesheet->sent_to_payroll) {
+                Log::info('[Timesheet] Dispatching payroll sync job', [
+                    'timesheet_id' => $timesheet->id,
+                ]);
+                
+                // Dispatch the job to the queue (non-blocking)
+                SendTimesheetToPayrollJob::dispatch($timesheet->id);
+            } else {
+                Log::info('[Timesheet] Skipping payroll sync - already sent', [
+                    'timesheet_id' => $timesheet->id,
+                    'payroll_sent_at' => $timesheet->payroll_sent_at,
+                ]);
+            }
             
             return back()->with('success', 'Timesheet approved successfully!');
             
@@ -342,6 +371,12 @@ class TimesheetController extends Controller
                 ], 422);
             }
             
+            // Fetch timesheets that will be updated (submitted status only)
+            $timesheetsToApprove = Timesheet::whereIn('id', $timesheetIds)
+                ->where('status', 'submitted')
+                ->get();
+            
+            // Update status to approved
             $updated = Timesheet::whereIn('id', $timesheetIds)
                 ->where('status', 'submitted')
                 ->update([
@@ -349,11 +384,35 @@ class TimesheetController extends Controller
                     'approved_at' => now(),
                     'approved_by' => Auth::id() ?? 1
                 ]);
+            
+            // ============================================================
+            // REAL-TIME PAYROLL SYNC: Dispatch jobs for each approved timesheet
+            // ============================================================
+            $syncedCount = 0;
+            foreach ($timesheetsToApprove as $timesheet) {
+                // Refresh to get updated status
+                $timesheet->refresh();
+                
+                if (!$timesheet->sent_to_payroll) {
+                    SendTimesheetToPayrollJob::dispatch($timesheet->id);
+                    $syncedCount++;
+                    
+                    Log::info('[Timesheet] Bulk approve - dispatched payroll sync', [
+                        'timesheet_id' => $timesheet->id,
+                    ]);
+                }
+            }
+            
+            Log::info('[Timesheet] Bulk approval completed', [
+                'approved_count' => $updated,
+                'synced_count' => $syncedCount,
+            ]);
                 
             return response()->json([
                 'success' => true,
-                'message' => "Successfully approved {$updated} timesheets",
-                'approved_count' => $updated
+                'message' => "Successfully approved {$updated} timesheets. {$syncedCount} queued for payroll sync.",
+                'approved_count' => $updated,
+                'synced_count' => $syncedCount
             ]);
             
         } catch (\Exception $e) {
