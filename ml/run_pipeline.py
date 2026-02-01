@@ -29,14 +29,20 @@ def main():
         else:
             py = "python3"
 
+    def script_path(name):
+        path = os.path.join("ml", name)
+        if not sys.platform.startswith("win"):
+            path = path.replace("\\", "/")
+        return path
+
     if not args.skip_export:
-        run(f"{py} ml\\export_dataset.py", repo_root)
+        run(f"{py} {script_path('export_dataset.py')}", repo_root)
     if not args.skip_train_approval:
-        run(f"{py} ml\\train_approval_model.py", repo_root)
+        run(f"{py} {script_path('train_approval_model.py')}", repo_root)
     if not args.skip_train_demand:
-        run(f"{py} ml\\train_demand_model.py", repo_root)
+        run(f"{py} {script_path('train_demand_model.py')}", repo_root)
     if not args.skip_predict:
-        run(f"{py} ml\\generate_predictions.py", repo_root)
+        run(f"{py} {script_path('generate_predictions.py')}", repo_root)
 
     print("\nPipeline completed.")
 
