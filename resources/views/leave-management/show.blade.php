@@ -35,6 +35,26 @@
                     </div>
                 </div>
 
+                <!-- ML Suggestion -->
+                <div class="px-6 py-6 border-b border-gray-200">
+                    <h4 class="text-lg font-semibold text-gray-900 mb-2">ML Suggestion</h4>
+                    @if($approvalPrediction)
+                        <div class="flex items-center justify-between bg-gray-50 rounded-lg p-4">
+                            <div>
+                                <p class="text-sm text-gray-500">Predicted Decision</p>
+                                <p class="text-base font-semibold text-gray-900">{{ $approvalPrediction->predicted_label }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-500">Confidence</p>
+                                <p class="text-base font-semibold text-gray-900">{{ number_format($approvalPrediction->predicted_probability * 100, 1) }}%</p>
+                                <p class="text-xs text-gray-500">Model {{ $approvalPrediction->model_version }}</p>
+                            </div>
+                        </div>
+                    @else
+                        <p class="text-sm text-gray-600">Pending prediction – run offline job.</p>
+                    @endif
+                </div>
+
                 <!-- Employee Information -->
                 <div class="px-6 py-6 border-b border-gray-200">
                     <h4 class="text-lg font-semibold text-gray-900 mb-4">Employee Information</h4>

@@ -84,6 +84,28 @@
                     </div>
                 </div>
 
+                <div class="bg-white rounded-lg shadow p-6 mb-8">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Next 7-Day Leave Demand (ML Forecast)</p>
+                            @if($latestDemandForecast)
+                                <p class="text-2xl font-semibold text-indigo-600">{{ $latestDemandForecast->predicted_count }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {{ $latestDemandForecast->forecast_start_date->format('M j, Y') }} - {{ $latestDemandForecast->forecast_end_date->format('M j, Y') }}
+                                    · Model {{ $latestDemandForecast->model_version }}
+                                </p>
+                            @else
+                                <p class="text-sm text-gray-500">Pending prediction – run offline job.</p>
+                            @endif
+                        </div>
+                        <div class="p-3 bg-indigo-100 rounded-full">
+                            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8M11 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-6"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     <!-- Today's Leave Requests -->
                     <div class="bg-white rounded-lg shadow-lg">

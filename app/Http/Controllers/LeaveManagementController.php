@@ -9,6 +9,7 @@ use App\Models\LeavePolicy;
 use App\Models\User;
 use App\Models\Employee;
 use App\Models\Department;
+use App\Models\LeaveDemandPrediction;
 use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -87,7 +88,7 @@ class LeaveManagementController extends Controller
      */
     public function pendingRequests(): View
     {
-        $pendingRequests = LeaveRequest::with(['user', 'user.employee'])
+        $pendingRequests = LeaveRequest::with(['user', 'user.employee', 'approvalPrediction'])
             ->pending()
             ->orderBy('created_at', 'desc')
             ->paginate(15);
@@ -361,8 +362,9 @@ class LeaveManagementController extends Controller
     public function show(LeaveRequest $leaveRequest): View
     {
         $leaveRequest->load(['user', 'user.employee', 'approvedBy']);
-        
-        return view('leave-management.show', compact('leaveRequest'));
+        $approvalPrediction = $leaveRequest->approvalPrediction;
+
+        return view('leave-management.show', compact('leaveRequest', 'approvalPrediction'));
     }
 
     /**
@@ -481,6 +483,8 @@ class LeaveManagementController extends Controller
                 (object) ['department' => 'Operations', 'total_requests' => 15, 'pending' => 3, 'approved' => 10, 'rejected' => 2],
             ]);
         }
+
+        $latestDemandForecast = LeaveDemandPrediction::orderByDesc('predicted_at')->first();
         
         return view('admin.leave-management.dashboard', compact(
             'totalRequests',
@@ -492,7 +496,8 @@ class LeaveManagementController extends Controller
             'departmentCoverage',
             'leaveUtilization',
             'monthlyTrends',
-            'departmentStats'
+            'departmentStats',
+            'latestDemandForecast'
         ));
     }
     

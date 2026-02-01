@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Carbon\Carbon;
 
@@ -45,6 +46,14 @@ class LeaveRequest extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
+     * Latest ML approval prediction for this request.
+     */
+    public function approvalPrediction(): HasOne
+    {
+        return $this->hasOne(LeaveApprovalPrediction::class)->latestOfMany('predicted_at');
     }
 
     /**
