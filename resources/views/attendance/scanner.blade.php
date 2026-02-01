@@ -30,7 +30,34 @@
                         </div>
 
                         <!-- Scanner Container -->
-                        <div id="reader" class="rounded-lg border-4 border-gray-200 overflow-hidden bg-black" style="width: 100%; max-width: 600px; margin: 0 auto;"></div>
+                        <div id="reader" class="rounded-lg border-4 border-gray-200 overflow-hidden bg-black" style="width: 100%; max-width: 600px; height: 450px; margin: 0 auto; position: relative;"></div>
+                        
+                        <!-- Add CSS to ensure QR box visibility -->
+                        <style>
+                            /* Ensure QR scanning box is visible */
+                            #reader video {
+                                width: 100% !important;
+                                height: 100% !important;
+                                object-fit: cover !important;
+                            }
+                            
+                            /* Make sure the scanning region outline is visible */
+                            #reader canvas {
+                                position: absolute !important;
+                                top: 0 !important;
+                                left: 0 !important;
+                            }
+                            
+                            /* Highlight the QR shaded region */
+                            #reader__dashboard_section_csr {
+                                opacity: 0.5 !important;
+                            }
+                            
+                            /* Ensure the scan region box is visible */
+                            #qr-shaded-region {
+                                border: 2px solid rgba(0, 255, 0, 0.5) !important;
+                            }
+                        </style>
 
                         <!-- Scanner Controls -->
                         <div class="mt-4 flex gap-3 justify-center">
@@ -161,7 +188,19 @@
                 cameraId,
                 {
                     fps: 10,
-                    qrbox: { width: 250, height: 250 }
+                    qrbox: function(viewfinderWidth, viewfinderHeight) {
+                        // Calculate QR box size - 70% of the smaller dimension
+                        let minEdgePercentage = 0.7;
+                        let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+                        let qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+                        return {
+                            width: qrboxSize,
+                            height: qrboxSize
+                        };
+                    },
+                    aspectRatio: 1.0,
+                    showTorchButtonIfSupported: true,
+                    formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
                 },
                 onScanSuccess,
                 onScanError

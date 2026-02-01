@@ -1578,7 +1578,34 @@
                 </div>
                 
                 <!-- Scanner Container - Full View -->
-                <div id="qr-reader" class="rounded-lg border-4 border-gray-200 overflow-hidden bg-black" style="width: 100%; height: 400px;"></div>
+                <div id="qr-reader" class="rounded-lg border-4 border-gray-200 overflow-hidden bg-black" style="width: 100%; height: 400px; position: relative;"></div>
+                
+                <!-- Add CSS to ensure QR box visibility -->
+                <style>
+                    /* Ensure QR scanning box is visible */
+                    #qr-reader video {
+                        width: 100% !important;
+                        height: 100% !important;
+                        object-fit: cover !important;
+                    }
+                    
+                    /* Make sure the scanning region outline is visible */
+                    #qr-reader canvas {
+                        position: absolute !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                    }
+                    
+                    /* Highlight the QR shaded region */
+                    #qr-reader__dashboard_section_csr {
+                        opacity: 0.5 !important;
+                    }
+                    
+                    /* Ensure the scan region box is visible */
+                    #qr-shaded-region {
+                        border: 2px solid rgba(0, 255, 0, 0.5) !important;
+                    }
+                </style>
                 
                 <!-- Controls -->
                 <div style="margin-top: 1rem; display: flex; gap: 0.75rem; justify-content: center;">
@@ -2661,8 +2688,20 @@ function attendanceTracker() {
                         cameraId,
                         {
                             fps: 10,
-                            qrbox: { width: 250, height: 250 },
-                            aspectRatio: 1.0
+                            qrbox: function(viewfinderWidth, viewfinderHeight) {
+                                // Calculate QR box size - 70% of the smaller dimension
+                                let minEdgePercentage = 0.7;
+                                let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+                                let qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+                                return {
+                                    width: qrboxSize,
+                                    height: qrboxSize
+                                };
+                            },
+                            aspectRatio: 1.0,
+                            // Force showing the scan region
+                            showTorchButtonIfSupported: true,
+                            formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
                         },
                         (decodedText, decodedResult) => {
                             console.log('[QR Scanner] 📷 QR Code detected!');

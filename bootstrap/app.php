@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'simple.api.auth' => \App\Http\Middleware\SimpleApiAuth::class,
             '2fa.verified' => \App\Http\Middleware\Ensure2FAVerified::class,
             'account.type' => \App\Http\Middleware\EnsureAccountType::class,
+            'webhook.signature' => \App\Http\Middleware\WebhookSignatureMiddleware::class,
         ]);
         
         // Add CORS middleware to API routes

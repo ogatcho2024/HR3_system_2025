@@ -122,3 +122,26 @@ Route::prefix('payroll-sync')->middleware(['auth', 'simple.api.auth'])->group(fu
     Route::post('/sync-date-range', [TimesheetPayrollSyncController::class, 'autoSyncDateRange'])
         ->name('api.payroll-sync.date-range');
 });
+
+// User Sync API Routes (for receiving user data from admin.cranecali-ms.com)
+Route::prefix('user-sync')->group(function () {
+    // Webhook endpoint for receiving single user data (secured with signature verification)
+    Route::post('/webhook', [App\Http\Controllers\Api\UserSyncController::class, 'receiveUserData'])
+        ->middleware('webhook.signature')
+        ->name('user-sync.webhook');
+    
+    // Batch sync endpoint for multiple users (secured with signature verification)
+    Route::post('/batch', [App\Http\Controllers\Api\UserSyncController::class, 'batchSync'])
+        ->middleware('webhook.signature')
+        ->name('user-sync.batch');
+    
+    // Get sync status for monitoring (requires admin authentication)
+    Route::get('/status', [App\Http\Controllers\Api\UserSyncController::class, 'getSyncStatus'])
+        ->middleware('simple.api.auth')
+        ->name('user-sync.status');
+    
+    // Retry failed syncs (requires admin authentication)
+    Route::post('/retry-failed', [App\Http\Controllers\Api\UserSyncController::class, 'retryFailedSyncs'])
+        ->middleware('simple.api.auth')
+        ->name('user-sync.retry-failed');
+});

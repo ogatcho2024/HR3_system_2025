@@ -65,6 +65,12 @@ class QrAttendanceController extends Controller
      */
     public function processScan(Request $request): JsonResponse
     {
+        // Log incoming request for debugging
+        \Log::info('QR Scan Request', [
+            'data' => $request->all(),
+            'ip' => $request->ip(),
+        ]);
+
         // Validate request
         $validated = $request->validate([
             'token' => 'required|string',
@@ -78,6 +84,10 @@ class QrAttendanceController extends Controller
             $today = Carbon::today()->format('Y-m-d');
 
             if ($scannedDate !== $today) {
+                \Log::warning('QR code date mismatch', [
+                    'scanned_date' => $scannedDate,
+                    'today' => $today,
+                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'QR code is not valid for today. Please generate a new QR code.',
@@ -87,11 +97,20 @@ class QrAttendanceController extends Controller
             // Find employee
             $employee = Employee::find($validated['emp_id']);
             if (!$employee) {
+                \Log::error('Employee not found', [
+                    'emp_id' => $validated['emp_id'],
+                    'total_employees' => Employee::count(),
+                ]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'Employee not found.',
+                    'message' => "Employee not found with ID: {$validated['emp_id']}. Please verify your employee record exists in the system.",
                 ], 404);
             }
+            
+            \Log::info('Employee found', [
+                'emp_id' => $employee->id,
+                'name' => $employee->user->name ?? 'N/A',
+            ]);
 
             // Verify token
             if (!$employee->verifyDailyToken($validated['token'])) {

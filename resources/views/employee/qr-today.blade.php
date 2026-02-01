@@ -43,6 +43,10 @@
                                     <span class="text-sm font-medium text-gray-900">{{ $employee->employee_id }}</span>
                                 </div>
                                 <div class="flex justify-between">
+                                    <span class="text-sm text-gray-600">Internal ID:</span>
+                                    <span class="text-sm font-medium text-gray-900">{{ $employee->id }}</span>
+                                </div>
+                                <div class="flex justify-between">
                                     <span class="text-sm text-gray-600">Department:</span>
                                     <span class="text-sm font-medium text-gray-900">{{ $employee->department ?? 'N/A' }}</span>
                                 </div>
@@ -145,6 +149,10 @@
     // QR Code payload from server
     const qrPayload = {!! json_encode($qrPayload) !!};
     
+    // Debug: Log QR payload to console
+    console.log('QR Code Payload:', qrPayload);
+    console.log('Parsed Payload:', JSON.parse(qrPayload));
+    
     // Generate QR Code
     function generateQRCode() {
         // Clear existing QR code
@@ -159,6 +167,8 @@
             colorLight: '#ffffff',
             correctLevel: QRCode.CorrectLevel.H
         });
+        
+        console.log('QR Code generated successfully');
     }
     
     // Generate QR code on page load
