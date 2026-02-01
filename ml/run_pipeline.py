@@ -21,7 +21,13 @@ def main():
     args = parser.parse_args()
 
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    py = args.python or "py -3.12"
+    if args.python:
+        py = args.python
+    else:
+        if sys.platform.startswith("win"):
+            py = "py -3.12"
+        else:
+            py = "python3"
 
     if not args.skip_export:
         run(f"{py} ml\\export_dataset.py", repo_root)
