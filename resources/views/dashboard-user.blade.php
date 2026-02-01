@@ -67,19 +67,20 @@ footer {
     bottom: 0 !important;
     height: 100vh !important;
     z-index: 999 !important;
-    position: fixed;
+    position: fixed !important;
     left: 0;
     top: 0;
+    width: 250px !important;
+    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
 }
 
 /* Mobile: Hide sidebar by default */
 @media (max-width: 1023px) {
     .main-sidebar {
         transform: translateX(-100%);
-        transition: transform 0.3s ease-in-out;
     }
     
-    /* Show sidebar when not collapsed */
+    /* Show sidebar when not collapsed on mobile */
     body:not(.sidebar-collapse) .main-sidebar {
         transform: translateX(0);
     }
@@ -97,15 +98,20 @@ footer {
     }
 }
 
-/* Desktop: Sidebar always visible */
+/* Desktop: Sidebar collapse behavior */
 @media (min-width: 1024px) {
     .main-sidebar {
-        transform: translateX(0);
+        transform: translateX(0) !important;
+    }
+    
+    /* Desktop: Collapse sidebar to icon-only mode */
+    body.sidebar-collapse .main-sidebar {
+        width: 4.5rem !important;
     }
     
     /* Desktop: adjust content margin when sidebar is collapsed */
     body.sidebar-collapse #app-content {
-        margin-left: 4.5rem;
+        margin-left: 4.5rem !important;
     }
 }
 
@@ -124,42 +130,52 @@ main {
     min-height: 0; /* Allow flex items to shrink */
 }
 
-/* Collapsed sidebar: tighter spacing for nav items */
-.sidebar-collapse .nav-sidebar > .nav-item {
-    margin-bottom: 2px !important;
+/* Collapsed sidebar: Desktop icon-only mode */
+@media (min-width: 1024px) {
+    .sidebar-collapse .nav-sidebar > .nav-item {
+        margin-bottom: 2px !important;
+    }
+
+    .sidebar-collapse .nav-sidebar > .nav-item > .nav-link {
+        padding: 0.5rem !important;
+        min-height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* Adjust icon container in collapsed state */
+    .sidebar-collapse .nav-icon {
+        width: 24px !important;
+        height: 24px !important;
+        margin-right: 0 !important;
+    }
+
+    /* Hide text when collapsed */
+    .sidebar-collapse .nav-text {
+        display: none !important;
+    }
+
+    /* User panel adjustments when collapsed */
+    .sidebar-collapse .user-panel .info {
+        display: none !important;
+    }
+    
+    .sidebar-collapse .user-panel .image {
+        margin: 0 auto !important;
+    }
+    
+    /* Hide brand text when collapsed */
+    .sidebar-collapse .brand-link .logo-xl {
+        display: none !important;
+    }
+    
+    .sidebar-collapse .brand-link .logo-xs {
+        display: block !important;
+    }
 }
 
-.sidebar-collapse .nav-sidebar > .nav-item > .nav-link {
-    padding: 0.25rem 0.75rem !important;
-    min-height: 35px !important;
-}
-
-/* Adjust icon container in collapsed state */
-.sidebar-collapse .nav-icon {
-    width: 20px !important;
-    height: 20px !important;
-    margin-right: 17 !important;
-}
-
-/* Hide text and center icons when collapsed */
-.sidebar-collapse .nav-text {
-    display: none !important;
-}
-
-.sidebar-collapse .nav-link {
-    justify-content: center !important;
-}
-
-/* User panel adjustments when collapsed */
-.sidebar-collapse .user-panel {
-    text-align: center;
-}
-
-.sidebar-collapse .user-panel .info {
-    display: none !important;
-}
-
-/* Re-enable click events but disable hover styling */
+/* Re-enable click events */
 body.sidebar-collapse .main-sidebar .nav-sidebar .nav-item .nav-link {
     pointer-events: auto !important;
 }
@@ -169,8 +185,8 @@ body.sidebar-collapse .main-sidebar .nav-sidebar .nav-item .nav-link {
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <!-- Bootstrap 4 -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
-<!-- AdminLTE App -->
-<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/js/adminlte.min.js"></script>
+<!-- AdminLTE App - DISABLED to prevent conflicts -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/js/adminlte.min.js"></script> -->
 <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
 <script>
     function displayPhilippineTime() {
@@ -201,20 +217,52 @@ body.sidebar-collapse .main-sidebar .nav-sidebar .nav-item .nav-link {
     // Display time immediately
     displayPhilippineTime();
 
-    // Toggle sidebar
+    // ===== SIDEBAR TOGGLE SYSTEM =====
+    // Custom implementation without AdminLTE conflicts
     document.addEventListener('DOMContentLoaded', function() {
-        const sidebarToggle = document.querySelector('[data-widget="pushmenu"]');
+        console.log('🚀 Initializing Sidebar Toggle System');
         
-        // Mobile: Start with sidebar collapsed (hidden)
-        if (window.innerWidth < 1024) {
-            document.body.classList.add('sidebar-collapse');
+        const sidebarToggle = document.querySelector('[data-widget="pushmenu"]');
+        const sidebar = document.querySelector('.main-sidebar');
+        const appContent = document.querySelector('#app-content');
+        
+        // Debug: Check if elements exist
+        console.log('Sidebar Toggle Button:', sidebarToggle);
+        console.log('Sidebar Element:', sidebar);
+        console.log('App Content:', appContent);
+        
+        // Initialize: Mobile starts collapsed, Desktop starts open
+        function initializeSidebar() {
+            if (window.innerWidth < 1024) {
+                document.body.classList.add('sidebar-collapse');
+                console.log('📱 Mobile mode: Sidebar hidden');
+            } else {
+                document.body.classList.remove('sidebar-collapse');
+                console.log('🖥️ Desktop mode: Sidebar visible');
+            }
         }
         
+        initializeSidebar();
+        
+        // Toggle sidebar on button click
         if (sidebarToggle) {
             sidebarToggle.addEventListener('click', function(e) {
                 e.preventDefault();
-                document.body.classList.toggle('sidebar-collapse');
+                e.stopPropagation();
+                
+                const isCollapsed = document.body.classList.contains('sidebar-collapse');
+                
+                if (isCollapsed) {
+                    document.body.classList.remove('sidebar-collapse');
+                    console.log('✅ Sidebar OPENED');
+                } else {
+                    document.body.classList.add('sidebar-collapse');
+                    console.log('❌ Sidebar CLOSED');
+                }
             });
+            console.log('✅ Toggle button listener attached');
+        } else {
+            console.error('❌ Toggle button not found!');
         }
         
         // Close sidebar when clicking overlay on mobile
@@ -224,20 +272,17 @@ body.sidebar-collapse .main-sidebar .nav-sidebar .nav-item .nav-link {
                 !e.target.closest('.main-sidebar') && 
                 !e.target.closest('[data-widget="pushmenu"]')) {
                 document.body.classList.add('sidebar-collapse');
+                console.log('📱 Sidebar closed by overlay click');
             }
         });
         
         // Handle window resize
+        let resizeTimer;
         window.addEventListener('resize', function() {
-            if (window.innerWidth >= 1024) {
-                // Desktop: remove collapse class if resizing from mobile
-                document.body.classList.remove('sidebar-collapse');
-            } else {
-                // Mobile: add collapse class if resizing from desktop
-                if (!document.body.classList.contains('sidebar-collapse')) {
-                    document.body.classList.add('sidebar-collapse');
-                }
-            }
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                initializeSidebar();
+            }, 250);
         });
     });
 </script>
