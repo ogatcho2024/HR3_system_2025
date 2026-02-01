@@ -5,6 +5,11 @@ use Illuminate\Support\Facades\Route;
 // Include migration routes for production deployment
 require __DIR__.'/migration.php';
 
+Route::get('/', function () {
+    return redirect('/public');
+});
+
+
 // Admin migration routes for login rate limiting
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/migration-status', [\App\Http\Controllers\MigrationController::class, 'showStatus'])->name('migration.status');
@@ -808,6 +813,3 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-Route::get('/', function () {
-    return redirect('/public');
-});
