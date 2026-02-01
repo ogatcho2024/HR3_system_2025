@@ -4,14 +4,21 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL
 
 from config import MlConfig
 
 
 def get_engine(cfg: MlConfig):
-    return create_engine(
-        f"mysql+pymysql://{cfg.db_user}:{cfg.db_password}@{cfg.db_host}:{cfg.db_port}/{cfg.db_name}"
+    url = URL.create(
+        "mysql+pymysql",
+        username=cfg.db_user,
+        password=cfg.db_password,
+        host=cfg.db_host,
+        port=int(cfg.db_port),
+        database=cfg.db_name,
     )
+    return create_engine(url)
 
 
 def fetch_leave_requests(cfg: MlConfig) -> pd.DataFrame:
