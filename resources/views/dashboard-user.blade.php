@@ -29,7 +29,7 @@
     <!-- sidebar -->
 
     <!-- content area -->
-    <div id="app-content" class="flex-1 flex flex-col transition-all duration-300 mt-16 ml-64">
+    <div id="app-content" class="flex-1 flex flex-col transition-all duration-300 mt-16 lg:ml-64">
         <!-- main content -->
         <main class="flex-1 overflow-y-auto p-0 flex flex-col">
             <div class="flex-1">
@@ -67,6 +67,46 @@ footer {
     bottom: 0 !important;
     height: 100vh !important;
     z-index: 999 !important;
+    position: fixed;
+    left: 0;
+    top: 0;
+}
+
+/* Mobile: Hide sidebar by default */
+@media (max-width: 1023px) {
+    .main-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+    }
+    
+    /* Show sidebar when not collapsed */
+    body:not(.sidebar-collapse) .main-sidebar {
+        transform: translateX(0);
+    }
+    
+    /* Mobile overlay when sidebar is open */
+    body:not(.sidebar-collapse)::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 998;
+    }
+}
+
+/* Desktop: Sidebar always visible */
+@media (min-width: 1024px) {
+    .main-sidebar {
+        transform: translateX(0);
+    }
+    
+    /* Desktop: adjust content margin when sidebar is collapsed */
+    body.sidebar-collapse #app-content {
+        margin-left: 4.5rem;
+    }
 }
 
 /* Content area positioning */
@@ -164,11 +204,41 @@ body.sidebar-collapse .main-sidebar .nav-sidebar .nav-item .nav-link {
     // Toggle sidebar
     document.addEventListener('DOMContentLoaded', function() {
         const sidebarToggle = document.querySelector('[data-widget="pushmenu"]');
+        
+        // Mobile: Start with sidebar collapsed (hidden)
+        if (window.innerWidth < 1024) {
+            document.body.classList.add('sidebar-collapse');
+        }
+        
         if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', function() {
+            sidebarToggle.addEventListener('click', function(e) {
+                e.preventDefault();
                 document.body.classList.toggle('sidebar-collapse');
             });
         }
+        
+        // Close sidebar when clicking overlay on mobile
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth < 1024 && 
+                !document.body.classList.contains('sidebar-collapse') &&
+                !e.target.closest('.main-sidebar') && 
+                !e.target.closest('[data-widget="pushmenu"]')) {
+                document.body.classList.add('sidebar-collapse');
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 1024) {
+                // Desktop: remove collapse class if resizing from mobile
+                document.body.classList.remove('sidebar-collapse');
+            } else {
+                // Mobile: add collapse class if resizing from desktop
+                if (!document.body.classList.contains('sidebar-collapse')) {
+                    document.body.classList.add('sidebar-collapse');
+                }
+            }
+        });
     });
 </script>
 
