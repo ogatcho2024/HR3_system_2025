@@ -30,6 +30,10 @@ def main():
 
     df = pd.read_csv(args.input_csv)
 
+    if len(df) < 10:
+        print("Not enough data to train approval model (need at least 10 rows).")
+        return
+
     df["status"] = df["status"].astype(str).str.lower()
     df = df[~df["status"].isin(cfg.approval_ignore_statuses)]
     df = df[df["status"].isin(cfg.approval_positive_statuses + cfg.approval_negative_statuses)]
@@ -76,6 +80,10 @@ def main():
     model = LogisticRegression(max_iter=500, class_weight="balanced", random_state=cfg.random_state)
 
     clf = Pipeline(steps=[("preprocessor", preprocessor), ("model", model)])
+
+    if y.nunique() < 2:
+        print("Not enough class variety to train approval model (need at least 2 classes).")
+        return
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=cfg.random_state, stratify=y

@@ -33,6 +33,10 @@ def main():
     daily = make_demand_features(daily)
     daily = daily.dropna()
 
+    if len(daily) < 10:
+        print("Not enough data to train demand model (need at least 10 rows).")
+        return
+
     feature_cols = ["dow", "month", "is_weekend", "lag_1", "lag_7", "rolling_7"]
     X = daily[feature_cols]
     y = daily["leave_count"]

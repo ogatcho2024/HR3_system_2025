@@ -1,7 +1,7 @@
 <aside class="main-sidebar sidebar-dark-primary bg-black elevation-4">
     <a href="{{ route('employee.dashboard') }}" class="brand-link logo-switch" style="background-color: black;">
-        <h4 class="brand-image-xl logo-xs mb-0 text-center pt-2"><b>HR</b>3</h4>
-        <h4 class="brand-image-xl logo-xl mb-0 text-center pt-2">Human<b>Resources</b></h4>
+        <h4 class="brand-image-xl logo-xs mb-0 text-center pt-2"><b>ES</b>S</h4>
+        <h4 class="brand-image-xl logo-xl mb-0 text-center pt-2 font-bold">Employee Self Service</b></h4>
     </a>
 
     <!-- Sidebar -->

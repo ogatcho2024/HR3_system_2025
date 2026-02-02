@@ -215,8 +215,12 @@
                                 <!-- Date Created Column -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     <div class="flex flex-col">
-                                        <span class="font-medium text-sm">{{ $employee->created_at->format('M j, Y') }}</span>
-                                        <span class="text-xs text-gray-500">{{ $employee->created_at->format('g:i A') }}</span>
+                                        @if($employee->created_at)
+                                            <span class="font-medium text-sm">{{ $employee->created_at->format('M j, Y') }}</span>
+                                            <span class="text-xs text-gray-500">{{ $employee->created_at->format('g:i A') }}</span>
+                                        @else
+                                            <span class="font-medium text-sm text-gray-400">N/A</span>
+                                        @endif
                                     </div>
                                 </td>
                                 
