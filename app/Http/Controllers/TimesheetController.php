@@ -31,8 +31,11 @@ class TimesheetController extends Controller
             $search = $request->get('search', '');
             $department = $request->get('department', '');
             
+            $status = $request->get('status', '');
+            $perPage = (int) $request->get('per_page', 10);
+
             // Base query for timesheets with user and employee relationships
-            $query = Timesheet::with(['user.employee'])
+            $query = Timesheet::with(['user', 'employee'])
                 ->whereBetween('work_date', [$startDate, $endDate]);
             
             // Apply search filter
@@ -45,25 +48,50 @@ class TimesheetController extends Controller
             
             // Apply department filter
             if (!empty($department)) {
-                $query->whereHas('user.employee', function ($q) use ($department) {
+                $query->whereHas('employee', function ($q) use ($department) {
                     $q->where('department', $department);
                 });
+            }
+
+            // Apply status filter
+            if (!empty($status)) {
+                $query->where('status', $status);
             }
             
             // Get timesheets ordered by date and employee name
             $timesheets = $query->orderBy('work_date', 'desc')
-                ->orderBy('user_id')
-                ->get();
+                ->orderBy('id', 'desc')
+                ->paginate($perPage);
             
             // Format the data for display
-            $formattedTimesheets = $timesheets->map(function ($timesheet) {
+            $formattedTimesheets = $timesheets->getCollection()->map(function ($timesheet) {
                 $user = $timesheet->user;
-                $employee = $user ? $user->employee : null;
+                $employee = $timesheet->employee;
+                $fullName = $user
+                    ? trim(($user->name ?? '') . ' ' . ($user->lastname ?? ''))
+                    : null;
+                $totalHours = $timesheet->hours_worked;
+                $clockIn = Timesheet::normalizeTimeValue($timesheet->clock_in_time);
+                $clockOut = Timesheet::normalizeTimeValue($timesheet->clock_out_time);
+                $breakStart = Timesheet::normalizeTimeValue($timesheet->break_start);
+                $breakEnd = Timesheet::normalizeTimeValue($timesheet->break_end);
+                if ($totalHours === null && $clockIn && $clockOut) {
+                    $totalHours = Timesheet::calculateHoursFromTimes(
+                        $clockIn,
+                        $clockOut,
+                        $breakStart,
+                        $breakEnd
+                    );
+                }
+                $overtimeHours = $timesheet->overtime_hours;
+                if ($overtimeHours === null && $totalHours !== null) {
+                    $overtimeHours = max(0, $totalHours - 8);
+                }
                 
                 return [
                     'id' => $timesheet->id,
-                    'employee' => $user ? $user->name : 'Unknown',
-                    'employee_id' => $user ? $user->id : null,
+                    'employee' => $fullName !== '' ? $fullName : 'User #' . $timesheet->user_id,
+                    'employee_id' => $timesheet->user_id,
                     'department' => $employee ? $employee->department : 'No Department',
                     'position' => $employee ? $employee->position : 'No Position',
                     'date' => $timesheet->work_date,
@@ -71,10 +99,8 @@ class TimesheetController extends Controller
                         Carbon::createFromTimeString($timesheet->clock_in_time)->format('H:i') : '--',
                     'time_end' => $timesheet->clock_out_time ? 
                         Carbon::createFromTimeString($timesheet->clock_out_time)->format('H:i') : '--',
-                    'overtime_hours' => $timesheet->overtime_hours ? 
-                        number_format($timesheet->overtime_hours, 2) : '0.00',
-                    'total_hours' => $timesheet->hours_worked ? 
-                        number_format($timesheet->hours_worked, 2) : '0.00',
+                    'overtime_hours' => $overtimeHours !== null ? number_format($overtimeHours, 2) : '0.00',
+                    'total_hours' => $totalHours !== null ? number_format($totalHours, 2) : '0.00',
                     'status' => $timesheet->status,
                     'project_name' => $timesheet->project_name ?: 'General Work',
                     'work_description' => $timesheet->work_description ?: 'Daily work activities',
@@ -88,15 +114,32 @@ class TimesheetController extends Controller
                 ->pluck('department')
                 ->sort()
                 ->values();
+
+            $statsBase = clone $query;
+            $stats = [
+                'total_timesheets' => (clone $statsBase)->count(),
+                'total_hours' => round((float) (clone $statsBase)->sum('hours_worked'), 1),
+                'total_overtime' => round((float) (clone $statsBase)->sum('overtime_hours'), 1),
+                'total_employees' => (clone $statsBase)->distinct('user_id')->count('user_id'),
+                'pending_approval' => (clone $statsBase)->where('status', 'submitted')->count(),
+                'approved' => (clone $statsBase)->where('status', 'approved')->count(),
+            ];
             
             return response()->json([
                 'success' => true,
                 'data' => $formattedTimesheets,
                 'departments' => $departments,
+                'stats' => $stats,
                 'date_range' => [
                     'start' => $startDate,
                     'end' => $endDate
-                ]
+                ],
+                'pagination' => [
+                    'current_page' => $timesheets->currentPage(),
+                    'last_page' => $timesheets->lastPage(),
+                    'per_page' => $timesheets->perPage(),
+                    'total' => $timesheets->total(),
+                ],
             ]);
             
         } catch (\Exception $e) {
@@ -147,31 +190,64 @@ class TimesheetController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'clock_in_time' => 'nullable|date_format:H:i',
-                'clock_out_time' => 'nullable|date_format:H:i',
-                'break_start' => 'nullable|date_format:H:i',
-                'break_end' => 'nullable|date_format:H:i',
+                'clock_in_time' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
+                'clock_out_time' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
+                'break_start' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
+                'break_end' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
                 'project_name' => 'nullable|string|max:255',
                 'work_description' => 'nullable|string|max:500',
             ]);
-            
-            // Calculate hours worked if both times are provided
-            if (!empty($validatedData['clock_in_time']) && !empty($validatedData['clock_out_time'])) {
-                $hoursWorked = $timesheet->calculateHours();
-                $validatedData['hours_worked'] = $hoursWorked;
-                
-                // Calculate overtime (anything over 8 hours)
-                $regularHours = 8.0;
-                $overtimeHours = max(0, $hoursWorked - $regularHours);
-                $validatedData['overtime_hours'] = $overtimeHours;
+
+            $updateData = $validatedData;
+            $clockIn = Timesheet::normalizeTimeValue($updateData['clock_in_time'] ?? $timesheet->clock_in_time);
+            $clockOut = Timesheet::normalizeTimeValue($updateData['clock_out_time'] ?? $timesheet->clock_out_time);
+            $breakStart = Timesheet::normalizeTimeValue($updateData['break_start'] ?? $timesheet->break_start);
+            $breakEnd = Timesheet::normalizeTimeValue($updateData['break_end'] ?? $timesheet->break_end);
+
+            if (!empty($clockIn) && !empty($clockOut)) {
+                $hoursWorked = Timesheet::calculateHoursFromTimes(
+                    $clockIn,
+                    $clockOut,
+                    $breakStart,
+                    $breakEnd
+                );
+                $updateData['hours_worked'] = $hoursWorked;
+                $updateData['overtime_hours'] = max(0, $hoursWorked - 8.0);
+
+                Log::info('[Timesheet] update calc', [
+                    'timesheet_id' => $timesheet->id,
+                    'clock_in_time' => $clockIn,
+                    'clock_out_time' => $clockOut,
+                    'break_start' => $breakStart,
+                    'break_end' => $breakEnd,
+                    'hours_worked' => $updateData['hours_worked'],
+                    'overtime_hours' => $updateData['overtime_hours'],
+                ]);
             }
-            
-            $timesheet->update($validatedData);
-            
+
+            $updated = $timesheet->update($updateData);
+            $timesheet->refresh();
+            $changed = $timesheet->wasChanged();
+            if (!$updated || !$changed) {
+                Log::warning('[Timesheet] update no changes', [
+                    'timesheet_id' => $timesheet->id,
+                    'update_data' => $updateData,
+                    'updated' => $updated,
+                    'changed' => $changed,
+                ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Timesheet updated successfully',
-                'timesheet' => $timesheet->fresh()
+                'timesheet' => $timesheet->fresh(),
+                'updated_record' => [
+                    'id' => $timesheet->id,
+                    'time_start' => Timesheet::normalizeTimeValue($timesheet->clock_in_time),
+                    'time_end' => Timesheet::normalizeTimeValue($timesheet->clock_out_time),
+                    'total_hours' => $timesheet->hours_worked !== null ? number_format($timesheet->hours_worked, 2) : '0.00',
+                    'overtime_hours' => $timesheet->overtime_hours !== null ? number_format($timesheet->overtime_hours, 2) : '0.00',
+                ]
             ]);
             
         } catch (\Exception $e) {

@@ -24,11 +24,8 @@ class AuditLogPolicy
      */
     public function view(User $user, AuditLog $auditLog): bool
     {
-        // Only Super Admin and Admin can view audit logs
-        return in_array($user->account_type, [
-            User::ACCOUNT_TYPE_SUPER_ADMIN,
-            User::ACCOUNT_TYPE_ADMIN
-        ]);
+        // Only Super Admin can view audit log details
+        return $user->account_type === User::ACCOUNT_TYPE_SUPER_ADMIN;
     }
 
     /**
@@ -36,11 +33,8 @@ class AuditLogPolicy
      */
     public function export(User $user): bool
     {
-        // Only Super Admin and Admin can export audit logs
-        return in_array($user->account_type, [
-            User::ACCOUNT_TYPE_SUPER_ADMIN,
-            User::ACCOUNT_TYPE_ADMIN
-        ]);
+        // Only Super Admin can export audit logs
+        return $user->account_type === User::ACCOUNT_TYPE_SUPER_ADMIN;
     }
 
     /**

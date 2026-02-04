@@ -406,7 +406,13 @@
                                     <!-- Actions -->
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex space-x-2">
-                                            <button class="text-blue-600 hover:text-blue-900 transition-colors">View</button>
+                                            <button
+                                                @click="openAttendanceView(employee)"
+                                                :disabled="!employee.attendance_id"
+                                                :class="employee.attendance_id ? 'text-blue-600 hover:text-blue-900' : 'text-gray-400 cursor-not-allowed'"
+                                                class="transition-colors">
+                                                View
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -427,6 +433,88 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance View Modal -->
+    <div x-cloak x-show="showAttendanceViewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="closeAttendanceView()">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
+            <div class="flex items-center justify-between border-b px-6 py-4">
+                <h3 class="text-lg font-semibold text-gray-900">Attendance Details</h3>
+                <button class="text-gray-500 hover:text-gray-700" @click="closeAttendanceView()">
+                    <span class="sr-only">Close</span>
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="px-6 py-4">
+                <template x-if="viewLoading">
+                    <div class="text-center py-6 text-gray-600">Loading attendance details...</div>
+                </template>
+                <template x-if="viewError">
+                    <div class="text-center py-6 text-red-600" x-text="viewError"></div>
+                </template>
+                <template x-if="!viewLoading && !viewError && viewRecord">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-500">Employee</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.employee_name || 'Unknown'"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Employee ID</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.employee_id || 'N/A'"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Department</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.department || 'N/A'"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Position</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.position || 'N/A'"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Date</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.date || 'N/A'"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Status</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.status || 'N/A'"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Time Start</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.clock_in_time || 'N/A'"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Time End</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.clock_out_time || 'N/A'"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Break Start</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.break_start || 'N/A'"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Break End</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.break_end || 'N/A'"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Total Hours</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.hours_worked ?? 'N/A'"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Overtime Hours</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.overtime_hours ?? 'N/A'"></p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-gray-500">Notes</p>
+                            <p class="font-medium text-gray-900" x-text="viewRecord.notes || 'N/A'"></p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <div class="flex justify-end border-t px-6 py-4">
+                <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200" @click="closeAttendanceView()">Close</button>
             </div>
         </div>
     </div>
@@ -1712,6 +1800,10 @@ function attendanceTracker() {
         bulkActionMessage: '',
         bulkActionSuccess: false,
         showQrScanner: false,
+        showAttendanceViewModal: false,
+        viewLoading: false,
+        viewError: '',
+        viewRecord: null,
         
         // QR Scanner methods
         openQrScanner() {
@@ -1757,6 +1849,46 @@ function attendanceTracker() {
                     scanner.stopScanning();
                 }
             }
+        },
+
+        async openAttendanceView(employee) {
+            this.viewError = '';
+            this.viewRecord = null;
+            this.showAttendanceViewModal = true;
+
+            if (!employee || !employee.attendance_id) {
+                this.viewError = 'No attendance record found for today.';
+                return;
+            }
+
+            this.viewLoading = true;
+            try {
+                const response = await fetch(this.getApiBaseUrl() + '/attendance/' + employee.attendance_id, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || 'Failed to load attendance record.');
+                }
+                const result = await response.json();
+                if (result.success) {
+                    this.viewRecord = result.data;
+                } else {
+                    this.viewError = result.message || 'Failed to load attendance record.';
+                }
+            } catch (error) {
+                console.error('Error loading attendance details:', error);
+                this.viewError = 'Failed to load attendance details. Please try again.';
+            } finally {
+                this.viewLoading = false;
+            }
+        },
+
+        closeAttendanceView() {
+            this.showAttendanceViewModal = false;
+            this.viewLoading = false;
+            this.viewError = '';
+            this.viewRecord = null;
         },
         
         // Computed properties

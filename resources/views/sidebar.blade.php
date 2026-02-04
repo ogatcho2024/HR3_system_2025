@@ -21,6 +21,7 @@
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                 
                 <!-- Audit Tracking -->
+                @if(Auth::user()->isAdmin())
                 <li class="nav-item has-treeview {{ request()->routeIs('audit-logs.*') ? 'menu-open' : '' }}">
                     <a href="#" class="nav-link {{ request()->routeIs('audit-logs.*') ? 'active' : '' }} d-flex align-items-center">
                         <span class="nav-icon d-inline-flex align-items-center justify-content-center mr-2">
@@ -37,14 +38,17 @@
                                 <p>All Logs</p>
                             </a>
                         </li>
+                        @if(Auth::user()->isSuperAdmin())
                         <li class="nav-item">
                             <a href="{{ route('audit-logs.security-report') }}" class="nav-link {{ request()->routeIs('audit-logs.security-report') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Security Report</p>
                             </a>
                         </li>
+                        @endif
                     </ul>
                 </li>
+                @endif
                 <div class="w-full h-[1px] bg-gray-500 my-2"></div>
 
                 <!-- Dashboard -->

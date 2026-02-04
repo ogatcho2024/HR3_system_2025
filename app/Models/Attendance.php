@@ -76,20 +76,12 @@ class Attendance extends Model
             return 0;
         }
 
-        $clockIn = Carbon::createFromTimeString($this->clock_in_time);
-        $clockOut = Carbon::createFromTimeString($this->clock_out_time);
-        
-        $totalMinutes = $clockIn->diffInMinutes($clockOut);
-        
-        // Subtract break time if provided
-        if ($this->break_start && $this->break_end) {
-            $breakStart = Carbon::createFromTimeString($this->break_start);
-            $breakEnd = Carbon::createFromTimeString($this->break_end);
-            $breakMinutes = $breakEnd->diffInMinutes($breakStart);
-            $totalMinutes -= $breakMinutes;
-        }
-        
-        return round($totalMinutes / 60, 2);
+        return self::calculateHoursFromTimes(
+            $this->clock_in_time,
+            $this->clock_out_time,
+            $this->break_start,
+            $this->break_end
+        );
     }
 
     /**
@@ -105,6 +97,55 @@ class Attendance extends Model
         }
         
         return 0.0;
+    }
+
+    /**
+     * Calculate hours worked from raw time strings (24h safe).
+     */
+    public static function calculateHoursFromTimes(
+        ?string $clockIn,
+        ?string $clockOut,
+        ?string $breakStart = null,
+        ?string $breakEnd = null
+    ): float {
+        if (empty($clockIn) || empty($clockOut)) {
+            return 0.0;
+        }
+
+        $totalMinutes = self::diffMinutes($clockIn, $clockOut);
+
+        if (!empty($breakStart) && !empty($breakEnd)) {
+            $breakMinutes = self::diffMinutes($breakStart, $breakEnd);
+            $totalMinutes -= $breakMinutes;
+        }
+
+        $totalMinutes = max(0, $totalMinutes);
+        return round($totalMinutes / 60, 2);
+    }
+
+    /**
+     * Parse time string using explicit 24h format and return minutes diff.
+     */
+    private static function diffMinutes(string $start, string $end): int
+    {
+        $startTime = self::parseTimeValue($start);
+        $endTime = self::parseTimeValue($end);
+
+        if ($endTime->lessThan($startTime)) {
+            $endTime->addDay();
+        }
+
+        $seconds = $endTime->getTimestamp() - $startTime->getTimestamp();
+        return (int) round($seconds / 60);
+    }
+
+    /**
+     * Parse time-only values explicitly using H:i or H:i:s.
+     */
+    private static function parseTimeValue(string $value): Carbon
+    {
+        $format = substr_count($value, ':') === 2 ? 'H:i:s' : 'H:i';
+        return Carbon::createFromFormat($format, $value);
     }
 
     /**

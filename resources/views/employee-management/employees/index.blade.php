@@ -124,7 +124,7 @@
                                     User Role
                                 </th>
                                 <th scope="col" class="w-1/6 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Actions
+                                    {{ Auth::user()->isStaff() ? 'Access' : 'Actions' }}
                                 </th>
                             </tr>
                         </thead>
@@ -248,34 +248,38 @@
                                 <!-- Actions Column -->
                                 <td class="px-6 py-4 text-right text-sm font-medium">
                                     <div class="flex items-center justify-end space-x-1 min-w-max">
-                                        @if($employee->user) {{-- User exists in database --}}
-                                            <!-- Edit and Delete for existing users -->
-                                            <button onclick="openEditModal({{ $employee->user->id }}, '{{ $employee->user->name }}', '{{ $employee->user->lastname }}', '{{ $employee->user->email }}', '{{ $employee->user->phone }}', '{{ $employee->user->position }}', '{{ $employee->user->account_type }}', '{{ $employee->user->photo }}')" 
-                                               class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                                               title="Edit User">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                                <span class="ml-1 hidden sm:inline">Edit</span>
-                                            </button>
-                                            <button onclick="deleteUser({{ $employee->user->id }}, '{{ $employee->user->name }} {{ $employee->user->lastname }}')" 
-                                                    class="inline-flex items-center px-2 py-1 border ml-2 border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-                                                    title="Delete User">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                                <span class="ml-1 hidden sm:inline">Delete</span>
-                                            </button>
+                                        @if(Auth::user()->isStaff())
+                                            <span class="text-xs text-gray-500">View only</span>
                                         @else
-                                            <!-- Create User Account for employees without users -->
-                                            <button onclick="openCreateUserModal({{ $employee->id }})" 
-                                               class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                                               title="Create User Account">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                                </svg>
-                                                <span class="ml-1">Create User</span>
-                                            </button>
+                                            @if($employee->user) {{-- User exists in database --}}
+                                                <!-- Edit and Delete for existing users -->
+                                                <button onclick="openEditModal({{ $employee->user->id }}, '{{ $employee->user->name }}', '{{ $employee->user->lastname }}', '{{ $employee->user->email }}', '{{ $employee->user->phone }}', '{{ $employee->user->position }}', '{{ $employee->user->account_type }}', '{{ $employee->user->photo }}')" 
+                                                   class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                                   title="Edit User">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                    <span class="ml-1 hidden sm:inline">Edit</span>
+                                                </button>
+                                                <button onclick="deleteUser({{ $employee->user->id }}, '{{ $employee->user->name }} {{ $employee->user->lastname }}')" 
+                                                        class="inline-flex items-center px-2 py-1 border ml-2 border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                                                        title="Delete User">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                    <span class="ml-1 hidden sm:inline">Delete</span>
+                                                </button>
+                                            @else
+                                                <!-- Create User Account for employees without users -->
+                                                <button onclick="openCreateUserModal({{ $employee->id }})" 
+                                                   class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                                                   title="Create User Account">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                                    </svg>
+                                                    <span class="ml-1">Create User</span>
+                                                </button>
+                                            @endif
                                         @endif
                                     </div>
                                 </td>

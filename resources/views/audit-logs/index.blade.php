@@ -70,9 +70,11 @@
                             <a href="{{ route('audit-logs.index') }}" class="px-4 py-2 border rounded hover:bg-gray-50">
                                 Clear
                             </a>
-                            <a href="{{ route('audit-logs.export', request()->all()) }}" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-                                Export
-                            </a>
+                            @if(Auth::user()->isSuperAdmin())
+                                <a href="{{ route('audit-logs.export', request()->all()) }}" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                    Export
+                                </a>
+                            @endif
                         </div>
                     </div>
                 </form>

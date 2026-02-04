@@ -24,6 +24,18 @@ class EmployeeManagementController extends Controller
     {
         $this->auditLog = $auditLog;
     }
+
+    private function ensureEmployeeManagementWriteAccess(string $action): void
+    {
+        $user = Auth::user();
+        if ($user && $user->isStaff()) {
+            $this->auditLog->logOther("Unauthorized staff attempt: {$action}", [
+                'user_id' => $user->id,
+                'account_type' => $user->account_type,
+            ]);
+            abort(403, 'Unauthorized access. Staff are view-only.');
+        }
+    }
     /**
      * Display the main dashboard with card boxes
      */
@@ -129,6 +141,7 @@ class EmployeeManagementController extends Controller
      */
     public function showProfileSetup(User $user): View
     {
+        $this->ensureEmployeeManagementWriteAccess('view profile setup');
         // Get all active departments for the dropdown
         $departments = Department::active()->orderBy('department_name')->get();
         
@@ -140,6 +153,7 @@ class EmployeeManagementController extends Controller
      */
     public function storeProfile(Request $request, User $user): RedirectResponse
     {
+        $this->ensureEmployeeManagementWriteAccess('store profile');
         $validatedData = $request->validate([
             'employee_id' => 'required|string|max:50|unique:employees,employee_id,' . ($user->employee->id ?? 'NULL'),
             'department' => 'required|string|max:100',
@@ -181,6 +195,7 @@ class EmployeeManagementController extends Controller
      */
     public function createUserAccount(Request $request, Employee $employee): RedirectResponse
     {
+        $this->ensureEmployeeManagementWriteAccess('create user account');
         // Check if employee already has a user account
         if ($employee->user) {
             return redirect()->route('employee-management.employees')
@@ -241,6 +256,7 @@ class EmployeeManagementController extends Controller
      */
     public function updateUser(Request $request, User $user): RedirectResponse
     {
+        $this->ensureEmployeeManagementWriteAccess('update user account');
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'lastname' => 'nullable|string|max:255',
@@ -316,6 +332,7 @@ class EmployeeManagementController extends Controller
      */
     public function deleteUser(User $user): RedirectResponse
     {
+        $this->ensureEmployeeManagementWriteAccess('delete user account');
         try {
             $userName = $user->name . ' ' . ($user->lastname ?? '');
             

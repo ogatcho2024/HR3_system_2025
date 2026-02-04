@@ -10,12 +10,27 @@ use App\Models\Employee;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 
 class AttendanceController extends Controller
 {
+    private function parseTimeValue(string $value): Carbon
+    {
+        $format = substr_count($value, ':') === 2 ? 'H:i:s' : 'H:i';
+        return Carbon::createFromFormat($format, $value);
+    }
+
+    private function formatTimeValue(?string $value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+        return $this->parseTimeValue($value)->format('H:i');
+    }
+
     /**
      * Display attendance records with search and filter
      */
@@ -75,10 +90,10 @@ class AttendanceController extends Controller
         $validatedData = $request->validate([
             'user_id' => 'required|exists:users,id',
             'date' => 'required|date',
-            'clock_in_time' => 'nullable|date_format:H:i',
-            'clock_out_time' => 'nullable|date_format:H:i',
-            'break_start' => 'nullable|date_format:H:i',
-            'break_end' => 'nullable|date_format:H:i',
+            'clock_in_time' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
+            'clock_out_time' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
+            'break_start' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
+            'break_end' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
             'status' => 'required|in:present,late,absent,on_break',
             'notes' => 'nullable|string|max:500',
         ]);
@@ -103,13 +118,27 @@ class AttendanceController extends Controller
             // Calculate hours worked if both times are available
             $clockIn = $updateData['clock_in_time'] ?? $existingEntry->clock_in_time;
             $clockOut = $updateData['clock_out_time'] ?? $existingEntry->clock_out_time;
+            $breakStart = $updateData['break_start'] ?? $existingEntry->break_start;
+            $breakEnd = $updateData['break_end'] ?? $existingEntry->break_end;
             
             if ($clockIn && $clockOut) {
-                $tempAttendance = new Attendance([
+                $updateData['hours_worked'] = Attendance::calculateHoursFromTimes(
+                    $clockIn,
+                    $clockOut,
+                    $breakStart,
+                    $breakEnd
+                );
+                $updateData['overtime_hours'] = max(0, $updateData['hours_worked'] - 8.0);
+
+                Log::info('[Attendance] store update calc', [
+                    'attendance_id' => $existingEntry->id,
                     'clock_in_time' => $clockIn,
-                    'clock_out_time' => $clockOut
+                    'clock_out_time' => $clockOut,
+                    'break_start' => $breakStart,
+                    'break_end' => $breakEnd,
+                    'hours_worked' => $updateData['hours_worked'],
+                    'overtime_hours' => $updateData['overtime_hours'],
                 ]);
-                $updateData['hours_worked'] = $tempAttendance->calculateHours();
             }
             
             $existingEntry->update($updateData);
@@ -119,8 +148,22 @@ class AttendanceController extends Controller
             // Create new record
             // Calculate hours worked if clock in/out times are provided
             if (!empty($validatedData['clock_in_time']) && !empty($validatedData['clock_out_time'])) {
-                $attendance = new Attendance($validatedData);
-                $validatedData['hours_worked'] = $attendance->calculateHours();
+                $validatedData['hours_worked'] = Attendance::calculateHoursFromTimes(
+                    $validatedData['clock_in_time'],
+                    $validatedData['clock_out_time'],
+                    $validatedData['break_start'] ?? null,
+                    $validatedData['break_end'] ?? null
+                );
+                $validatedData['overtime_hours'] = max(0, $validatedData['hours_worked'] - 8.0);
+
+                Log::info('[Attendance] store create calc', [
+                    'clock_in_time' => $validatedData['clock_in_time'],
+                    'clock_out_time' => $validatedData['clock_out_time'],
+                    'break_start' => $validatedData['break_start'] ?? null,
+                    'break_end' => $validatedData['break_end'] ?? null,
+                    'hours_worked' => $validatedData['hours_worked'],
+                    'overtime_hours' => $validatedData['overtime_hours'],
+                ]);
             }
 
             $attendance = Attendance::create($validatedData);
@@ -172,8 +215,8 @@ class AttendanceController extends Controller
             // For JSON requests (AJAX), only validate the fields that can be updated
             if ($request->expectsJson()) {
                 $validatedData = $request->validate([
-                    'time_start' => 'nullable|date_format:H:i',
-                    'time_end' => 'nullable|date_format:H:i', 
+                    'time_start' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
+                    'time_end' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'], 
                     'status' => 'nullable|in:draft,submitted,approved,rejected,present,late,absent,on_break',
                     'notes' => 'nullable|string|max:500',
                 ]);
@@ -199,10 +242,10 @@ class AttendanceController extends Controller
                 $validatedData = $request->validate([
                     'user_id' => 'required|exists:users,id',
                     'date' => 'required|date',
-                    'clock_in_time' => 'nullable|date_format:H:i',
-                    'clock_out_time' => 'nullable|date_format:H:i',
-                    'break_start' => 'nullable|date_format:H:i',
-                    'break_end' => 'nullable|date_format:H:i',
+                    'clock_in_time' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
+                    'clock_out_time' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
+                    'break_start' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
+                    'break_end' => ['nullable', 'regex:/^\\d{2}:\\d{2}(:\\d{2})?$/'],
                     'status' => 'required|in:present,late,absent,on_break',
                     'notes' => 'nullable|string|max:500',
                 ]);
@@ -210,26 +253,53 @@ class AttendanceController extends Controller
             }
 
             // Calculate hours worked if both clock in and out times are provided
-            if (!empty($updateData['clock_in_time']) && !empty($updateData['clock_out_time'])) {
-                // Use the current attendance model but temporarily set the new times
-                $tempAttendance = new Attendance([
-                    'clock_in_time' => $updateData['clock_in_time'],
-                    'clock_out_time' => $updateData['clock_out_time']
+            $clockIn = $updateData['clock_in_time'] ?? $attendance->clock_in_time;
+            $clockOut = $updateData['clock_out_time'] ?? $attendance->clock_out_time;
+            $breakStart = $updateData['break_start'] ?? $attendance->break_start;
+            $breakEnd = $updateData['break_end'] ?? $attendance->break_end;
+            
+            if (!empty($clockIn) && !empty($clockOut)) {
+                $updateData['hours_worked'] = Attendance::calculateHoursFromTimes(
+                    $clockIn,
+                    $clockOut,
+                    $breakStart,
+                    $breakEnd
+                );
+                $updateData['overtime_hours'] = max(0, $updateData['hours_worked'] - 8.0);
+
+                Log::info('[Attendance] update calc', [
+                    'attendance_id' => $attendance->id,
+                    'clock_in_time' => $clockIn,
+                    'clock_out_time' => $clockOut,
+                    'break_start' => $breakStart,
+                    'break_end' => $breakEnd,
+                    'hours_worked' => $updateData['hours_worked'],
+                    'overtime_hours' => $updateData['overtime_hours'],
                 ]);
-                $updateData['hours_worked'] = $tempAttendance->calculateHours();
             }
 
-            $attendance->update($updateData);
+            $updated = $attendance->update($updateData);
+            $attendance->refresh();
+            $changed = $attendance->wasChanged();
+            if (!$updated || !$changed) {
+                Log::warning('[Attendance] update no changes', [
+                    'attendance_id' => $attendance->id,
+                    'update_data' => $updateData,
+                    'updated' => $updated,
+                    'changed' => $changed,
+                ]);
+            }
             
             // Sync to timesheet
-            $this->syncAttendanceToTimesheet($attendance->refresh());
+            $this->syncAttendanceToTimesheet($attendance);
 
             // Return JSON response for AJAX requests
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Attendance record updated successfully!',
-                    'data' => $attendance->load('user')
+                    'data' => $attendance->load('user'),
+                    'changed' => $changed
                 ]);
             }
 
@@ -278,6 +348,45 @@ class AttendanceController extends Controller
             return redirect()->back()
                 ->with('error', 'Failed to delete attendance record: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Show a single attendance record (JSON for modal view).
+     */
+    public function show(Request $request, Attendance $attendance)
+    {
+        if (!$request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'JSON request required.'
+            ], 406);
+        }
+
+        $attendance->load(['user.employee', 'createdBy']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $attendance->id,
+                'user_id' => $attendance->user_id,
+                'employee_name' => $attendance->user->name ?? 'Unknown',
+                'employee_id' => $attendance->user->employee->employee_id ?? null,
+                'department' => $attendance->user->employee->department ?? null,
+                'position' => $attendance->user->employee->position ?? null,
+                'date' => $attendance->date ? $attendance->date->toDateString() : null,
+                'status' => $attendance->status,
+                'clock_in_time' => $this->formatTimeValue($attendance->clock_in_time),
+                'clock_out_time' => $this->formatTimeValue($attendance->clock_out_time),
+                'break_start' => $this->formatTimeValue($attendance->break_start),
+                'break_end' => $this->formatTimeValue($attendance->break_end),
+                'hours_worked' => $attendance->hours_worked,
+                'overtime_hours' => $attendance->overtime_hours,
+                'notes' => $attendance->notes,
+                'created_by' => $attendance->createdBy->name ?? null,
+                'created_at' => $attendance->created_at ? $attendance->created_at->toDateTimeString() : null,
+                'updated_at' => $attendance->updated_at ? $attendance->updated_at->toDateTimeString() : null,
+            ]
+        ]);
     }
 
     /**
@@ -453,11 +562,12 @@ class AttendanceController extends Controller
                         return [
                             'id' => $employee->id,
                             'user_id' => $employee->user_id,
+                            'attendance_id' => $todayAttendance ? $todayAttendance->id : null,
                             'name' => $name,
                             'position' => $employee->position ?? 'No Position',
                             'department' => $employee->department ?? 'No Department',
                             'status' => $status,
-                            'checkIn' => $checkIn ? \Carbon\Carbon::parse($checkIn)->format('H:i') : null,
+                            'checkIn' => $this->formatTimeValue($checkIn),
                             'hours' => $hoursWorked ? number_format($hoursWorked, 1) : null,
                             'avatar' => $initials,
                             'color' => $colors[$colorIndex]
@@ -961,23 +1071,23 @@ class AttendanceController extends Controller
             // Calculate attendance breakdown for Today's Summary
             $onTimeEmployees = $todayAttendance->filter(function ($record) {
                 if (!$record->clock_in_time) return false;
-                $clockInTime = Carbon::createFromTimeString($record->clock_in_time);
-                $expectedTime = Carbon::createFromTimeString('09:00'); // 9 AM standard time
+                $clockInTime = $this->parseTimeValue($record->clock_in_time);
+                $expectedTime = $this->parseTimeValue('09:00'); // 9 AM standard time
                 return $clockInTime->lessThanOrEqualTo($expectedTime);
             })->count();
             
             $lateModerate = $todayAttendance->filter(function ($record) {
                 if (!$record->clock_in_time) return false;
-                $clockInTime = Carbon::createFromTimeString($record->clock_in_time);
-                $expectedTime = Carbon::createFromTimeString('09:00'); // 9 AM standard time
+                $clockInTime = $this->parseTimeValue($record->clock_in_time);
+                $expectedTime = $this->parseTimeValue('09:00'); // 9 AM standard time
                 $minutesLate = $clockInTime->diffInMinutes($expectedTime, false);
                 return $minutesLate >= 5 && $minutesLate <= 15;
             })->count();
             
             $lateExtreme = $todayAttendance->filter(function ($record) {
                 if (!$record->clock_in_time) return false;
-                $clockInTime = Carbon::createFromTimeString($record->clock_in_time);
-                $expectedTime = Carbon::createFromTimeString('09:00'); // 9 AM standard time
+                $clockInTime = $this->parseTimeValue($record->clock_in_time);
+                $expectedTime = $this->parseTimeValue('09:00'); // 9 AM standard time
                 $minutesLate = $clockInTime->diffInMinutes($expectedTime, false);
                 return $minutesLate > 15;
             })->count();
@@ -1754,7 +1864,7 @@ class AttendanceController extends Controller
     }
     
     /**
-     * Get employee timesheets data from attendance table
+     * Get employee timesheets data from timesheets table
      */
     public function getEmployeeTimesheets(Request $request)
     {
@@ -1764,13 +1874,10 @@ class AttendanceController extends Controller
             $search = $request->get('search', '');
             $department = $request->get('department', '');
             
-            // Build query for attendance records with employee data
-            // Only show completed timesheets (both clock in and clock out times)
-            $query = Attendance::with(['user.employee'])
-                ->whereBetween('date', [$startDate, $endDate])
-                ->whereNotNull('clock_in_time')
-                ->whereNotNull('clock_out_time') // Only completed work entries
-                ->whereHas('user.employee'); // Ensure employee relationship exists
+            // Build query for timesheets with employee data
+            $query = Timesheet::with(['user.employee'])
+                ->whereBetween('work_date', [$startDate, $endDate])
+                ->whereHas('user'); // Ensure user relationship exists
             
             // Apply search filter
             if (!empty($search)) {
@@ -1786,30 +1893,31 @@ class AttendanceController extends Controller
                 });
             }
             
-            // Get attendance records
-            $attendances = $query->orderBy('date', 'desc')
-                ->orderBy('clock_in_time')
+            // Get timesheets
+            $timesheets = $query->orderBy('work_date', 'desc')
+                ->orderBy('user_id')
                 ->get();
             
-            // Transform attendance data to match timesheet table structure
-            $timesheetData = $attendances->map(function ($attendance) {
-                $employee = $attendance->user->employee ?? null;
+            // Transform timesheet data to match UI structure
+            $timesheetData = $timesheets->map(function ($timesheet) {
+                $user = $timesheet->user;
+                $employee = $user->employee ?? null;
                 
                 return [
-                    'id' => $attendance->id,
-                    'employee_id' => $attendance->user_id,
-                    'employee' => $attendance->user->name ?? 'Unknown',
+                    'id' => $timesheet->id,
+                    'employee_id' => $timesheet->user_id,
+                    'employee' => $user ? $user->name : 'Unknown',
                     'department' => $employee->department ?? 'No Department',
                     'position' => $employee->position ?? 'No Position',
-                    'date' => $attendance->date,
-                    'time_start' => $attendance->clock_in_time ? Carbon::parse($attendance->clock_in_time)->format('H:i') : '--',
-                    'time_end' => $attendance->clock_out_time ? Carbon::parse($attendance->clock_out_time)->format('H:i') : '--',
-                    'overtime_hours' => $attendance->overtime_hours ?? 0,
-                    'total_hours' => $attendance->hours_worked ?? 0,
-                    'status' => $this->mapAttendanceStatus($attendance->status),
-                    'break_start' => $attendance->break_start,
-                    'break_end' => $attendance->break_end,
-                    'notes' => $attendance->notes
+                    'date' => $timesheet->work_date,
+                    'time_start' => $timesheet->clock_in_time ? $this->formatTimeValue($timesheet->clock_in_time) : '--',
+                    'time_end' => $timesheet->clock_out_time ? $this->formatTimeValue($timesheet->clock_out_time) : '--',
+                    'overtime_hours' => $timesheet->overtime_hours ?? 0,
+                    'total_hours' => $timesheet->hours_worked ?? 0,
+                    'status' => $timesheet->status,
+                    'break_start' => $timesheet->break_start,
+                    'break_end' => $timesheet->break_end,
+                    'notes' => $timesheet->work_description
                 ];
             });
             

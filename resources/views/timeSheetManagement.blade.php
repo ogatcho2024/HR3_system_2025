@@ -232,7 +232,6 @@
           <div class="flex gap-3">
             <button @click="generateReport()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">Generate Report</button>
             <button @click="exportReport('pdf')" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg">Export PDF</button>
-            <button @click="exportReport('excel')" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">Export Excel</button>
           </div>
         </div>
 
@@ -265,6 +264,38 @@
               </tbody>
             </table>
           </div>
+
+          <!-- Pagination -->
+          <div class="flex items-center justify-between mt-4" x-show="timesheetPagination.total > timesheetPagination.per_page">
+            <div class="text-sm text-gray-600">
+              Showing
+              <span class="font-medium" x-text="((timesheetPagination.current_page - 1) * timesheetPagination.per_page) + 1"></span>
+              -
+              <span class="font-medium" x-text="Math.min(timesheetPagination.current_page * timesheetPagination.per_page, timesheetPagination.total)"></span>
+              of
+              <span class="font-medium" x-text="timesheetPagination.total"></span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                @click="prevTimesheetPage()"
+                :disabled="timesheetPagination.current_page <= 1"
+                class="px-3 py-1 border rounded text-sm"
+                :class="timesheetPagination.current_page <= 1 ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'">
+                Prev
+              </button>
+              <span class="text-sm text-gray-600">
+                Page <span class="font-medium" x-text="timesheetPagination.current_page"></span>
+                of <span class="font-medium" x-text="timesheetPagination.last_page"></span>
+              </span>
+              <button
+                @click="nextTimesheetPage()"
+                :disabled="timesheetPagination.current_page >= timesheetPagination.last_page"
+                class="px-3 py-1 border rounded text-sm"
+                :class="timesheetPagination.current_page >= timesheetPagination.last_page ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'">
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -293,18 +324,18 @@
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead class="bg-gray-50">
-                <tr>
+                <tr class="bg-green-950 text-white">
                   <th class="w-12 px-4 py-3 text-left">
                     <span class="sr-only">Select</span>
                   </th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
-                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Overtime</th>
-                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
-                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Employee</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Date</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Project</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider">Hours</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider">Overtime</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider">Priority</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider">Submitted</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
@@ -705,6 +736,12 @@
       timesheetSearch: '',
       timesheetDepartmentFilter: '',
       availableDepartments: [],
+      timesheetPagination: {
+        current_page: 1,
+        last_page: 1,
+        per_page: 10,
+        total: 0
+      },
       editingTimesheet: {
         id: '',
         employee: '',
@@ -1355,22 +1392,25 @@
       },
       
       // Employee Timesheet Methods
-      async loadEmployeeTimesheets() {
+      async loadEmployeeTimesheets(page = 1) {
         try {
           const params = new URLSearchParams({
             start_date: this.timesheetDateRange.start,
             end_date: this.timesheetDateRange.end,
             search: this.timesheetSearch,
-            department: this.timesheetDepartmentFilter
+            department: this.timesheetDepartmentFilter,
+            page: page,
+            per_page: this.timesheetPagination.per_page
           });
           
-          const response = await fetch(`${TIMESHEET_API_BASE_URL}/attendance/employee-timesheets?${params}`);
+          const response = await fetch(`${TIMESHEET_API_BASE_URL}/timesheets/employee-timesheets?${params}`);
           const result = await response.json();
           
           if (result.success) {
             this.employeeTimesheets = result.data;
             this.availableDepartments = result.departments;
             this.timesheetStats = result.stats; // Use stats from main response
+            this.timesheetPagination = result.pagination || this.timesheetPagination;
             
             // Update legacy employees array for backward compatibility
             this.updateEmployeesFromTimesheets();
@@ -1379,6 +1419,18 @@
           }
         } catch (error) {
           console.error('Error loading employee timesheets:', error);
+        }
+      },
+
+      nextTimesheetPage() {
+        if (this.timesheetPagination.current_page < this.timesheetPagination.last_page) {
+          this.loadEmployeeTimesheets(this.timesheetPagination.current_page + 1);
+        }
+      },
+
+      prevTimesheetPage() {
+        if (this.timesheetPagination.current_page > 1) {
+          this.loadEmployeeTimesheets(this.timesheetPagination.current_page - 1);
         }
       },
       
@@ -1436,16 +1488,16 @@
         this.updating = true;
         
         const updateData = {
-          time_start: this.editingTimesheet.time_start,
-          time_end: this.editingTimesheet.time_end,
-          notes: this.editingTimesheet.notes
+          clock_in_time: this.editingTimesheet.time_start,
+          clock_out_time: this.editingTimesheet.time_end,
+          work_description: this.editingTimesheet.notes
         };
         
         console.log('Update data:', updateData);
-        console.log('Request URL:', `${TIMESHEET_API_BASE_URL}/attendance/${this.editingTimesheet.id}`);
+          console.log('Request URL:', `${TIMESHEET_API_BASE_URL}/timesheets/${this.editingTimesheet.id}`);
         
         try {
-          const response = await fetch(`${TIMESHEET_API_BASE_URL}/attendance/${this.editingTimesheet.id}`, {
+          const response = await fetch(`${TIMESHEET_API_BASE_URL}/timesheets/${this.editingTimesheet.id}`, {
             method: 'PUT',
             headers: {
               'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -1462,28 +1514,37 @@
           console.log('Response data:', result);
           
           if (response.ok) {
+            if (result.updated_record) {
+              const idx = this.employeeTimesheets.findIndex(t => t.id === result.updated_record.id);
+              if (idx !== -1) {
+                this.employeeTimesheets[idx].time_start = result.updated_record.time_start || this.employeeTimesheets[idx].time_start;
+                this.employeeTimesheets[idx].time_end = result.updated_record.time_end || this.employeeTimesheets[idx].time_end;
+                this.employeeTimesheets[idx].total_hours = result.updated_record.total_hours || this.employeeTimesheets[idx].total_hours;
+                this.employeeTimesheets[idx].overtime_hours = result.updated_record.overtime_hours || this.employeeTimesheets[idx].overtime_hours;
+              }
+            }
             this.showEditModal = false;
             this.loadEmployeeTimesheets(); // Refresh the data
-            alert('Attendance record updated successfully!');
+            alert('Timesheet updated successfully!');
           } else {
             console.error('Server error response:', result);
-            alert('Failed to update attendance record: ' + (result.message || result.error || 'Unknown error'));
+            alert('Failed to update timesheet: ' + (result.message || result.error || 'Unknown error'));
           }
         } catch (error) {
           console.error('Network/Parse error:', error);
-          alert('Error updating attendance record: ' + error.message);
+          alert('Error updating timesheet: ' + error.message);
         } finally {
           this.updating = false;
         }
       },
       
       async deleteTimesheetEntry(timesheetId) {
-        if (!confirm('Are you sure you want to delete this attendance record?')) {
+        if (!confirm('Are you sure you want to delete this timesheet?')) {
           return;
         }
         
         try {
-          const response = await fetch(`${TIMESHEET_API_BASE_URL}/attendance/${timesheetId}`, {
+          const response = await fetch(`${TIMESHEET_API_BASE_URL}/timesheets/${timesheetId}`, {
             method: 'DELETE',
             headers: {
               'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -1493,14 +1554,14 @@
           
           if (response.ok) {
             this.loadEmployeeTimesheets();
-            alert('Attendance record deleted successfully!');
+            alert('Timesheet deleted successfully!');
           } else {
             const result = await response.json();
-            alert('Failed to delete attendance record: ' + (result.message || 'Unknown error'));
+            alert('Failed to delete timesheet: ' + (result.message || 'Unknown error'));
           }
         } catch (error) {
-          console.error('Error deleting attendance record:', error);
-          alert('Error deleting attendance record');
+          console.error('Error deleting timesheet:', error);
+          alert('Error deleting timesheet');
         }
       },
       

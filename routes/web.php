@@ -135,8 +135,8 @@ Route::get('/success', function () {
 
 Route::resource('posts',PostController::class);
 
-// Employee Self Service Routes (Protected by auth and 2FA middleware)
-Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->group(function () {
+// Employee Self Service Routes (Protected by auth, 2FA, and employee-only middleware)
+Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class, 'account.type:Employee'])->group(function () {
     Route::prefix('employee')->name('employee.')->group(function () {
         // Dashboard
         Route::get('/dashboard', [EmployeeSelfServiceController::class, 'index'])->name('dashboard');
@@ -243,11 +243,13 @@ Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->grou
         
         // Employee Profile Management
         Route::get('/employees', [EmployeeManagementController::class, 'employees'])->name('employees');
-        Route::get('/employees/{user}/setup', [EmployeeManagementController::class, 'showProfileSetup'])->name('employees.setup');
-        Route::post('/employees/{user}/profile', [EmployeeManagementController::class, 'storeProfile'])->name('employees.store-profile');
-        Route::post('/employees/{employee}/create-user', [EmployeeManagementController::class, 'createUserAccount'])->name('employees.create-user');
-        Route::put('/users/{user}', [EmployeeManagementController::class, 'updateUser'])->name('users.update');
-        Route::delete('/users/{user}', [EmployeeManagementController::class, 'deleteUser'])->name('users.delete');
+        Route::middleware(['account.type:Super admin,Admin'])->group(function () {
+            Route::get('/employees/{user}/setup', [EmployeeManagementController::class, 'showProfileSetup'])->name('employees.setup');
+            Route::post('/employees/{user}/profile', [EmployeeManagementController::class, 'storeProfile'])->name('employees.store-profile');
+            Route::post('/employees/{employee}/create-user', [EmployeeManagementController::class, 'createUserAccount'])->name('employees.create-user');
+            Route::put('/users/{user}', [EmployeeManagementController::class, 'updateUser'])->name('users.update');
+            Route::delete('/users/{user}', [EmployeeManagementController::class, 'deleteUser'])->name('users.delete');
+        });
         
         // Alert System
         Route::get('/alerts', [EmployeeManagementController::class, 'alerts'])->name('alerts');
@@ -363,22 +365,22 @@ Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->grou
         Route::middleware(['account.type:Super admin,Admin'])->group(function () {
             // Main audit log viewer
             Route::get('/', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('index');
-            
-            // View specific audit log entry
-            Route::get('/{id}', [\App\Http\Controllers\AuditLogController::class, 'show'])->name('show');
-            
-            // Export audit logs (CSV)
-            Route::get('/export/csv', [\App\Http\Controllers\AuditLogController::class, 'export'])->name('export');
-            
-            // User activity timeline
-            Route::get('/user/{userId}/activity', [\App\Http\Controllers\AuditLogController::class, 'userActivity'])->name('user-activity');
-            
-            // Security report
-            Route::get('/security/report', [\App\Http\Controllers\AuditLogController::class, 'securityReport'])->name('security-report');
         });
         
-        // Mutating routes: Super Admin only
+        // Super Admin only routes
         Route::middleware(['account.type:Super admin'])->group(function () {
+            // View specific audit log entry
+            Route::get('/{id}', [\App\Http\Controllers\AuditLogController::class, 'show'])->name('show');
+
+            // Export audit logs (CSV)
+            Route::get('/export/csv', [\App\Http\Controllers\AuditLogController::class, 'export'])->name('export');
+
+            // User activity timeline
+            Route::get('/user/{userId}/activity', [\App\Http\Controllers\AuditLogController::class, 'userActivity'])->name('user-activity');
+
+            // Security report
+            Route::get('/security/report', [\App\Http\Controllers\AuditLogController::class, 'securityReport'])->name('security-report');
+
             // Delete audit log entry (Super Admin only)
             Route::delete('/{id}', [\App\Http\Controllers\AuditLogController::class, 'destroy'])->name('destroy');
         });
@@ -404,6 +406,10 @@ Route::prefix('attendance')->name('attendance.')->group(function () {
     
     // Employee timesheets data from attendance table
     Route::get('/employee-timesheets', [\App\Http\Controllers\AttendanceController::class, 'getEmployeeTimesheets']);
+
+    // View attendance record details (JSON)
+    Route::get('/{attendance}', [\App\Http\Controllers\AttendanceController::class, 'show'])
+        ->whereNumber('attendance');
     
     // Update attendance record
     Route::put('/{attendance}', [\App\Http\Controllers\AttendanceController::class, 'update']);
@@ -812,4 +818,3 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/api/shift-requests/{id}/reject', [ShiftManagementController::class, 'rejectShiftRequest'])->name('api.shift-requests.reject');
     });
 });
-

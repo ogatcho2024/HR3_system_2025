@@ -57,6 +57,14 @@ class Timesheet extends Model
     }
 
     /**
+     * Get the employee record linked by user_id.
+     */
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'user_id', 'user_id');
+    }
+
+    /**
      * Get the user who approved the timesheet.
      */
     public function approvedBy(): BelongsTo
@@ -73,20 +81,78 @@ class Timesheet extends Model
             return 0;
         }
 
-        $clockIn = Carbon::createFromTimeString($this->clock_in_time);
-        $clockOut = Carbon::createFromTimeString($this->clock_out_time);
-        
-        $totalMinutes = $clockOut->diffInMinutes($clockIn);
-        
-        // Subtract break time if provided
-        if ($this->break_start && $this->break_end) {
-            $breakStart = Carbon::createFromTimeString($this->break_start);
-            $breakEnd = Carbon::createFromTimeString($this->break_end);
-            $breakMinutes = $breakEnd->diffInMinutes($breakStart);
+        return self::calculateHoursFromTimes(
+            $this->clock_in_time,
+            $this->clock_out_time,
+            $this->break_start,
+            $this->break_end
+        );
+    }
+
+    /**
+     * Calculate hours worked from raw time strings (24h safe).
+     */
+    public static function calculateHoursFromTimes(
+        ?string $clockIn,
+        ?string $clockOut,
+        ?string $breakStart = null,
+        ?string $breakEnd = null
+    ): float {
+        if (empty($clockIn) || empty($clockOut)) {
+            return 0.0;
+        }
+
+        $totalMinutes = self::diffMinutes($clockIn, $clockOut);
+
+        if (!empty($breakStart) && !empty($breakEnd)) {
+            $breakMinutes = self::diffMinutes($breakStart, $breakEnd);
             $totalMinutes -= $breakMinutes;
         }
-        
+
+        $totalMinutes = max(0, $totalMinutes);
         return round($totalMinutes / 60, 2);
+    }
+
+    private static function diffMinutes(string $start, string $end): int
+    {
+        $startTime = self::parseTimeValue($start);
+        $endTime = self::parseTimeValue($end);
+
+        if ($endTime->lessThan($startTime)) {
+            $endTime->addDay();
+        }
+
+        $seconds = $endTime->getTimestamp() - $startTime->getTimestamp();
+        return (int) round($seconds / 60);
+    }
+
+    private static function parseTimeValue(string $value): Carbon
+    {
+        $format = substr_count($value, ':') === 2 ? 'H:i:s' : 'H:i';
+        return Carbon::createFromFormat($format, $value);
+    }
+
+    /**
+     * Normalize time-only value to H:i or H:i:s string.
+     */
+    public static function normalizeTimeValue($value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('H:i:s');
+        }
+
+        $raw = trim((string) $value);
+
+        // Extract time part from full datetime or ISO strings
+        if (preg_match('/(\d{2}:\d{2}(?::\d{2})?)/', $raw, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
     }
 
     /**

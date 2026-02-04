@@ -118,12 +118,17 @@ class OTPController extends Controller
      */
     private function redirectToDashboard($user)
     {
-        if ($user->account_type === 'Super admin' || $user->account_type === 'Admin' || $user->account_type === 'admin' || $user->account_type === '1') {
-            $welcomeMessage = $user->account_type === 'Super admin' ? 'Welcome back, Super Admin!' : 'Welcome back, Admin!';
-            return redirect()->route('dashboard')->with('success', $welcomeMessage);
-        } else {
-            return redirect()->route('employee.dashboard')->with('success', 'Welcome back!');
+        $defaultRoute = $user->isEmployee() ? route('employee.dashboard') : route('dashboard');
+        $welcomeMessage = $user->isSuperAdmin()
+            ? 'Welcome back, Super Admin!'
+            : ($user->isAdmin() ? 'Welcome back, Admin!' : 'Welcome back!');
+
+        // Prevent non-employees from being redirected to /employee/*
+        $intended = session('url.intended');
+        if (!$user->isEmployee() && $intended && str_starts_with($intended, url('/employee'))) {
+            session()->forget('url.intended');
         }
+
+        return redirect()->intended($defaultRoute)->with('success', $welcomeMessage);
     }
 }
-
