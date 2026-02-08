@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Employee;
 use App\Models\Attendance;
 use App\Models\QrAttendanceLog;
+use App\Models\ShiftAssignment;
 use App\Services\QrAttendanceService;
 use Carbon\Carbon;
 
@@ -136,6 +137,22 @@ class QrAttendanceController extends Controller
                     'success' => false,
                     'message' => 'Unable to determine log type. Maximum entries may have been reached.',
                 ], 422);
+            }
+
+            // Block clock-in if employee has no schedule for today.
+            $hasAssignment = ShiftAssignment::where('employee_id', $employee->id)
+                ->whereDate('assignment_date', $today)
+                ->exists();
+
+            if (!$hasAssignment && $logType === 'IN') {
+                \Log::warning('Clock-in blocked: no schedule', [
+                    'employee_id' => $employee->id,
+                    'date' => $today,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Clock-in requires a scheduled shift for today. Please contact HR.',
+                ], 403);
             }
 
             // Use database transaction

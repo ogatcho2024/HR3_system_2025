@@ -101,6 +101,7 @@
                             <li>Maximum of <strong>2 scans per day</strong> (IN and OUT)</li>
                             <li><strong>5-minute cooldown</strong> between scans</li>
                             <li>Only scan at authorized attendance scanners</li>
+                            <li><strong>Clock-in requires a scheduled shift</strong> (no schedule = scan blocked)</li>
                         </ul>
                     </div>
                 </div>

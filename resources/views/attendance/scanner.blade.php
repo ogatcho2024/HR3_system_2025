@@ -126,6 +126,7 @@
                             <li>Scanner will automatically detect and process the QR code</li>
                             <li>First scan = TIME-IN, Second scan = TIME-OUT</li>
                             <li>5-minute cooldown enforced between scans</li>
+                            <li><strong>Clock-in requires an assigned schedule</strong> (no schedule = scan blocked)</li>
                         </ul>
                     </div>
                 </div>
