@@ -38,18 +38,22 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Today's Attendance Card -->
         <div class="mb-8">
-            <div class="bg-white rounded-lg shadow-md overflow-hidden border-l-4 
+            <div id="attendanceCard" class="bg-white rounded-lg shadow-md overflow-hidden border-l-4 
                 @if($todayLeave) border-orange-500
                 @elseif($todayAttendance && $todayAttendance->status == 'present') border-green-500
+                @elseif($todayAttendance && $todayAttendance->status == 'late') border-orange-500
+                @elseif($todayAttendance && $todayAttendance->status == 'on_break') border-blue-500
                 @elseif($todayAttendance && $todayAttendance->status == 'absent') border-red-500
                 @else border-gray-400
                 @endif">
                 <div class="px-6 py-5">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-bold text-gray-900">Today's Attendance</h2>
-                        <span class="px-3 py-1 rounded-full text-sm font-semibold
+                        <span id="attendanceBadge" class="px-3 py-1 rounded-full text-sm font-semibold
                             @if($todayLeave) bg-orange-100 text-orange-800
                             @elseif($todayAttendance && $todayAttendance->status == 'present') bg-green-100 text-green-800
+                            @elseif($todayAttendance && $todayAttendance->status == 'late') bg-orange-100 text-orange-800
+                            @elseif($todayAttendance && $todayAttendance->status == 'on_break') bg-blue-100 text-blue-800
                             @elseif($todayAttendance && $todayAttendance->status == 'absent') bg-red-100 text-red-800
                             @else bg-gray-100 text-gray-800
                             @endif">
@@ -66,9 +70,9 @@
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div class="text-center">
                             <p class="text-sm text-gray-500 mb-1">Time In</p>
-                            <p class="text-2xl font-bold text-gray-900">
-                                @if($todayAttendance && $todayAttendance->clock_in)
-                                    {{ \Carbon\Carbon::parse($todayAttendance->clock_in)->format('g:i A') }}
+                            <p id="attendanceTimeIn" class="text-2xl font-bold text-gray-900">
+                                @if($todayAttendance && $todayAttendance->clock_in_time)
+                                    {{ \Carbon\Carbon::parse($todayAttendance->clock_in_time)->format('g:i A') }}
                                 @else
                                     --:--
                                 @endif
@@ -76,9 +80,9 @@
                         </div>
                         <div class="text-center">
                             <p class="text-sm text-gray-500 mb-1">Time Out</p>
-                            <p class="text-2xl font-bold text-gray-900">
-                                @if($todayAttendance && $todayAttendance->clock_out)
-                                    {{ \Carbon\Carbon::parse($todayAttendance->clock_out)->format('g:i A') }}
+                            <p id="attendanceTimeOut" class="text-2xl font-bold text-gray-900">
+                                @if($todayAttendance && $todayAttendance->clock_out_time)
+                                    {{ \Carbon\Carbon::parse($todayAttendance->clock_out_time)->format('g:i A') }}
                                 @else
                                     --:--
                                 @endif
@@ -86,9 +90,9 @@
                         </div>
                         <div class="text-center">
                             <p class="text-sm text-gray-500 mb-1">Hours Worked</p>
-                            <p class="text-2xl font-bold text-gray-900">
-                                @if($todayAttendance && $todayAttendance->clock_in && $todayAttendance->clock_out)
-                                    {{ number_format(\Carbon\Carbon::parse($todayAttendance->clock_in)->diffInHours(\Carbon\Carbon::parse($todayAttendance->clock_out)), 1) }}h
+                            <p id="attendanceHours" class="text-2xl font-bold text-gray-900">
+                                @if($todayAttendance && $todayAttendance->clock_in_time && $todayAttendance->clock_out_time)
+                                    {{ number_format($todayAttendance->hours_worked ?? 0, 1) }}h
                                 @else
                                     0h
                                 @endif
@@ -96,12 +100,14 @@
                         </div>
                         <div class="text-center">
                             <p class="text-sm text-gray-500 mb-1">Status</p>
-                            <p class="text-lg font-semibold text-gray-900">
+                            <p id="attendanceStatus" class="text-lg font-semibold text-gray-900">
                                 @if($todayLeave)
                                     {{ ucfirst(str_replace('_', ' ', $todayLeave->leave_type)) }}
                                 @elseif($todayAttendance)
-                                    @if($todayAttendance->is_late)
+                                    @if($todayAttendance->status === 'late' || $todayAttendance->is_late)
                                         <span class="text-orange-600">Late</span>
+                                    @elseif($todayAttendance->status === 'on_break')
+                                        <span class="text-blue-600">On Break</span>
                                     @else
                                         <span class="text-green-600">On Time</span>
                                     @endif
@@ -376,3 +382,130 @@
     </div>
 </div>
 @endsection
+
+<script>
+    function attendanceClasses(status, hasLeave) {
+        if (hasLeave) {
+            return {
+                card: 'border-orange-500',
+                badge: 'bg-orange-100 text-orange-800',
+                badgeText: 'On Leave',
+                statusText: 'On Leave'
+            };
+        }
+        if (!status) {
+            return {
+                card: 'border-gray-400',
+                badge: 'bg-gray-100 text-gray-800',
+                badgeText: 'Not Yet Timed In',
+                statusText: 'Pending'
+            };
+        }
+        if (status === 'present') {
+            return {
+                card: 'border-green-500',
+                badge: 'bg-green-100 text-green-800',
+                badgeText: 'Present',
+                statusText: 'On Time'
+            };
+        }
+        if (status === 'late') {
+            return {
+                card: 'border-orange-500',
+                badge: 'bg-orange-100 text-orange-800',
+                badgeText: 'Late',
+                statusText: 'Late'
+            };
+        }
+        if (status === 'on_break') {
+            return {
+                card: 'border-blue-500',
+                badge: 'bg-blue-100 text-blue-800',
+                badgeText: 'On Break',
+                statusText: 'On Break'
+            };
+        }
+        if (status === 'absent') {
+            return {
+                card: 'border-red-500',
+                badge: 'bg-red-100 text-red-800',
+                badgeText: 'Absent',
+                statusText: 'Absent'
+            };
+        }
+        return {
+            card: 'border-gray-400',
+            badge: 'bg-gray-100 text-gray-800',
+            badgeText: status.charAt(0).toUpperCase() + status.slice(1),
+            statusText: status.charAt(0).toUpperCase() + status.slice(1)
+        };
+    }
+
+    function applyAttendanceUI(data) {
+        const card = document.getElementById('attendanceCard');
+        const badge = document.getElementById('attendanceBadge');
+        const timeInEl = document.getElementById('attendanceTimeIn');
+        const timeOutEl = document.getElementById('attendanceTimeOut');
+        const hoursEl = document.getElementById('attendanceHours');
+        const statusEl = document.getElementById('attendanceStatus');
+
+        if (!card || !badge || !timeInEl || !timeOutEl || !hoursEl || !statusEl) {
+            return;
+        }
+
+        const classes = attendanceClasses(data.status, data.has_leave);
+
+        card.classList.remove('border-orange-500', 'border-green-500', 'border-red-500', 'border-gray-400', 'border-blue-500');
+        card.classList.add(classes.card);
+
+        badge.classList.remove(
+            'bg-orange-100', 'text-orange-800',
+            'bg-green-100', 'text-green-800',
+            'bg-red-100', 'text-red-800',
+            'bg-gray-100', 'text-gray-800',
+            'bg-blue-100', 'text-blue-800'
+        );
+        badge.classList.add(...classes.badge.split(' '));
+        badge.textContent = classes.badgeText;
+
+        timeInEl.textContent = data.time_in || '--:--';
+        timeOutEl.textContent = data.time_out || '--:--';
+        hoursEl.textContent = (data.hours_worked ?? 0) + 'h';
+
+        if (data.has_leave && data.leave_type) {
+            statusEl.textContent = data.leave_type.replace(/_/g, ' ');
+        } else if (data.status) {
+            if (data.status === 'late' || data.is_late) {
+                statusEl.innerHTML = '<span class="text-orange-600">Late</span>';
+            } else if (data.status === 'on_break') {
+                statusEl.innerHTML = '<span class="text-blue-600">On Break</span>';
+            } else {
+                statusEl.innerHTML = '<span class="text-green-600">On Time</span>';
+            }
+        } else {
+            statusEl.textContent = 'Pending';
+        }
+    }
+
+    async function refreshTodayAttendance() {
+        try {
+            const response = await fetch('{{ route('employee.today-attendance') }}', {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) {
+                return;
+            }
+            const result = await response.json();
+            if (result.success) {
+                applyAttendanceUI(result.data);
+            }
+        } catch (error) {
+            console.error('[Employee Dashboard] Failed to refresh attendance', error);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        refreshTodayAttendance();
+        setInterval(refreshTodayAttendance, 15000);
+    });
+</script>

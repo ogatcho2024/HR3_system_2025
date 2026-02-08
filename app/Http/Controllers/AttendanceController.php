@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use App\Services\AttendanceStatusService;
 
 class AttendanceController extends Controller
 {
@@ -511,33 +512,24 @@ class AttendanceController extends Controller
     {
         try {
             $today = now()->toDateString();
+            $statusService = new AttendanceStatusService();
             
             // Get all employees with their today's attendance status
             $employees = \App\Models\Employee::with(['user'])
                 ->active()
                 ->get()
-                ->map(function ($employee) use ($today) {
+                ->map(function ($employee) use ($today, $statusService) {
                     try {
                         // Skip if no user relationship
                         if (!$employee->user) {
                             return null;
                         }
                         
-                        // Get today's attendance record
-                        $todayAttendance = Attendance::where('user_id', $employee->user_id)
-                            ->whereDate('date', $today)
-                            ->first();
-                        
-                        // Determine status and other details
-                        if (!$todayAttendance) {
-                            $status = 'absent';
-                            $checkIn = null;
-                            $hoursWorked = null;
-                        } else {
-                            $status = $todayAttendance->status === 'on_break' ? 'break' : $todayAttendance->status;
-                            $checkIn = $todayAttendance->clock_in_time;
-                            $hoursWorked = $todayAttendance->hours_worked;
-                        }
+                        $result = $statusService->resolveForEmployee($employee, Carbon::parse($today));
+                        $todayAttendance = $result['attendance'];
+                        $status = $result['status'];
+                        $checkIn = $todayAttendance ? $todayAttendance->clock_in_time : null;
+                        $hoursWorked = $todayAttendance ? $todayAttendance->hours_worked : null;
                         
                         // Generate initials for avatar
                         $name = $employee->user->name ?? 'Unknown';
@@ -583,11 +575,13 @@ class AttendanceController extends Controller
             // Calculate statistics
             $stats = [
                 'total' => $employees->count(),
-                // Present includes both 'present' status and employees on break (who are still working)
                 'present' => $employees->whereIn('status', ['present', 'break'])->count(),
                 'late' => $employees->where('status', 'late')->count(),
                 'absent' => $employees->where('status', 'absent')->count(),
                 'break' => $employees->where('status', 'break')->count(),
+                'no_schedule' => $employees->where('status', 'no_schedule')->count(),
+                'on_leave' => $employees->where('status', 'on_leave')->count(),
+                'scheduled' => $employees->where('status', 'scheduled')->count(),
             ];
             
             // Filter by status if requested
@@ -635,13 +629,39 @@ class AttendanceController extends Controller
         // Get total active employees
         $totalEmployees = \App\Models\Employee::active()->count();
         
-        // Get today's attendance statistics
-        $todayAttendanceRecords = Attendance::whereDate('date', $today)->get();
+        $statusService = new AttendanceStatusService();
+        $employees = \App\Models\Employee::with('user')->active()->get();
+        $statusCounts = [
+            'present' => 0,
+            'late' => 0,
+            'absent' => 0,
+            'on_break' => 0,
+            'no_schedule' => 0,
+            'on_leave' => 0,
+            'scheduled' => 0,
+        ];
+
+        foreach ($employees as $employee) {
+            if (!$employee->user) {
+                continue;
+            }
+            $result = $statusService->resolveForEmployee($employee, Carbon::parse($today));
+            $status = $result['status'];
+            if ($status === 'break') {
+                $statusCounts['on_break']++;
+            } elseif (array_key_exists($status, $statusCounts)) {
+                $statusCounts[$status]++;
+            }
+        }
+
         $attendanceStats = [
-            'present' => $todayAttendanceRecords->where('status', 'present')->count(),
-            'late' => $todayAttendanceRecords->where('status', 'late')->count(),
-            'absent' => $totalEmployees - $todayAttendanceRecords->count(), // Employees without attendance record
-            'on_break' => $todayAttendanceRecords->where('status', 'on_break')->count(),
+            'present' => $statusCounts['present'],
+            'late' => $statusCounts['late'],
+            'absent' => $statusCounts['absent'],
+            'on_break' => $statusCounts['on_break'],
+            'no_schedule' => $statusCounts['no_schedule'],
+            'on_leave' => $statusCounts['on_leave'],
+            'scheduled' => $statusCounts['scheduled'],
         ];
         
         // Calculate today's attendance (present + late + on_break)
@@ -986,16 +1006,45 @@ class AttendanceController extends Controller
     {
         try {
             $today = now()->toDateString();
-            $totalEmployees = Employee::active()->count();
-            
-            // Get today's attendance records (handle both date string and datetime formats)
-            $todayAttendance = Attendance::whereDate('date', $today)->get();
-            
-            // Calculate basic stats
-            $present = $todayAttendance->where('status', 'present')->count();
-            $late = $todayAttendance->where('status', 'late')->count();
-            $onBreak = $todayAttendance->where('status', 'on_break')->count();
-            $absent = $totalEmployees - $todayAttendance->count();
+            $employees = Employee::with('user')->active()->get();
+            $totalEmployees = $employees->count();
+            $statusService = new AttendanceStatusService();
+
+            $present = 0;
+            $late = 0;
+            $onBreak = 0;
+            $absent = 0;
+            $noSchedule = 0;
+            $onLeave = 0;
+            $scheduled = 0;
+            $todayAttendance = collect();
+
+            foreach ($employees as $employee) {
+                if (!$employee->user) {
+                    continue;
+                }
+                $result = $statusService->resolveForEmployee($employee, Carbon::parse($today));
+                $status = $result['status'];
+                if ($result['attendance']) {
+                    $todayAttendance->push($result['attendance']);
+                }
+
+                if ($status === 'present') {
+                    $present++;
+                } elseif ($status === 'late') {
+                    $late++;
+                } elseif ($status === 'break') {
+                    $onBreak++;
+                } elseif ($status === 'absent') {
+                    $absent++;
+                } elseif ($status === 'no_schedule') {
+                    $noSchedule++;
+                } elseif ($status === 'on_leave') {
+                    $onLeave++;
+                } elseif ($status === 'scheduled') {
+                    $scheduled++;
+                }
+            }
             
             // Calculate total hours logged today
             $totalHoursToday = $todayAttendance->sum('hours_worked') ?: 0;
@@ -1111,6 +1160,9 @@ class AttendanceController extends Controller
                     'late' => $late,
                     'onBreak' => $onBreak,
                     'absent' => $absent,
+                    'noSchedule' => $noSchedule,
+                    'onLeave' => $onLeave,
+                    'scheduled' => $scheduled,
                     'totalHours' => round($totalHoursToday, 1),
                     'expectedHours' => $expectedHours,
                     'hoursPercentage' => $hoursPercentage,

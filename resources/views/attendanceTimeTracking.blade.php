@@ -392,9 +392,16 @@
                                                   'bg-yellow-100 text-yellow-800': employee.status === 'late', 
                                                   'bg-red-100 text-red-800': employee.status === 'absent',
                                                   'bg-blue-100 text-blue-800': employee.status === 'break',
-                                                  'bg-gray-100 text-gray-800': !employee.status
+                                                  'bg-orange-100 text-orange-800': employee.status === 'on_leave',
+                                                  'bg-gray-100 text-gray-800': employee.status === 'no_schedule' || employee.status === 'scheduled' || !employee.status
                                               }" 
-                                              x-text="employee.status === 'break' ? 'On Break' : (employee.status || 'Unknown')"></span>
+                                              x-text="
+                                                employee.status === 'break' ? 'On Break' :
+                                                employee.status === 'no_schedule' ? 'No Schedule' :
+                                                employee.status === 'scheduled' ? 'Scheduled' :
+                                                employee.status === 'on_leave' ? 'On Leave' :
+                                                (employee.status || 'Unknown')
+                                              "></span>
                                     </td>
                                     
                                     <!-- Check In -->
@@ -700,15 +707,25 @@
                                                 'bg-green-100 text-green-800 ring-1 ring-green-600/20': employee.status === 'present',
                                                 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-600/20': employee.status === 'late',
                                                 'bg-red-100 text-red-800 ring-1 ring-red-600/20': employee.status === 'absent',
-                                                'bg-blue-100 text-blue-800 ring-1 ring-blue-600/20': employee.status === 'break'
+                                                'bg-blue-100 text-blue-800 ring-1 ring-blue-600/20': employee.status === 'break',
+                                                'bg-orange-100 text-orange-800 ring-1 ring-orange-600/20': employee.status === 'on_leave',
+                                                'bg-gray-100 text-gray-800 ring-1 ring-gray-600/20': employee.status === 'no_schedule' || employee.status === 'scheduled'
                                             }" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize">
                                                 <span class="w-1.5 h-1.5 mr-1.5 rounded-full" :class="{
                                                     'bg-green-600': employee.status === 'present',
                                                     'bg-yellow-600': employee.status === 'late',
                                                     'bg-red-600': employee.status === 'absent',
-                                                    'bg-blue-600': employee.status === 'break'
+                                                    'bg-blue-600': employee.status === 'break',
+                                                    'bg-orange-600': employee.status === 'on_leave',
+                                                    'bg-gray-600': employee.status === 'no_schedule' || employee.status === 'scheduled'
                                                 }"></span>
-                                                <span x-text="employee.status === 'break' ? 'On Break' : employee.status"></span>
+                                                <span x-text="
+                                                    employee.status === 'break' ? 'On Break' :
+                                                    employee.status === 'no_schedule' ? 'No Schedule' :
+                                                    employee.status === 'scheduled' ? 'Scheduled' :
+                                                    employee.status === 'on_leave' ? 'On Leave' :
+                                                    employee.status
+                                                "></span>
                                             </span>
                                         </td>
                                         

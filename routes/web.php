@@ -280,6 +280,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('employee')->name('employee.')->group(function () {
         // Main Dashboard
         Route::get('/dashboard', [EmployeeDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/today-attendance', [EmployeeDashboardController::class, 'todayAttendance'])->name('today-attendance');
         
         // Leave Management
         Route::get('/leave-requests', [EmployeeDashboardController::class, 'leaveRequests'])->name('leave-requests');

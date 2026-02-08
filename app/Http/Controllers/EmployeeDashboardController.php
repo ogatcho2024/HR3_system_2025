@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\Employee;
 use App\Models\LeaveRequest;
@@ -113,6 +114,58 @@ class EmployeeDashboardController extends Controller
             'today',
             'now'
         ));
+    }
+
+    /**
+     * Get today's attendance for the authenticated employee (JSON).
+     */
+    public function todayAttendance()
+    {
+        $user = Auth::user();
+        $today = Carbon::today();
+
+        $attendance = Attendance::where('user_id', $user->id)
+            ->whereDate('date', $today)
+            ->first();
+
+        $todayLeave = LeaveRequest::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->first();
+
+        $timeIn = $attendance && $attendance->clock_in_time
+            ? Carbon::parse($attendance->clock_in_time)->format('g:i A')
+            : null;
+        $timeOut = $attendance && $attendance->clock_out_time
+            ? Carbon::parse($attendance->clock_out_time)->format('g:i A')
+            : null;
+
+        $hoursWorked = $attendance && $attendance->hours_worked !== null
+            ? number_format((float) $attendance->hours_worked, 1)
+            : 0;
+
+        $payload = [
+            'has_leave' => (bool) $todayLeave,
+            'leave_type' => $todayLeave ? $todayLeave->leave_type : null,
+            'status' => $attendance ? $attendance->status : null,
+            'is_late' => $attendance ? (bool) ($attendance->is_late ?? false) : false,
+            'time_in' => $timeIn,
+            'time_out' => $timeOut,
+            'hours_worked' => $hoursWorked,
+        ];
+
+        Log::info('[EmployeeDashboard] today attendance', [
+            'user_id' => $user->id,
+            'date' => $today->toDateString(),
+            'attendance_id' => $attendance ? $attendance->id : null,
+            'payload' => $payload,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $payload,
+        ]);
     }
     
     /**

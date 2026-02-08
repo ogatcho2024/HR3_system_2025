@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             '2fa.verified' => \App\Http\Middleware\Ensure2FAVerified::class,
             'account.type' => \App\Http\Middleware\EnsureAccountType::class,
             'webhook.signature' => \App\Http\Middleware\WebhookSignatureMiddleware::class,
+            'employee.sync.key' => \App\Http\Middleware\VerifyEmployeeSyncApiKey::class,
         ]);
         
         // Add CORS middleware to API routes

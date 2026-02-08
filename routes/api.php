@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SimpleAuthController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\EmployeeSyncController;
+use App\Http\Controllers\Api\HrEmployeeSyncController;
 use App\Http\Controllers\Api\TimesheetController;
 use App\Http\Controllers\TimesheetPayrollSyncController;
 use Illuminate\Http\Request;
@@ -87,6 +88,13 @@ Route::prefix('employee-sync')->group(function () {
     Route::post('/retry-failed', [EmployeeSyncController::class, 'retryFailedSyncs'])
         ->middleware('simple.api.auth')
         ->name('employee-sync.retry-failed');
+});
+
+// HR Employee List Receiver API (HR3)
+Route::prefix('hr')->group(function () {
+    Route::post('/employees/sync', [HrEmployeeSyncController::class, 'sync'])
+        ->middleware(['employee.sync.key', 'throttle:60,1'])
+        ->name('hr.employees.sync');
 });
 
 // Timesheet API Routes (for subdomain system integration)
