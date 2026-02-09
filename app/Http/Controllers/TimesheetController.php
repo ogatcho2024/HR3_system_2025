@@ -57,7 +57,8 @@ class TimesheetController extends Controller
 
             // Apply status filter
             if (!empty($status)) {
-                $query->where('status', $status);
+                $statusColumn = Timesheet::getStatusColumnNameStatic();
+                $query->where($statusColumn, $status);
             }
             
             // Get timesheets ordered by date and employee name
@@ -120,13 +121,14 @@ class TimesheetController extends Controller
                 ->values();
 
             $statsBase = clone $query;
+            $statusColumn = Timesheet::getStatusColumnNameStatic();
             $stats = [
                 'total_timesheets' => (clone $statsBase)->count(),
                 'total_hours' => round((float) (clone $statsBase)->sum('hours_worked'), 1),
                 'total_overtime' => round((float) (clone $statsBase)->sum('overtime_hours'), 1),
                 'total_employees' => (clone $statsBase)->distinct('user_id')->count('user_id'),
-                'pending_approval' => (clone $statsBase)->where('status', 'submitted')->count(),
-                'approved' => (clone $statsBase)->where('status', 'approved')->count(),
+                'pending_approval' => (clone $statsBase)->where($statusColumn, 'submitted')->count(),
+                'approved' => (clone $statsBase)->where($statusColumn, 'approved')->count(),
             ];
             
             return response()->json([
@@ -163,15 +165,16 @@ class TimesheetController extends Controller
             $startDate = $request->get('start_date', now()->startOfWeek()->toDateString());
             $endDate = $request->get('end_date', now()->endOfWeek()->toDateString());
             
+            $statusColumn = Timesheet::getStatusColumnNameStatic();
             $stats = [
                 'total_employees' => Employee::active()->count(),
                 'total_timesheets' => Timesheet::whereBetween('work_date', [$startDate, $endDate])->count(),
                 'total_hours' => Timesheet::whereBetween('work_date', [$startDate, $endDate])->sum('hours_worked'),
                 'total_overtime' => Timesheet::whereBetween('work_date', [$startDate, $endDate])->sum('overtime_hours'),
                 'pending_approval' => Timesheet::whereBetween('work_date', [$startDate, $endDate])
-                    ->where('status', 'submitted')->count(),
+                    ->where($statusColumn, 'submitted')->count(),
                 'approved' => Timesheet::whereBetween('work_date', [$startDate, $endDate])
-                    ->where('status', 'approved')->count(),
+                    ->where($statusColumn, 'approved')->count(),
             ];
             
             return response()->json([
@@ -295,7 +298,7 @@ class TimesheetController extends Controller
             
             // Calculate Quick Stats Overview using attendance data
             $stats = [
-                'pendingApprovals' => Timesheet::where('status', 'submitted')->count(),
+                'pendingApprovals' => Timesheet::where(Timesheet::getStatusColumnNameStatic(), 'submitted')->count(),
                 'totalEmployees' => Employee::active()->count(),
                 'overtimeHours' => round(Attendance::whereBetween('date', [$currentWeekStart, $currentWeekEnd])
                     ->sum('overtime_hours'), 0),
@@ -306,16 +309,16 @@ class TimesheetController extends Controller
             // Get overview stats for current week
             $overviewStats = [
                 'submitted' => Timesheet::whereBetween('work_date', [$currentWeekStart, $currentWeekEnd])
-                    ->where('status', 'submitted')->count(),
+                    ->where(Timesheet::getStatusColumnNameStatic(), 'submitted')->count(),
                 'pending' => Timesheet::whereBetween('work_date', [$currentWeekStart, $currentWeekEnd])
-                    ->where('status', 'submitted')->count(),
+                    ->where(Timesheet::getStatusColumnNameStatic(), 'submitted')->count(),
                 'overdue' => Timesheet::where('work_date', '<', now()->subDays(7))
-                    ->where('status', 'draft')->count()
+                    ->where(Timesheet::getStatusColumnNameStatic(), 'draft')->count()
             ];
             
             // Get pending approvals data
             $pendingApprovals = Timesheet::with(['user', 'user.employee'])
-                ->where('status', 'submitted')
+                ->where(Timesheet::getStatusColumnNameStatic(), 'submitted')
                 ->orderBy('submitted_at', 'desc')
                 ->get()
                 ->map(function ($timesheet) {
@@ -471,7 +474,7 @@ class TimesheetController extends Controller
             
             // Update status to approved
             $updated = Timesheet::whereIn('id', $timesheetIds)
-                ->where('status', 'submitted')
+                ->where(Timesheet::getStatusColumnNameStatic(), 'submitted')
                 ->update([
                     'status' => 'approved',
                     'approved_at' => now(),
@@ -549,7 +552,7 @@ class TimesheetController extends Controller
             }
             
             $updated = Timesheet::whereIn('id', $timesheetIds)
-                ->where('status', 'submitted')
+                ->where(Timesheet::getStatusColumnNameStatic(), 'submitted')
                 ->update([
                     'status' => 'rejected',
                     'manager_comments' => $reason,

@@ -158,9 +158,14 @@ class Timesheet extends Model
         return null;
     }
 
-    private function getStatusColumnName(): string
+    public static function getStatusColumnNameStatic(): string
     {
         return Schema::hasColumn('timesheets', 'Status') ? 'Status' : 'status';
+    }
+
+    private function getStatusColumnName(): string
+    {
+        return self::getStatusColumnNameStatic();
     }
 
     public function getStatusAttribute($value): ?string
