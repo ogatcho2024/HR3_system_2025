@@ -13,12 +13,18 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use App\Services\AttendanceStatusService;
+use App\Services\TimesheetSyncService;
 
 class AttendanceController extends Controller
 {
+    private TimesheetSyncService $timesheetSyncService;
+
+    public function __construct(TimesheetSyncService $timesheetSyncService)
+    {
+        $this->timesheetSyncService = $timesheetSyncService;
+    }
     private function parseTimeValue(string $value): Carbon
     {
         if (preg_match('/\d{4}-\d{2}-\d{2}/', $value)) {
@@ -2348,69 +2354,10 @@ class AttendanceController extends Controller
     }
     
     /**
-     * Map attendance status to timesheet status
-     */
-    private function mapAttendanceStatus($attendanceStatus)
-    {
-        switch ($attendanceStatus) {
-            case 'present':
-            case 'late':
-                return 'approved'; // Regular attendance is considered approved
-            case 'on_break':
-                return 'submitted'; // On break entries might need approval
-            case 'absent':
-                return 'submitted';
-            default:
-                return 'submitted';
-        }
-    }
-
-    private function getTimesheetStatusColumn(): string
-    {
-        return Schema::hasColumn('timesheets', 'Status') ? 'Status' : 'status';
-    }
-    
-    /**
      * Sync attendance data to timesheet
      */
     private function syncAttendanceToTimesheet(Attendance $attendance)
     {
-        $statusField = $this->getTimesheetStatusColumn();
-        $mappedStatus = $this->mapAttendanceStatus($attendance->status);
-
-        // Find or create timesheet entry for this date
-        $timesheet = Timesheet::firstOrCreate(
-            [
-                'user_id' => $attendance->user_id,
-                'work_date' => $attendance->date
-            ],
-            [
-                $statusField => $mappedStatus,
-                'project_name' => 'General Work',
-                'work_description' => 'Daily work activities'
-            ]
-        );
-        
-        // Update timesheet with attendance data
-        $updateData = [
-            'clock_in_time' => $attendance->clock_in_time,
-            'clock_out_time' => $attendance->clock_out_time,
-            'break_start' => $attendance->break_start,
-            'break_end' => $attendance->break_end,
-            $statusField => $mappedStatus,
-        ];
-
-        // Calculate hours worked and overtime if both clock in/out times exist
-        if ($attendance->clock_in_time && $attendance->clock_out_time) {
-            $hoursWorked = $attendance->calculateHours();
-            $overtimeHours = $attendance->calculateOvertime();
-
-            $updateData['hours_worked'] = $hoursWorked;
-            $updateData['overtime_hours'] = $overtimeHours;
-        }
-
-        $timesheet->update($updateData);
-
-        return $timesheet;
+        return $this->timesheetSyncService->syncFromAttendance($attendance);
     }
 }

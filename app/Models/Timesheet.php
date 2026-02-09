@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class Timesheet extends Model
 {
@@ -157,12 +158,33 @@ class Timesheet extends Model
         return null;
     }
 
+    private function getStatusColumnName(): string
+    {
+        return Schema::hasColumn('timesheets', 'Status') ? 'Status' : 'status';
+    }
+
+    public function getStatusAttribute($value): ?string
+    {
+        if ($value !== null) {
+            return $value;
+        }
+
+        return $this->attributes['Status'] ?? null;
+    }
+
+    public function setStatusAttribute($value): void
+    {
+        $column = $this->getStatusColumnName();
+        $this->attributes[$column] = $value;
+    }
+
     /**
      * Scope a query to only include draft timesheets.
      */
     public function scopeDraft($query)
     {
-        return $query->where('status', 'draft');
+        $column = (new self())->getStatusColumnName();
+        return $query->where($column, 'draft');
     }
 
     /**
@@ -170,7 +192,8 @@ class Timesheet extends Model
      */
     public function scopeSubmitted($query)
     {
-        return $query->where('status', 'submitted');
+        $column = (new self())->getStatusColumnName();
+        return $query->where($column, 'submitted');
     }
 
     /**
@@ -178,7 +201,8 @@ class Timesheet extends Model
      */
     public function scopeApproved($query)
     {
-        return $query->where('status', 'approved');
+        $column = (new self())->getStatusColumnName();
+        return $query->where($column, 'approved');
     }
 
     /**

@@ -12,16 +12,19 @@ use App\Models\Attendance;
 use App\Models\QrAttendanceLog;
 use App\Models\ShiftAssignment;
 use App\Services\QrAttendanceService;
+use App\Services\TimesheetSyncService;
 use Carbon\Carbon;
 
 class QrAttendanceController extends Controller
 {
     protected $qrAttendanceService;
+    protected $timesheetSyncService;
 
-    public function __construct(QrAttendanceService $qrAttendanceService)
+    public function __construct(QrAttendanceService $qrAttendanceService, TimesheetSyncService $timesheetSyncService)
     {
         $this->middleware('auth');
         $this->qrAttendanceService = $qrAttendanceService;
+        $this->timesheetSyncService = $timesheetSyncService;
     }
 
     /**
@@ -183,6 +186,10 @@ class QrAttendanceController extends Controller
                 }
 
                 $attendance->save();
+
+                if ($logType === 'OUT') {
+                    $this->timesheetSyncService->syncFromAttendance($attendance);
+                }
 
                 DB::commit();
 

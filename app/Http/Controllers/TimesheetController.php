@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use App\Jobs\SendTimesheetToPayrollJob;
 use App\Services\NightDifferentialService;
 
@@ -383,12 +384,15 @@ class TimesheetController extends Controller
                 Timesheet::normalizeTimeValue($timesheet->break_end)
             );
 
-            $timesheet->update([
+            $updateData = [
                 'status' => 'approved',
                 'approved_at' => now(),
                 'approved_by' => Auth::id() ?? 1,
-                'night_diff_minutes' => $nightMinutes,
-            ]);
+            ];
+            if (Schema::hasColumn('timesheets', 'night_diff_minutes')) {
+                $updateData['night_diff_minutes'] = $nightMinutes;
+            }
+            $timesheet->update($updateData);
             
             Log::info('[Timesheet] Timesheet approved', [
                 'timesheet_id' => $timesheet->id,
@@ -483,9 +487,11 @@ class TimesheetController extends Controller
                     Timesheet::normalizeTimeValue($timesheet->break_start),
                     Timesheet::normalizeTimeValue($timesheet->break_end)
                 );
-                $timesheet->update([
-                    'night_diff_minutes' => $nightMinutes,
-                ]);
+                if (Schema::hasColumn('timesheets', 'night_diff_minutes')) {
+                    $timesheet->update([
+                        'night_diff_minutes' => $nightMinutes,
+                    ]);
+                }
             }
             
             // ============================================================
