@@ -1675,7 +1675,6 @@ class ShiftManagementController extends Controller
         $request->validate([
             'employee_id' => 'required|exists:employees,id',
             'date' => 'required|date',
-            'position' => 'nullable|string',
         ]);
 
         $date = Carbon::parse($request->date)->toDateString();
@@ -1687,9 +1686,6 @@ class ShiftManagementController extends Controller
                   ->orWhereIn('status', ['active', 'Active', 'ACTIVE']);
             })
             ->where('id', '!=', $request->employee_id)
-            ->when($request->filled('position'), function ($q) use ($request) {
-                $q->where('position', $request->position);
-            })
             ->whereHas('shiftAssignments', function ($q) use ($date, $dateColumn) {
                 $q->whereDate($dateColumn, $date);
             })

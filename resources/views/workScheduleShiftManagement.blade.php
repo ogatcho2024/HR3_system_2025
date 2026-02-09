@@ -1895,8 +1895,7 @@ document.getElementById('shiftRequestDetailsModal')?.addEventListener('click', f
           if (!date || !selectedOption || !selectedOption.dataset.employeeId) return;
 
           const employeeId = selectedOption.dataset.employeeId;
-          const position = selectedOption.dataset.position || '';
-          const res = await fetch(`${apiBase}/swap-candidates?employee_id=${employeeId}&date=${encodeURIComponent(date)}&position=${encodeURIComponent(position)}`);
+          const res = await fetch(`${apiBase}/swap-candidates?employee_id=${employeeId}&date=${encodeURIComponent(date)}`);
           const json = await res.json();
           swapSelect.innerHTML = '<option value=\"\">Select employee</option>';
           swapSelect.disabled = false;
