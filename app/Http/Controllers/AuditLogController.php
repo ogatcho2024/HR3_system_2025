@@ -8,6 +8,7 @@ use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
 
 class AuditLogController extends Controller
 {
@@ -282,5 +283,54 @@ class AuditLogController extends Controller
         $this->auditLog->logOther("Viewed security report for last {$days} days");
 
         return view('audit-logs.security-report', compact('failedLogins', 'suspiciousIps', 'otpFailures', 'days'));
+    }
+
+    /**
+     * Export security report as PDF.
+     */
+    public function exportSecurityReportPdf(Request $request)
+    {
+        // Authorization check - restrict to export capability
+        $this->authorize('export', AuditLog::class);
+
+        $days = $request->input('days', 7);
+        $startDate = now()->subDays($days)->startOfDay();
+        $endDate = now()->endOfDay();
+
+        $logs = AuditLog::with('user')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        if ($logs->isEmpty()) {
+            return back()->with('error', 'No audit logs found for the selected date range.');
+        }
+
+        $filters = [
+            'days' => $days,
+            'start_date' => $startDate->format('Y-m-d'),
+            'end_date' => $endDate->format('Y-m-d'),
+        ];
+
+        $data = [
+            'title' => 'Audit Tracking – Security Report',
+            'filters' => $filters,
+            'logs' => $logs,
+            'generated_at' => now(),
+            'system_name' => config('app.name', 'HumanResources3'),
+        ];
+
+        $pdf = PDF::loadView('audit-logs.security-report-pdf', $data)->setPaper('a4', 'landscape');
+
+        $dompdf = $pdf->getDomPDF();
+        $dompdf->getOptions()->setChroot(realpath(base_path()));
+        $dompdf->getOptions()->setIsRemoteEnabled(false);
+        $dompdf->getOptions()->setDefaultFont('Arial');
+
+        $filename = 'security_report_' . now()->format('Y-m-d_His') . '.pdf';
+
+        $this->auditLog->logExport("Exported security report ({$logs->count()} records)", 'audit_logs');
+
+        return $pdf->download($filename);
     }
 }

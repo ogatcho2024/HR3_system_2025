@@ -30,7 +30,10 @@
                                 Apply
                             </button>
                         </div>
-                        <div class="ml-auto">
+                        <div class="ml-auto flex gap-2">
+                            <a href="{{ route('audit-logs.security-report.pdf', ['days' => $days]) }}" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                                Export PDF
+                            </a>
                             <a href="{{ route('audit-logs.index') }}" class="px-4 py-2 border rounded hover:bg-gray-50">
                                 Back to Audit Logs
                             </a>

@@ -10,7 +10,7 @@ Artisan::command('inspire', function () {
 
 // Offline ML prediction generation (scheduler)
 Schedule::command('ml:generate-predictions --approval-only')
-    ->everyMinute()
+    ->everyTenMinutes()
     ->withoutOverlapping()
     ->onOneServer();
 

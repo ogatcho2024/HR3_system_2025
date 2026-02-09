@@ -82,6 +82,10 @@ Route::prefix('shift-management/api')->name('shift-management.api.')->group(func
     // Shift Request Actions
     Route::patch('shift-requests/{id}/approve', [ShiftManagementController::class, 'approveShiftRequest'])->name('shift-requests.approve');
     Route::patch('shift-requests/{id}/reject', [ShiftManagementController::class, 'rejectShiftRequest'])->name('shift-requests.reject');
+    Route::get('scheduled-employees', [ShiftManagementController::class, 'getScheduledEmployees'])->name('scheduled-employees');
+    Route::get('assignment-details', [ShiftManagementController::class, 'getAssignmentDetails'])->name('assignment-details');
+    Route::get('swap-candidates', [ShiftManagementController::class, 'getSwapCandidates'])->name('swap-candidates');
+    Route::get('active-employees', [ShiftManagementController::class, 'getAllActiveEmployees'])->name('active-employees');
 });
 
 // Shift Request Management Routes (Protected by auth middleware)
@@ -375,6 +379,7 @@ Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class])->grou
 
             // Export audit logs (CSV)
             Route::get('/export/csv', [\App\Http\Controllers\AuditLogController::class, 'export'])->name('export');
+            Route::get('/security/report/pdf', [\App\Http\Controllers\AuditLogController::class, 'exportSecurityReportPdf'])->name('security-report.pdf');
 
             // User activity timeline
             Route::get('/user/{userId}/activity', [\App\Http\Controllers\AuditLogController::class, 'userActivity'])->name('user-activity');

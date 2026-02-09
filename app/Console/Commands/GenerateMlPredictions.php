@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
 class GenerateMlPredictions extends Command
@@ -15,6 +16,10 @@ class GenerateMlPredictions extends Command
         $pythonBin = config('ml.python_bin');
         $scriptsPath = config('ml.scripts_path');
         $script = $scriptsPath . DIRECTORY_SEPARATOR . 'generate_predictions.py';
+        Log::info('ML prediction generation started', [
+            'approval_only' => (bool) $this->option('approval-only'),
+            'demand_only' => (bool) $this->option('demand-only'),
+        ]);
 
         if (!file_exists($script)) {
             $this->error("ML script not found: {$script}");

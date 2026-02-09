@@ -9,8 +9,10 @@ use App\Models\Employee;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class ShiftManagementController extends Controller
@@ -70,10 +72,18 @@ class ShiftManagementController extends Controller
      */
     public function getShiftTemplates()
     {
-        $shiftTemplates = ShiftTemplate::active()
+        $shiftTemplates = ShiftTemplate::where(function ($q) {
+                $q->whereNull('status')
+                  ->orWhereIn('status', ['active', 'Active', 'ACTIVE']);
+            })
             ->orderBy('name')
-            ->get()
-            ->map(function ($shift) {
+            ->get();
+
+        if ($shiftTemplates->isEmpty()) {
+            $shiftTemplates = ShiftTemplate::orderBy('name')->get();
+        }
+
+        $shiftTemplates = $shiftTemplates->map(function ($shift) {
                 return [
                     'id' => $shift->id,
                     'name' => $shift->name,
@@ -1314,12 +1324,19 @@ class ShiftManagementController extends Controller
                 return back()->with('error', 'This request has already been processed');
             }
             
-            $shiftRequest->update([
-                'status' => 'approved',
-                'approved_by' => auth()->id() ?? 1,
-                'approved_at' => now(),
-                'manager_comments' => $request->input('comments', 'Approved')
-            ]);
+            DB::transaction(function () use ($shiftRequest, $request) {
+                // Apply business logic on approval
+                if ($shiftRequest->request_type === 'swap') {
+                    $this->applySwapApproval($shiftRequest);
+                }
+
+                $shiftRequest->update([
+                    'status' => 'approved',
+                    'approved_by' => auth()->id() ?? 1,
+                    'approved_at' => now(),
+                    'manager_comments' => $request->input('comments', 'Approved')
+                ]);
+            });
             
             return back()->with('success', 'Shift request approved successfully!');
             
@@ -1327,6 +1344,57 @@ class ShiftManagementController extends Controller
             Log::error('Error approving shift request: ' . $e->getMessage());
             return back()->with('error', 'Error approving shift request. Please try again.');
         }
+    }
+
+    /**
+     * Apply swap logic to shift assignments on approval.
+     */
+    private function applySwapApproval(ShiftRequest $shiftRequest): void
+    {
+        if (!$shiftRequest->swap_with_user_id) {
+            throw new \RuntimeException('Swap request is missing swap_with_user_id.');
+        }
+
+        $date = Carbon::parse($shiftRequest->requested_date)->toDateString();
+        $dateColumn = Schema::hasColumn('shift_assignments', 'assignment_date') ? 'assignment_date' : 'date';
+        $usesTemplate = Schema::hasColumn('shift_assignments', 'shift_template_id');
+
+        $employeeA = Employee::where('user_id', $shiftRequest->user_id)->first();
+        $employeeB = Employee::where('user_id', $shiftRequest->swap_with_user_id)->first();
+
+        if (!$employeeA || !$employeeB) {
+            throw new \RuntimeException('Swap employees not found.');
+        }
+
+        $assignmentAQuery = ShiftAssignment::where('employee_id', $employeeA->id)
+            ->whereDate($dateColumn, $date);
+        $assignmentBQuery = ShiftAssignment::where('employee_id', $employeeB->id)
+            ->whereDate($dateColumn, $date);
+
+        // If current times were captured, prefer the matching assignment
+        if ($shiftRequest->current_start_time && $shiftRequest->current_end_time) {
+            if ($usesTemplate) {
+                $assignmentAQuery->whereHas('shiftTemplate', function ($q) use ($shiftRequest) {
+                    $q->whereTime('start_time', $shiftRequest->current_start_time)
+                      ->whereTime('end_time', $shiftRequest->current_end_time);
+                });
+            } else {
+                $assignmentAQuery->whereTime('start_time', $shiftRequest->current_start_time)
+                                 ->whereTime('end_time', $shiftRequest->current_end_time);
+            }
+        }
+
+        $assignmentA = $assignmentAQuery->orderByDesc('id')->first();
+        $assignmentB = $assignmentBQuery->orderByDesc('id')->first();
+
+        if (!$assignmentA || !$assignmentB) {
+            throw new \RuntimeException('Both employees must have assignments on the swap date.');
+        }
+
+        // Swap the assignments by swapping employee_id, so each keeps one assignment
+        $tempEmployeeId = $assignmentA->employee_id;
+        $assignmentA->update(['employee_id' => $assignmentB->employee_id]);
+        $assignmentB->update(['employee_id' => $tempEmployeeId]);
     }
     
     /**
@@ -1365,19 +1433,82 @@ class ShiftManagementController extends Controller
      */
     public function createShiftRequest(Request $request)
     {
+        // Normalize time inputs to H:i and nulls to avoid date_format errors
+        foreach (['current_start_time','current_end_time','requested_start_time','requested_end_time'] as $field) {
+            if (!$request->has($field)) {
+                continue;
+            }
+            $value = $request->input($field);
+            if ($value === '') {
+                $request->merge([$field => null]);
+                continue;
+            }
+            // If H:i:s, trim seconds to H:i
+            if (is_string($value) && preg_match('/^\d{2}:\d{2}:\d{2}$/', $value)) {
+                $request->merge([$field => substr($value, 0, 5)]);
+            }
+        }
+
+        $type = $request->input('request_type');
+
+        // For swap, if requested times are empty but current times are present, mirror them
+        if ($type === 'swap') {
+            if (empty($request->requested_start_time) && !empty($request->current_start_time)) {
+                $request->merge(['requested_start_time' => $request->current_start_time]);
+            }
+            if (empty($request->requested_end_time) && !empty($request->current_end_time)) {
+                $request->merge(['requested_end_time' => $request->current_end_time]);
+            }
+        }
+
         $validatedData = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'request_type' => 'required|string|in:time_off,shift_change,swap',
+            'request_type' => 'required|string|in:swap,schedule_change',
             'requested_date' => 'required|date',
-            'requested_start_time' => 'required|date_format:H:i',
-            'requested_end_time' => 'required|date_format:H:i',
+            'requested_start_time' => 'required_if:request_type,swap,schedule_change|date_format:H:i',
+            'requested_end_time' => 'required_if:request_type,swap,schedule_change|date_format:H:i',
+            'swap_with_user_id' => 'nullable|exists:users,id',
+            'current_start_time' => 'required_if:request_type,swap,schedule_change|date_format:H:i',
+            'current_end_time' => 'required_if:request_type,swap,schedule_change|date_format:H:i',
             'reason' => 'required|string|max:1000',
             'status' => 'required|in:pending,approved,rejected',
             'manager_comments' => 'nullable|string|max:1000',
         ]);
+
+        // Validate schedule existence for swap/change requests
+        if (in_array($validatedData['request_type'], ['swap', 'schedule_change'], true)) {
+            $employee = Employee::where('user_id', $validatedData['user_id'])->first();
+            if (!$employee) {
+                return back()->with('error', 'Selected employee has no employee record.')->withInput();
+            }
+
+            $date = Carbon::parse($validatedData['requested_date'])->toDateString();
+            $hasAssignment = ShiftAssignment::where('employee_id', $employee->id)
+                ->whereDate('assignment_date', $date)
+                ->exists();
+            if (!$hasAssignment) {
+                return back()->with('error', 'Selected employee has no schedule on the chosen date.')->withInput();
+            }
+
+            if ($validatedData['request_type'] === 'swap') {
+                if (empty($validatedData['swap_with_user_id'])) {
+                    return back()->with('error', 'Swap requires another employee.')->withInput();
+                }
+                $swapEmployee = Employee::where('user_id', $validatedData['swap_with_user_id'])->first();
+                if (!$swapEmployee) {
+                    return back()->with('error', 'Swap employee has no employee record.')->withInput();
+                }
+                $swapHasAssignment = ShiftAssignment::where('employee_id', $swapEmployee->id)
+                    ->whereDate('assignment_date', $date)
+                    ->exists();
+                if (!$swapHasAssignment) {
+                    return back()->with('error', 'Swap employee has no schedule on the chosen date.')->withInput();
+                }
+            }
+        }
         
         try {
-            $shiftRequest = ShiftRequest::create([
+            $payload = [
                 'user_id' => $validatedData['user_id'],
                 'request_type' => $validatedData['request_type'],
                 'requested_date' => $validatedData['requested_date'],
@@ -1388,7 +1519,19 @@ class ShiftManagementController extends Controller
                 'manager_comments' => $validatedData['manager_comments'] ?? null,
                 'approved_by' => ($validatedData['status'] !== 'pending') ? auth()->id() : null,
                 'approved_at' => ($validatedData['status'] !== 'pending') ? now() : null,
-            ]);
+            ];
+
+            if (Schema::hasColumn('shift_requests', 'swap_with_user_id')) {
+                $payload['swap_with_user_id'] = $validatedData['swap_with_user_id'] ?? null;
+            }
+            if (Schema::hasColumn('shift_requests', 'current_start_time')) {
+                $payload['current_start_time'] = $validatedData['current_start_time'] ?? null;
+            }
+            if (Schema::hasColumn('shift_requests', 'current_end_time')) {
+                $payload['current_end_time'] = $validatedData['current_end_time'] ?? null;
+            }
+
+            $shiftRequest = ShiftRequest::create($payload);
             
             return redirect()->route('workScheduleShiftManagement', ['tab' => 'requests'])
                 ->with('success', 'Shift request created successfully!');
@@ -1398,5 +1541,172 @@ class ShiftManagementController extends Controller
             return back()->with('error', 'Error creating shift request. Please try again.')
                 ->withInput();
         }
+    }
+
+    /**
+     * Get employees scheduled on a specific date.
+     */
+    public function getScheduledEmployees(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+        ]);
+
+        $date = Carbon::parse($request->date)->toDateString();
+        $dateColumn = Schema::hasColumn('shift_assignments', 'assignment_date') ? 'assignment_date' : 'date';
+
+        $employees = Employee::with('user')
+            ->where(function ($q) {
+                $q->whereNull('status')
+                  ->orWhereIn('status', ['active', 'Active', 'ACTIVE']);
+            })
+            ->whereHas('shiftAssignments', function ($q) use ($date, $dateColumn) {
+                $q->whereDate($dateColumn, $date);
+            })
+            ->get()
+            ->map(function ($employee) {
+                $name = trim(($employee->user->name ?? '') . ' ' . ($employee->user->lastname ?? ''));
+                return [
+                    'employee_id' => $employee->id,
+                    'user_id' => $employee->user_id,
+                    'name' => $name !== '' ? $name : 'User #' . $employee->user_id,
+                    'department' => $employee->department ?? 'No Department',
+                    'position' => $employee->position ?? 'No Position',
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $employees,
+        ]);
+    }
+
+    /**
+     * Get all active employees (for initial dropdown).
+     */
+    public function getAllActiveEmployees()
+    {
+        $employees = Employee::with('user')
+            ->where(function ($q) {
+                $q->whereNull('status')
+                  ->orWhereIn('status', ['active', 'Active', 'ACTIVE']);
+            })
+            ->get()
+            ->map(function ($employee) {
+                $name = trim(($employee->user->name ?? '') . ' ' . ($employee->user->lastname ?? ''));
+                return [
+                    'employee_id' => $employee->id,
+                    'user_id' => $employee->user_id,
+                    'name' => $name !== '' ? $name : 'User #' . $employee->user_id,
+                    'department' => $employee->department ?? 'No Department',
+                    'position' => $employee->position ?? 'No Position',
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $employees,
+        ]);
+    }
+
+    /**
+     * Get assignment details for employee on a date.
+     */
+    public function getAssignmentDetails(Request $request)
+    {
+        $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'date' => 'required|date',
+        ]);
+
+        $date = Carbon::parse($request->date)->toDateString();
+        $dateColumn = Schema::hasColumn('shift_assignments', 'assignment_date') ? 'assignment_date' : 'date';
+        $usesTemplate = Schema::hasColumn('shift_assignments', 'shift_template_id');
+
+        $assignment = ShiftAssignment::when($usesTemplate, function ($q) {
+                return $q->with('shiftTemplate');
+            })
+            ->where('employee_id', $request->employee_id)
+            ->whereDate($dateColumn, $date)
+            ->first();
+
+        if (!$assignment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No assignment found for that date.',
+            ], 404);
+        }
+
+        if ($usesTemplate) {
+            if (!$assignment->shiftTemplate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No assignment found for that date.',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'shift_template_id' => $assignment->shift_template_id,
+                    'shift_name' => $assignment->shiftTemplate->name,
+                    'start_time' => $assignment->shiftTemplate->start_time,
+                    'end_time' => $assignment->shiftTemplate->end_time,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'shift_template_id' => null,
+                'shift_name' => $assignment->shift_name ?? 'Assigned Shift',
+                'start_time' => $assignment->start_time,
+                'end_time' => $assignment->end_time,
+            ],
+        ]);
+    }
+
+    /**
+     * Get swap candidates scheduled on same date (excluding selected employee).
+     */
+    public function getSwapCandidates(Request $request)
+    {
+        $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'date' => 'required|date',
+            'position' => 'nullable|string',
+        ]);
+
+        $date = Carbon::parse($request->date)->toDateString();
+        $dateColumn = Schema::hasColumn('shift_assignments', 'assignment_date') ? 'assignment_date' : 'date';
+
+        $employees = Employee::with('user')
+            ->where(function ($q) {
+                $q->whereNull('status')
+                  ->orWhereIn('status', ['active', 'Active', 'ACTIVE']);
+            })
+            ->where('id', '!=', $request->employee_id)
+            ->when($request->filled('position'), function ($q) use ($request) {
+                $q->where('position', $request->position);
+            })
+            ->whereHas('shiftAssignments', function ($q) use ($date, $dateColumn) {
+                $q->whereDate($dateColumn, $date);
+            })
+            ->get()
+            ->map(function ($employee) {
+                $name = trim(($employee->user->name ?? '') . ' ' . ($employee->user->lastname ?? ''));
+                return [
+                    'employee_id' => $employee->id,
+                    'user_id' => $employee->user_id,
+                    'name' => $name !== '' ? $name : 'User #' . $employee->user_id,
+                    'department' => $employee->department ?? 'No Department',
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $employees,
+        ]);
     }
 }

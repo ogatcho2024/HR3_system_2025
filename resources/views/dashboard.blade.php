@@ -29,7 +29,7 @@
     <!-- sidebar -->
 
     <!-- content area -->
-    <div id="app-content" class="flex-1 flex flex-col transition-all duration-300 mt-16 ml-64">
+    <div id="app-content" class="flex-1 flex flex-col transition-all duration-300 mt-16 ml-64 min-w-0">
         <!-- main content -->
         <main class="flex-1 overflow-y-auto p-0">
             <div>
@@ -75,6 +75,14 @@ footer {
 #app-content {
     height: calc(100vh - 4rem); /* Account for navbar (4rem) only */
     max-height: calc(100vh - 4rem);
+    width: calc(100% - 16rem);
+    margin-left: 16rem;
+    min-width: 0;
+}
+
+body.sidebar-collapse #app-content {
+    width: calc(100% - 4rem);
+    margin-left: 4rem;
 }
 
 /* Main content with scrolling */

@@ -583,49 +583,82 @@
             @endif
             <div class="p-6">
                 @if(count($pendingShiftRequests) > 0)
-                    <div class="space-y-4">
-                        @foreach($pendingShiftRequests as $request)
-                            <div class="border border-gray-200 rounded-lg p-4">
-                                <div class="flex items-start justify-between">
-                                    <div class="flex items-start space-x-3">
-                                        <div class="flex-shrink-0 h-10 w-10">
-                                            <div class="h-10 w-10 rounded-full bg-{{ $request['user']['avatar_color'] }}-500 flex items-center justify-center text-white font-medium">{{ $request['user']['initials'] }}</div>
-                                        </div>
-                                        <div class="flex-1">
-                                            <h4 class="text-sm font-medium text-gray-900">{{ $request['user']['name'] }}</h4>
-                                            <p class="text-sm text-gray-600">{{ $request['user']['department'] }}</p>
-                                            <div class="mt-2">
-                                                <p class="text-xs text-gray-500">Requested: {{ $request['created_at'] }}</p>
-                                                <p class="text-sm text-gray-900 mt-1">{!! $request['readable_request'] !!}</p>
-                                                @if($request['requested_date'])
-                                                    <p class="text-xs text-gray-600 mt-1">Date: {{ $request['requested_date'] }}</p>
-                                                @endif
-                                                <p class="text-xs text-gray-600 mt-1">Reason: {{ $request['reason'] }}</p>
+                    <div class="overflow-x-auto border border-gray-200 rounded-lg max-w-full">
+                        <table class="min-w-max w-full divide-y divide-gray-200">
+                            <thead class="bg-green-950">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Employee</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Department</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Request Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Requested Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Details</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @foreach($pendingShiftRequests as $request)
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="h-8 w-8 rounded-full bg-{{ $request['user']['avatar_color'] }}-500 flex items-center justify-center text-white text-xs font-semibold">
+                                                    {{ $request['user']['initials'] }}
+                                                </div>
+                                                <div class="ml-3">
+                                                    <div class="text-sm font-medium text-gray-900">{{ $request['user']['name'] }}</div>
+                                                    <div class="text-xs text-gray-500">{{ $request['user']['email'] ?? '' }}</div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                    <div class="flex flex-col space-y-2">
-                                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $request['status_badge_color'] }}">{{ ucfirst($request['status']) }}</span>
-                                        @if($request['status'] === 'pending')
-                                            <div class="flex space-x-2">
-                                                <form method="POST" action="{{ route('shift-management.api.shift-requests.approve', $request['id']) }}" style="display: inline;">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <input type="hidden" name="comments" value="Approved">
-                                                    <button type="submit" class="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700" onclick="return confirm('Are you sure you want to approve this request?')">Approve</button>
-                                                </form>
-                                                <form method="POST" action="{{ route('shift-management.api.shift-requests.reject', $request['id']) }}" style="display: inline;">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <input type="hidden" name="comments" value="Rejected">
-                                                    <button type="submit" class="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700" onclick="return confirm('Are you sure you want to reject this request?')">Reject</button>
-                                                </form>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                            {{ $request['user']['department'] }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {{ $request['request_type'] }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                            {{ $request['requested_date'] ?? '—' }}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-600">
+                                            <button
+                                                type="button"
+                                                class="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                                                data-details="@php
+                                                    $details = 'Requested: ' . ($request['created_at'] ?? '---') . PHP_EOL;
+                                                    $details .= strip_tags($request['readable_request'] ?? '---') . PHP_EOL;
+                                                    $details .= 'Reason: ' . ($request['reason'] ?? '---');
+                                                    echo e($details);
+                                                @endphp"
+                                                onclick="openShiftRequestDetails(this)"
+                                            >View</button>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $request['status_badge_color'] }}">
+                                                {{ ucfirst($request['status']) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                                            @if($request['status'] === 'pending')
+                                                <div class="inline-flex space-x-2">
+                                                    <form method="POST" action="{{ route('shift-management.api.shift-requests.approve', $request['id']) }}">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <input type="hidden" name="comments" value="Approved">
+                                                        <button type="submit" class="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700" onclick="return confirm('Are you sure you want to approve this request?')">Approve</button>
+                                                    </form>
+                                                    <form method="POST" action="{{ route('shift-management.api.shift-requests.reject', $request['id']) }}">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <input type="hidden" name="comments" value="Rejected">
+                                                        <button type="submit" class="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700" onclick="return confirm('Are you sure you want to reject this request?')">Reject</button>
+                                                    </form>
+                                                </div>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
                 @else
                     <div class="text-center py-12">
@@ -636,6 +669,28 @@
                         <p class="mt-1 text-sm text-gray-500">All shift requests have been processed or no requests have been submitted yet.</p>
                     </div>
                 @endif
+            </div>
+        </div>
+    </div>
+
+    <!-- Shift Request Details Modal -->
+    <div id="shiftRequestDetailsModal" class="fixed inset-0 hidden items-center justify-center z-50" style="background: rgba(0, 0, 0, 0.4);">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Shift Request Details</h3>
+                <button type="button" onclick="closeShiftRequestDetails()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <pre id="shiftRequestDetailsContent" class="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-md p-4">---</pre>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+                <button type="button" onclick="closeShiftRequestDetails()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+                    Close
+                </button>
             </div>
         </div>
     </div>
@@ -1518,38 +1573,29 @@ function shiftManagement() {
             @csrf
             <div class="p-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Employee Selection -->
-                    <div class="md:col-span-2">
-                        <label for="user_id" class="block text-sm font-medium text-gray-700 mb-2">
-                            Employee <span class="text-red-500">*</span>
-                        </label>
-                        <select id="user_id" name="user_id" required 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Select an employee</option>
-                            @foreach($availableEmployees as $employee)
-                                <option value="{{ $employee['id'] }}">
-                                    {{ $employee['name'] }} 
-                                    @if($employee['department'])
-                                        ({{ $employee['department'] }})
-                                    @endif
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+                      <!-- Employee Selection -->
+                      <div class="md:col-span-2">
+                          <label for="user_id" class="block text-sm font-medium text-gray-700 mb-2">
+                              Employee <span class="text-red-500">*</span>
+                          </label>
+                          <select id="user_id" name="user_id" required 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                              <option value="">Select an employee</option>
+                          </select>
+                      </div>
 
-                    <!-- Request Type -->
-                    <div>
-                        <label for="request_type" class="block text-sm font-medium text-gray-700 mb-2">
-                            Request Type <span class="text-red-500">*</span>
-                        </label>
-                        <select id="request_type" name="request_type" required 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Select request type</option>
-                            <option value="time_off">Time Off</option>
-                            <option value="shift_change">Shift Change</option>
-                            <option value="swap">Shift Swap</option>
-                        </select>
-                    </div>
+                      <!-- Request Type -->
+                      <div>
+                          <label for="request_type" class="block text-sm font-medium text-gray-700 mb-2">
+                              Request Type <span class="text-red-500">*</span>
+                          </label>
+                          <select id="request_type" name="request_type" required 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                              <option value="">Select request type</option>
+                              <option value="schedule_change">Change Shift</option>
+                              <option value="swap">Shift Swap</option>
+                          </select>
+                      </div>
 
                     <!-- Initial Status -->
                     <div>
@@ -1564,32 +1610,93 @@ function shiftManagement() {
                         </select>
                     </div>
 
-                    <!-- Shift Date -->
-                    <div>
-                        <label for="requested_date" class="block text-sm font-medium text-gray-700 mb-2">
-                            Shift Date <span class="text-red-500">*</span>
-                        </label>
-                        <input type="date" id="requested_date" name="requested_date" required 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
+                      <!-- Shift Date -->
+                      <div>
+                          <label for="requested_date" class="block text-sm font-medium text-gray-700 mb-2">
+                              Shift Date <span class="text-red-500">*</span>
+                          </label>
+                          <input type="date" id="requested_date" name="requested_date" required 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                      </div>
 
-                    <!-- Start Time -->
-                    <div>
-                        <label for="requested_start_time" class="block text-sm font-medium text-gray-700 mb-2">
-                            Start Time <span class="text-red-500">*</span>
-                        </label>
-                        <input type="time" id="requested_start_time" name="requested_start_time" required 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
+                      <!-- Current Shift (Read-only) -->
+                      <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Current Shift Start</label>
+                          <input type="time" id="current_start_time" name="current_start_time" readonly 
+                              class="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-600">
+                      </div>
+                      <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Current Shift End</label>
+                          <input type="time" id="current_end_time" name="current_end_time" readonly 
+                              class="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-600">
+                      </div>
+                      <div class="md:col-span-2">
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Current Shift Type</label>
+                          <input type="text" id="current_shift_name" readonly 
+                              class="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-600" placeholder="---">
+                      </div>
 
-                    <!-- End Time -->
-                    <div>
-                        <label for="requested_end_time" class="block text-sm font-medium text-gray-700 mb-2">
-                            End Time <span class="text-red-500">*</span>
-                        </label>
-                        <input type="time" id="requested_end_time" name="requested_end_time" required 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
+                      <!-- Start Time -->
+                      <div>
+                          <label for="requested_start_time" class="block text-sm font-medium text-gray-700 mb-2">
+                              Start Time <span class="text-red-500">*</span>
+                          </label>
+                          <input type="time" id="requested_start_time" name="requested_start_time" required 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                      </div>
+
+                      <!-- End Time -->
+                      <div>
+                          <label for="requested_end_time" class="block text-sm font-medium text-gray-700 mb-2">
+                              End Time <span class="text-red-500">*</span>
+                          </label>
+                          <input type="time" id="requested_end_time" name="requested_end_time" required 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                      </div>
+
+                      <!-- Requested Shift Template (for Change Shift) -->
+                      <div id="requested_shift_template_wrap" class="md:col-span-2 hidden">
+                          <label for="requested_shift_template_id" class="block text-sm font-medium text-gray-700 mb-2">
+                              Requested Shift Template
+                          </label>
+                          <select id="requested_shift_template_id" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                              <option value="">Select shift template</option>
+                          </select>
+                          <div class="mt-3">
+                              <label class="block text-sm font-medium text-gray-700 mb-2">Requested Shift Type</label>
+                              <input type="text" id="requested_shift_name" readonly
+                                  class="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-600" placeholder="---">
+                          </div>
+                          <p class="text-xs text-gray-500 mt-1">Selecting a template will auto-fill start/end time.</p>
+                      </div>
+
+                      <!-- Swap With -->
+                      <div id="swap_with_wrap" class="md:col-span-2 hidden">
+                          <label for="swap_with_user_id" class="block text-sm font-medium text-gray-700 mb-2">
+                              Swap With <span class="text-red-500">*</span>
+                          </label>
+                          <select id="swap_with_user_id" name="swap_with_user_id"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                              <option value="">Select employee</option>
+                          </select>
+                          <p id="swap_with_help" class="text-xs text-gray-500 mt-1 hidden">No available employees to swap with on this date.</p>
+                      </div>
+
+                      <!-- Swap Preview -->
+                      <div id="swap_preview" class="md:col-span-2 hidden">
+                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border">
+                              <div>
+                                  <p class="text-xs text-gray-500 mb-1">Employee A (Current)</p>
+                                  <p class="text-sm font-medium text-gray-900" id="swap_a_name">---</p>
+                                  <p class="text-sm text-gray-600" id="swap_a_time">---</p>
+                              </div>
+                              <div>
+                                  <p class="text-xs text-gray-500 mb-1">Employee B (Swap)</p>
+                                  <p class="text-sm font-medium text-gray-900" id="swap_b_name">---</p>
+                                  <p class="text-sm text-gray-600" id="swap_b_time">---</p>
+                              </div>
+                          </div>
+                      </div>
 
                     <!-- Reason -->
                     <div class="md:col-span-2">
@@ -1624,8 +1731,8 @@ function shiftManagement() {
     </div>
 </div>
 
-<script>
-function showAddShiftRequestModal() {
+  <script>
+  function showAddShiftRequestModal() {
     const modal = document.getElementById('addShiftRequestModal');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -1640,12 +1747,267 @@ function closeAddShiftRequestModal() {
     document.getElementById('addShiftRequestForm').reset();
 }
 
-// Close modal when clicking outside
-document.getElementById('addShiftRequestModal')?.addEventListener('click', function(e) {
+function openShiftRequestDetails(button) {
+    const modal = document.getElementById('shiftRequestDetailsModal');
+    const content = document.getElementById('shiftRequestDetailsContent');
+    const details = button?.dataset?.details || '---';
+    if (content) {
+        content.textContent = details;
+    }
+    modal?.classList.remove('hidden');
+    modal?.classList.add('flex');
+}
+
+function closeShiftRequestDetails() {
+    const modal = document.getElementById('shiftRequestDetailsModal');
+    modal?.classList.add('hidden');
+    modal?.classList.remove('flex');
+}
+
+document.getElementById('shiftRequestDetailsModal')?.addEventListener('click', function (e) {
     if (e.target === this) {
-        closeAddShiftRequestModal();
+        closeShiftRequestDetails();
     }
 });
-</script>
+
+// Close modal when clicking outside
+  document.getElementById('addShiftRequestModal')?.addEventListener('click', function(e) {
+      if (e.target === this) {
+          closeAddShiftRequestModal();
+      }
+  });
+
+  (function () {
+      const apiBase = '{{ url("") }}' + '/shift-management/api';
+      const requestType = document.getElementById('request_type');
+      const requestDate = document.getElementById('requested_date');
+      const employeeSelect = document.getElementById('user_id');
+      const swapSelect = document.getElementById('swap_with_user_id');
+      const swapHelp = document.getElementById('swap_with_help');
+      const swapWrap = document.getElementById('swap_with_wrap');
+      const swapPreview = document.getElementById('swap_preview');
+      const requestedTemplateWrap = document.getElementById('requested_shift_template_wrap');
+      const requestedTemplateSelect = document.getElementById('requested_shift_template_id');
+      const currentStart = document.getElementById('current_start_time');
+      const currentEnd = document.getElementById('current_end_time');
+      const currentShiftName = document.getElementById('current_shift_name');
+      const requestedShiftName = document.getElementById('requested_shift_name');
+      const requestedStart = document.getElementById('requested_start_time');
+      const requestedEnd = document.getElementById('requested_end_time');
+      const swapAName = document.getElementById('swap_a_name');
+      const swapATime = document.getElementById('swap_a_time');
+      const swapBName = document.getElementById('swap_b_name');
+      const swapBTime = document.getElementById('swap_b_time');
+
+      function setReadOnlyTimes(readonly) {
+          requestedStart.readOnly = readonly;
+          requestedEnd.readOnly = readonly;
+          if (readonly) {
+              requestedStart.classList.add('bg-gray-100', 'text-gray-600');
+              requestedEnd.classList.add('bg-gray-100', 'text-gray-600');
+          } else {
+              requestedStart.classList.remove('bg-gray-100', 'text-gray-600');
+              requestedEnd.classList.remove('bg-gray-100', 'text-gray-600');
+          }
+      }
+
+      function clearShiftInfo() {
+          currentStart.value = '';
+          currentEnd.value = '';
+          if (currentShiftName) currentShiftName.value = '';
+          if (requestedShiftName) requestedShiftName.value = '';
+          requestedStart.value = '';
+          requestedEnd.value = '';
+          swapAName.textContent = '---';
+          swapATime.textContent = '---';
+          swapBName.textContent = '---';
+          swapBTime.textContent = '---';
+          if (swapSelect) swapSelect.disabled = false;
+          swapHelp?.classList.add('hidden');
+      }
+
+      function populateEmployees(list) {
+          employeeSelect.innerHTML = '<option value="">Select an employee</option>';
+          list.forEach(emp => {
+              const opt = document.createElement('option');
+              opt.value = emp.user_id;
+              opt.textContent = `${emp.name}${emp.department ? ' (' + emp.department + ')' : ''}`;
+              opt.dataset.employeeId = emp.employee_id;
+              opt.dataset.name = emp.name;
+              opt.dataset.position = emp.position || '';
+              employeeSelect.appendChild(opt);
+          });
+      }
+
+      async function loadAllActiveEmployees() {
+          const res = await fetch(`${apiBase}/active-employees`);
+          const json = await res.json();
+          if (!json.success) return;
+          populateEmployees(json.data);
+      }
+
+      async function loadScheduledEmployees() {
+          const date = requestDate.value;
+          if (!date) return;
+          const res = await fetch(`${apiBase}/scheduled-employees?date=${encodeURIComponent(date)}`);
+          const json = await res.json();
+          if (!json.success) return;
+          if (json.data.length === 0) {
+              await loadAllActiveEmployees();
+              return;
+          }
+          populateEmployees(json.data);
+      }
+
+      async function loadAssignmentDetails() {
+          const date = requestDate.value;
+          const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+          if (!date || !selectedOption || !selectedOption.dataset.employeeId) return;
+
+          const employeeId = selectedOption.dataset.employeeId;
+          const res = await fetch(`${apiBase}/assignment-details?employee_id=${employeeId}&date=${encodeURIComponent(date)}`);
+          const json = await res.json();
+          if (!json.success) {
+              clearShiftInfo();
+              return;
+          }
+
+          currentStart.value = json.data.start_time;
+          currentEnd.value = json.data.end_time;
+          if (currentShiftName) {
+              currentShiftName.value = json.data.shift_name || '---';
+          }
+
+          // For swap, requested time should match current shift (read-only)
+          if (requestType.value === 'swap') {
+              requestedStart.value = json.data.start_time;
+              requestedEnd.value = json.data.end_time;
+              setReadOnlyTimes(true);
+          }
+
+          swapAName.textContent = selectedOption.dataset.name || '---';
+          swapATime.textContent = `${json.data.shift_name || 'Shift'} • ${json.data.start_time} - ${json.data.end_time}`;
+      }
+
+      async function loadSwapCandidates() {
+          const date = requestDate.value;
+          const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+          if (!date || !selectedOption || !selectedOption.dataset.employeeId) return;
+
+          const employeeId = selectedOption.dataset.employeeId;
+          const position = selectedOption.dataset.position || '';
+          const res = await fetch(`${apiBase}/swap-candidates?employee_id=${employeeId}&date=${encodeURIComponent(date)}&position=${encodeURIComponent(position)}`);
+          const json = await res.json();
+          swapSelect.innerHTML = '<option value=\"\">Select employee</option>';
+          swapSelect.disabled = false;
+          swapHelp?.classList.add('hidden');
+          if (!json.success) return;
+          json.data.forEach(emp => {
+              const opt = document.createElement('option');
+              opt.value = emp.user_id;
+              opt.textContent = `${emp.name}${emp.department ? ' (' + emp.department + ')' : ''}`;
+              opt.dataset.employeeId = emp.employee_id;
+              opt.dataset.name = emp.name;
+              swapSelect.appendChild(opt);
+          });
+          if (json.data.length === 0) {
+              swapSelect.disabled = true;
+              swapHelp?.classList.remove('hidden');
+          }
+      }
+
+      async function loadSwapDetails() {
+          const date = requestDate.value;
+          const selectedOption = swapSelect.options[swapSelect.selectedIndex];
+          if (!date || !selectedOption || !selectedOption.dataset.employeeId) return;
+
+          const employeeId = selectedOption.dataset.employeeId;
+          const res = await fetch(`${apiBase}/assignment-details?employee_id=${employeeId}&date=${encodeURIComponent(date)}`);
+          const json = await res.json();
+          if (!json.success) {
+              swapBName.textContent = '---';
+              swapBTime.textContent = '---';
+              return;
+          }
+
+          swapBName.textContent = selectedOption.dataset.name || '---';
+          swapBTime.textContent = `${json.data.shift_name || 'Shift'} • ${json.data.start_time} - ${json.data.end_time}`;
+      }
+
+      async function loadShiftTemplates() {
+          const res = await fetch(`${apiBase}/templates`);
+          const json = await res.json();
+          requestedTemplateSelect.innerHTML = '<option value=\"\">Select shift template</option>';
+          if (!json.success) return;
+          json.data.forEach(t => {
+              const opt = document.createElement('option');
+              opt.value = t.id;
+              opt.textContent = `${t.name} (${t.start_time} - ${t.end_time})`;
+              opt.dataset.start = t.start_time;
+              opt.dataset.end = t.end_time;
+              requestedTemplateSelect.appendChild(opt);
+          });
+      }
+
+      function handleRequestTypeChange() {
+          const type = requestType.value;
+          swapWrap.classList.toggle('hidden', type !== 'swap');
+          swapPreview.classList.toggle('hidden', type !== 'swap');
+          requestedTemplateWrap.classList.toggle('hidden', type !== 'schedule_change');
+
+          if (type === 'swap') {
+              setReadOnlyTimes(true);
+          } else {
+              setReadOnlyTimes(false);
+          }
+          clearShiftInfo();
+          loadAllActiveEmployees();
+          if (type === 'schedule_change') {
+              loadShiftTemplates();
+          }
+          if (requestDate.value && (type === 'swap' || type === 'schedule_change')) {
+              loadScheduledEmployees();
+          }
+      }
+
+      requestType?.addEventListener('change', handleRequestTypeChange);
+      requestDate?.addEventListener('change', () => {
+          clearShiftInfo();
+          if (!requestType.value) {
+              loadAllActiveEmployees();
+              return;
+          }
+          if (requestType.value === 'swap' || requestType.value === 'schedule_change') {
+              loadScheduledEmployees();
+          } else {
+              loadAllActiveEmployees();
+          }
+          if (requestType.value === 'swap' && employeeSelect.value) {
+              loadSwapCandidates();
+          }
+      });
+      employeeSelect?.addEventListener('change', async () => {
+          clearShiftInfo();
+          await loadAssignmentDetails();
+          if (requestType.value === 'swap') {
+              await loadSwapCandidates();
+          }
+      });
+      swapSelect?.addEventListener('change', loadSwapDetails);
+      requestedTemplateSelect?.addEventListener('change', () => {
+          const opt = requestedTemplateSelect.options[requestedTemplateSelect.selectedIndex];
+          if (opt && opt.dataset.start && opt.dataset.end) {
+              requestedStart.value = opt.dataset.start;
+              requestedEnd.value = opt.dataset.end;
+          }
+          if (requestedShiftName) {
+              requestedShiftName.value = opt && opt.value ? opt.textContent : '---';
+          }
+      });
+
+      // Initial load when modal opens (show all active employees)
+      loadAllActiveEmployees();
+  })();
+  </script>
 
 @endsection
