@@ -10,11 +10,13 @@ use App\Models\User;
 use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\ShiftRequest;
+use App\Models\ShiftAssignment;
 use App\Models\Attendance;
 use App\Models\Reimbursement;
 use App\Services\PayrollService;
 use App\Services\LeaveBalanceService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class EmployeeDashboardController extends Controller
 {
@@ -300,17 +302,82 @@ class EmployeeDashboardController extends Controller
     public function storeShiftRequest(Request $request)
     {
         $user = Auth::user();
+
+        // Normalize time inputs (H:i) and empty strings
+        foreach (['current_start_time','current_end_time','requested_start_time','requested_end_time'] as $field) {
+            if (!$request->has($field)) {
+                continue;
+            }
+            $value = $request->input($field);
+            if ($value === '') {
+                $request->merge([$field => null]);
+                continue;
+            }
+            if (is_string($value) && preg_match('/^\d{2}:\d{2}:\d{2}$/', $value)) {
+                $request->merge([$field => substr($value, 0, 5)]);
+            }
+        }
+
+        $type = $request->input('request_type');
+
+        if ($type === 'swap') {
+            if (empty($request->requested_start_time) && !empty($request->current_start_time)) {
+                $request->merge(['requested_start_time' => $request->current_start_time]);
+            }
+            if (empty($request->requested_end_time) && !empty($request->current_end_time)) {
+                $request->merge(['requested_end_time' => $request->current_end_time]);
+            }
+        }
         
         $validatedData = $request->validate([
             'request_type' => 'required|string|in:swap,cover,overtime,schedule_change',
             'requested_date' => 'required|date|after_or_equal:today',
-            'current_start_time' => 'nullable|date_format:H:i',
-            'current_end_time' => 'nullable|date_format:H:i',
-            'requested_start_time' => 'nullable|date_format:H:i',
-            'requested_end_time' => 'nullable|date_format:H:i',
+            'current_start_time' => 'required_if:request_type,swap,schedule_change|date_format:H:i',
+            'current_end_time' => 'required_if:request_type,swap,schedule_change|date_format:H:i',
+            'requested_start_time' => 'required_if:request_type,swap,schedule_change|date_format:H:i',
+            'requested_end_time' => 'required_if:request_type,swap,schedule_change|date_format:H:i',
             'swap_with_user_id' => 'nullable|exists:users,id',
             'reason' => 'required|string|max:1000',
         ]);
+
+        // Validate schedule existence for swap/change
+        if (in_array($validatedData['request_type'], ['swap', 'schedule_change'], true)) {
+            $employee = Employee::where('user_id', $user->id)->first();
+            if (!$employee) {
+                return redirect()->route('employee.shift-requests')
+                    ->with('error', 'No employee record found for your account.');
+            }
+
+            $date = Carbon::parse($validatedData['requested_date'])->toDateString();
+            $dateColumn = Schema::hasColumn('shift_assignments', 'assignment_date') ? 'assignment_date' : 'date';
+
+            $hasAssignment = ShiftAssignment::where('employee_id', $employee->id)
+                ->whereDate($dateColumn, $date)
+                ->exists();
+            if (!$hasAssignment) {
+                return redirect()->route('employee.shift-requests')
+                    ->with('error', 'You have no schedule on the selected date.');
+            }
+
+            if ($validatedData['request_type'] === 'swap') {
+                if (empty($validatedData['swap_with_user_id'])) {
+                    return redirect()->route('employee.shift-requests')
+                        ->with('error', 'Swap request requires another employee.');
+                }
+                $swapEmployee = Employee::where('user_id', $validatedData['swap_with_user_id'])->first();
+                if (!$swapEmployee) {
+                    return redirect()->route('employee.shift-requests')
+                        ->with('error', 'Swap employee has no employee record.');
+                }
+                $swapHasAssignment = ShiftAssignment::where('employee_id', $swapEmployee->id)
+                    ->whereDate($dateColumn, $date)
+                    ->exists();
+                if (!$swapHasAssignment) {
+                    return redirect()->route('employee.shift-requests')
+                        ->with('error', 'Selected swap employee has no schedule on that date.');
+                }
+            }
+        }
         
         // Prepare data for insertion
         $data = [

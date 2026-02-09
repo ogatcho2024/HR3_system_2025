@@ -302,7 +302,7 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Request Type</label>
-                            <select name="request_type" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <select id="emp_request_type" name="request_type" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="">Select type...</option>
                                 <option value="schedule_change">Schedule Change</option>
                                 <option value="swap">Shift Swap</option>
@@ -313,29 +313,54 @@
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Date</label>
-                            <input type="date" name="requested_date" required min="{{ date('Y-m-d') }}" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <input type="date" id="emp_requested_date" name="requested_date" required min="{{ date('Y-m-d') }}" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
-                        
+
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Current Start Time</label>
-                                <input type="time" name="current_start_time" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                <input type="time" id="emp_current_start_time" name="current_start_time" readonly class="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-600">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Current End Time</label>
-                                <input type="time" name="current_end_time" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                <input type="time" id="emp_current_end_time" name="current_end_time" readonly class="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-600">
                             </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Current Shift Type</label>
+                            <input type="text" id="emp_current_shift_name" readonly class="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-600" placeholder="---">
                         </div>
                         
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Requested Start Time</label>
-                                <input type="time" name="requested_start_time" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                <input type="time" id="emp_requested_start_time" name="requested_start_time" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Requested End Time</label>
-                                <input type="time" name="requested_end_time" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                <input type="time" id="emp_requested_end_time" name="requested_end_time" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                             </div>
+                        </div>
+
+                        <div id="emp_requested_shift_template_wrap" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700">Requested Shift Template</label>
+                            <select id="emp_requested_shift_template_id" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="">Select shift template</option>
+                            </select>
+                            <div class="mt-3">
+                                <label class="block text-sm font-medium text-gray-700">Requested Shift Type</label>
+                                <input type="text" id="emp_requested_shift_name" readonly class="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-600" placeholder="---">
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Selecting a template will auto-fill start/end time.</p>
+                        </div>
+
+                        <div id="emp_swap_with_wrap" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700">Swap With</label>
+                            <select id="emp_swap_with_user_id" name="swap_with_user_id" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="">Select employee</option>
+                            </select>
+                            <p id="emp_swap_with_help" class="text-xs text-gray-500 mt-1 hidden">No available employees to swap with on this date.</p>
                         </div>
                         
                         <div>
@@ -380,5 +405,149 @@ function shiftRequestsManagement() {
         }
     }
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const apiBase = '{{ url("") }}' + '/shift-management/api';
+    const currentEmployeeId = {{ auth()->user()->employee->id ?? 'null' }};
+
+    const requestType = document.getElementById('emp_request_type');
+    const requestDate = document.getElementById('emp_requested_date');
+    const currentStart = document.getElementById('emp_current_start_time');
+    const currentEnd = document.getElementById('emp_current_end_time');
+    const currentShiftName = document.getElementById('emp_current_shift_name');
+    const requestedStart = document.getElementById('emp_requested_start_time');
+    const requestedEnd = document.getElementById('emp_requested_end_time');
+    const requestedTemplateWrap = document.getElementById('emp_requested_shift_template_wrap');
+    const requestedTemplateSelect = document.getElementById('emp_requested_shift_template_id');
+    const requestedShiftName = document.getElementById('emp_requested_shift_name');
+    const swapWrap = document.getElementById('emp_swap_with_wrap');
+    const swapSelect = document.getElementById('emp_swap_with_user_id');
+    const swapHelp = document.getElementById('emp_swap_with_help');
+
+    function setReadOnlyTimes(readonly) {
+        requestedStart.readOnly = readonly;
+        requestedEnd.readOnly = readonly;
+        if (readonly) {
+            requestedStart.classList.add('bg-gray-100', 'text-gray-600');
+            requestedEnd.classList.add('bg-gray-100', 'text-gray-600');
+        } else {
+            requestedStart.classList.remove('bg-gray-100', 'text-gray-600');
+            requestedEnd.classList.remove('bg-gray-100', 'text-gray-600');
+        }
+    }
+
+    function clearShiftInfo() {
+        if (currentStart) currentStart.value = '';
+        if (currentEnd) currentEnd.value = '';
+        if (currentShiftName) currentShiftName.value = '';
+        if (requestedStart) requestedStart.value = '';
+        if (requestedEnd) requestedEnd.value = '';
+        if (requestedShiftName) requestedShiftName.value = '';
+        if (swapSelect) swapSelect.disabled = false;
+        swapHelp?.classList.add('hidden');
+    }
+
+    async function loadCurrentAssignment() {
+        const date = requestDate.value;
+        if (!date || !currentEmployeeId) return;
+        const res = await fetch(`${apiBase}/assignment-details?employee_id=${currentEmployeeId}&date=${encodeURIComponent(date)}`);
+        const json = await res.json();
+        if (!json.success) {
+            clearShiftInfo();
+            return;
+        }
+        currentStart.value = json.data.start_time;
+        currentEnd.value = json.data.end_time;
+        if (currentShiftName) currentShiftName.value = json.data.shift_name || '---';
+
+        if (requestType.value === 'swap') {
+            requestedStart.value = json.data.start_time;
+            requestedEnd.value = json.data.end_time;
+            setReadOnlyTimes(true);
+        }
+    }
+
+    async function loadSwapCandidates() {
+        const date = requestDate.value;
+        if (!date || !currentEmployeeId) return;
+        const res = await fetch(`${apiBase}/swap-candidates?employee_id=${currentEmployeeId}&date=${encodeURIComponent(date)}`);
+        const json = await res.json();
+        swapSelect.innerHTML = '<option value="">Select employee</option>';
+        swapSelect.disabled = false;
+        swapHelp?.classList.add('hidden');
+        if (!json.success) return;
+        json.data.forEach(emp => {
+            const opt = document.createElement('option');
+            opt.value = emp.user_id;
+            opt.textContent = `${emp.name}${emp.department ? ' (' + emp.department + ')' : ''}`;
+            swapSelect.appendChild(opt);
+        });
+        if (json.data.length === 0) {
+            swapSelect.disabled = true;
+            swapHelp?.classList.remove('hidden');
+        }
+    }
+
+    async function loadShiftTemplates() {
+        const res = await fetch(`${apiBase}/templates`);
+        const json = await res.json();
+        requestedTemplateSelect.innerHTML = '<option value="">Select shift template</option>';
+        if (!json.success) return;
+        json.data.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = `${t.name} (${t.start_time} - ${t.end_time})`;
+            opt.dataset.start = t.start_time;
+            opt.dataset.end = t.end_time;
+            requestedTemplateSelect.appendChild(opt);
+        });
+    }
+
+    function handleRequestTypeChange() {
+        const type = requestType.value;
+        swapWrap.classList.toggle('hidden', type !== 'swap');
+        requestedTemplateWrap.classList.toggle('hidden', type !== 'schedule_change');
+        clearShiftInfo();
+
+        if (type === 'swap') {
+            setReadOnlyTimes(true);
+        } else {
+            setReadOnlyTimes(false);
+        }
+
+        if (type === 'schedule_change') {
+            loadShiftTemplates();
+        }
+        if (requestDate.value && (type === 'swap' || type === 'schedule_change')) {
+            loadCurrentAssignment();
+        }
+        if (type === 'swap' && requestDate.value) {
+            loadSwapCandidates();
+        }
+    }
+
+    requestType?.addEventListener('change', handleRequestTypeChange);
+    requestDate?.addEventListener('change', async () => {
+        clearShiftInfo();
+        if (!requestType.value) return;
+        if (requestType.value === 'swap' || requestType.value === 'schedule_change') {
+            await loadCurrentAssignment();
+        }
+        if (requestType.value === 'swap') {
+            await loadSwapCandidates();
+        }
+    });
+
+    requestedTemplateSelect?.addEventListener('change', () => {
+        const opt = requestedTemplateSelect.options[requestedTemplateSelect.selectedIndex];
+        if (opt && opt.dataset.start && opt.dataset.end) {
+            requestedStart.value = opt.dataset.start;
+            requestedEnd.value = opt.dataset.end;
+        }
+        if (requestedShiftName) {
+            requestedShiftName.value = opt && opt.value ? opt.textContent : '---';
+        }
+    });
+});
 </script>
 @endsection
