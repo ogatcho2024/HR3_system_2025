@@ -9,6 +9,8 @@ use App\Models\Timesheet;
 use App\Http\Requests\StoreLeaveRequestRequest;
 use App\Http\Requests\StoreTimesheetRequest;
 use App\Services\NotificationService;
+use App\Services\LeaveBalanceService;
+use App\Services\NightDifferentialService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -18,11 +20,13 @@ use Carbon\Carbon;
 class EmployeeSelfServiceController extends Controller
 {
     protected $notificationService;
+    protected $leaveBalanceService;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(NotificationService $notificationService, LeaveBalanceService $leaveBalanceService)
     {
         $this->middleware('auth');
         $this->notificationService = $notificationService;
+        $this->leaveBalanceService = $leaveBalanceService;
     }
 
     /**
@@ -127,6 +131,14 @@ class EmployeeSelfServiceController extends Controller
         $startDate = Carbon::parse($validatedData['start_date']);
         $endDate = Carbon::parse($validatedData['end_date']);
         $validatedData['days_requested'] = $startDate->diffInDays($endDate) + 1;
+
+        // Ensure leave balance exists and is sufficient (no deduction yet)
+        $balance = $this->leaveBalanceService->ensureBalance(
+            $user->id,
+            $validatedData['leave_type'],
+            (int) $startDate->format('Y')
+        );
+        $this->leaveBalanceService->assertSufficient($balance, (float) $validatedData['days_requested']);
         
         // Handle file upload
         if ($request->hasFile('attachment')) {
@@ -135,6 +147,9 @@ class EmployeeSelfServiceController extends Controller
         }
         
         $leaveRequest = LeaveRequest::create($validatedData);
+
+        // Mark pending credits
+        $this->leaveBalanceService->applyPending($balance, (float) $validatedData['days_requested']);
         
         // Create notification for leave request submission
         $this->notificationService->createLeaveRequestNotification(
@@ -212,6 +227,19 @@ class EmployeeSelfServiceController extends Controller
             }
             
             $validatedData['hours_worked'] = round($totalMinutes / 60, 2);
+        }
+
+        // Calculate night differential minutes on submit
+        if (($validatedData['status'] ?? 'draft') === 'submitted') {
+            $nightService = new NightDifferentialService();
+            $nightMinutes = $nightService->calculateMinutes(
+                $validatedData['work_date'],
+                Timesheet::normalizeTimeValue($validatedData['clock_in_time'] ?? null),
+                Timesheet::normalizeTimeValue($validatedData['clock_out_time'] ?? null),
+                Timesheet::normalizeTimeValue($validatedData['break_start'] ?? null),
+                Timesheet::normalizeTimeValue($validatedData['break_end'] ?? null)
+            );
+            $validatedData['night_diff_minutes'] = $nightMinutes;
         }
         
         $timesheet = Timesheet::create($validatedData);
@@ -310,12 +338,23 @@ class EmployeeSelfServiceController extends Controller
                 ->with('error', 'This timesheet has already been submitted.');
         }
         
+        $nightService = new NightDifferentialService();
+        $nightMinutes = $nightService->calculateMinutes(
+            $timesheet->work_date,
+            Timesheet::normalizeTimeValue($timesheet->clock_in_time),
+            Timesheet::normalizeTimeValue($timesheet->clock_out_time),
+            Timesheet::normalizeTimeValue($timesheet->break_start),
+            Timesheet::normalizeTimeValue($timesheet->break_end)
+        );
+
         $timesheet->update([
             'status' => 'submitted',
             'submitted_at' => now(),
+            'night_diff_minutes' => $nightMinutes,
         ]);
         
         // Create notification for timesheet submission
+        $user = Auth::user();
         $this->notificationService->createTimesheetNotification(
             $user,
             'submitted',

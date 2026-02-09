@@ -140,16 +140,16 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div class="flex items-center space-x-2">
-                                            <button onclick="showRequestDetails({{ $request->id }})" class="text-blue-600 hover:text-blue-900">
+                                            <button onclick="showRequestDetails({{ $request->id }})" class="action-btn action-btn--view">
                                                 View
                                             </button>
                                             <form action="{{ route('leave-management.requests.approve', $request) }}" method="POST" class="inline">
                                                 @csrf
-                                                <button type="submit" class="ml-2 text-green-600 hover:text-green-900" onclick="return confirm('Are you sure you want to approve this request?')">
+                                                <button type="submit" class="action-btn action-btn--approve ml-2" onclick="return confirm('Are you sure you want to approve this request?')">
                                                     Approve
                                                 </button>
                                             </form>
-                                            <button onclick="showRejectModal({{ $request->id }})" class="text-red-600 hover:text-red-900">
+                                            <button onclick="showRejectModal({{ $request->id }})" class="action-btn action-btn--reject">
                                                 Reject
                                             </button>
                                         </div>

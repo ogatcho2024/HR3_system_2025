@@ -143,11 +143,11 @@
                             <div class="flex items-center space-x-2">
                                 @if($timesheet->status === 'draft')
                                     <a href="{{ route('employee.timesheets.edit', $timesheet) }}" 
-                                       class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                       class="action-btn action-btn--edit">
                                         Edit
                                     </a>
                                     <button onclick="submitTimesheet({{ $timesheet->id }})" 
-                                            class="text-green-600 hover:text-green-800 text-sm font-medium">
+                                            class="action-btn action-btn--approve">
                                         Submit
                                     </button>
                                 @elseif($timesheet->status === 'submitted')
@@ -158,14 +158,14 @@
                                     <span class="text-red-600 text-sm">Rejected</span>
                                     @if($timesheet->rejection_reason)
                                         <button onclick="showRejectionReason('{{ $timesheet->rejection_reason }}')" 
-                                                class="text-red-600 hover:text-red-800 text-sm underline">
+                                                class="action-btn action-btn--view">
                                             View Reason
                                         </button>
                                     @endif
                                 @endif
                                 
                                 <button onclick="viewTimesheetDetails({{ $timesheet->id }})" 
-                                        class="text-gray-600 hover:text-gray-800 text-sm">
+                                        class="action-btn action-btn--view">
                                     View Details
                                 </button>
                             </div>

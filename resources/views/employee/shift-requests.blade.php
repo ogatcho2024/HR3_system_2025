@@ -128,7 +128,7 @@
                                         <form action="{{ route('employee.shift-requests.destroy', $request) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to cancel this shift request?');">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="text-red-600 hover:text-red-900">Cancel</button>
+                                            <button type="submit" class="action-btn action-btn--reject">Cancel</button>
                                         </form>
                                     </td>
                                 </tr>

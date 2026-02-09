@@ -33,6 +33,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the leave balances for the user.
+     */
+    public function leaveBalances()
+    {
+        return $this->hasMany(LeaveBalance::class);
+    }
+
+    /**
      * Get the timesheets for the user.
      */
     public function timesheets()

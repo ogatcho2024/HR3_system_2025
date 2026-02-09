@@ -11,6 +11,7 @@ use App\Models\Employee;
 use App\Models\Department;
 use App\Models\LeaveDemandPrediction;
 use App\Services\NotificationService;
+use App\Services\LeaveBalanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -21,11 +22,13 @@ use Barryvdh\DomPDF\Facade\Pdf as PDF;
 class LeaveManagementController extends Controller
 {
     protected $notificationService;
+    protected $leaveBalanceService;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(NotificationService $notificationService, LeaveBalanceService $leaveBalanceService)
     {
         $this->middleware('auth');
         $this->notificationService = $notificationService;
+        $this->leaveBalanceService = $leaveBalanceService;
         // Add role-based middleware if you have it
         // $this->middleware('role:hr,admin');
     }
@@ -181,6 +184,14 @@ class LeaveManagementController extends Controller
         $startDate = Carbon::parse($validatedData['start_date']);
         $endDate = Carbon::parse($validatedData['end_date']);
         $daysRequested = $startDate->diffInDays($endDate) + 1;
+
+        // Ensure leave balance exists and is sufficient (no deduction yet)
+        $balance = $this->leaveBalanceService->ensureBalance(
+            (int) $validatedData['user_id'],
+            $validatedData['leave_type'],
+            (int) $startDate->format('Y')
+        );
+        $this->leaveBalanceService->assertSufficient($balance, (float) $daysRequested);
         
         // Create the leave request
         $leaveRequest = LeaveRequest::create([
@@ -917,32 +928,22 @@ class LeaveManagementController extends Controller
      */
     private function updateLeaveBalance(LeaveRequest $leaveRequest, string $action): void
     {
-        $balance = LeaveBalance::firstOrCreate([
-            'user_id' => $leaveRequest->user_id,
-            'leave_type' => $leaveRequest->leave_type,
-            'year' => $leaveRequest->start_date->year,
-        ]);
-        
+        $balance = $this->leaveBalanceService->ensureBalance(
+            $leaveRequest->user_id,
+            $leaveRequest->leave_type,
+            (int) $leaveRequest->start_date->format('Y')
+        );
+
         switch ($action) {
             case 'approved':
-                // Move from pending to used
-                $balance->pending = max(0, $balance->pending - $leaveRequest->days_requested);
-                $balance->used += $leaveRequest->days_requested;
+                $this->leaveBalanceService->applyApproval($balance, (float) $leaveRequest->days_requested);
                 break;
-                
             case 'rejected':
-                // Remove from pending
-                $balance->pending = max(0, $balance->pending - $leaveRequest->days_requested);
+                $this->leaveBalanceService->removePending($balance, (float) $leaveRequest->days_requested);
                 break;
-                
             case 'pending':
-                // Add to pending
-                $balance->pending += $leaveRequest->days_requested;
+                $this->leaveBalanceService->applyPending($balance, (float) $leaveRequest->days_requested);
                 break;
         }
-        
-        // Recalculate available
-        $balance->available = $balance->total_entitled + $balance->carried_forward - $balance->used - $balance->pending;
-        $balance->save();
     }
 }

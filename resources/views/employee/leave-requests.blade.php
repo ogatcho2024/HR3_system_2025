@@ -182,7 +182,7 @@
                                         <form action="{{ route('employee.leave-requests.destroy', $request) }}" method="POST" onsubmit="return confirm('Are you sure you want to cancel this leave request?');">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="text-red-600 hover:text-red-900 text-sm font-medium">
+                                            <button type="submit" class="action-btn action-btn--reject">
                                                 Cancel Request
                                             </button>
                                         </form>

@@ -411,17 +411,15 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" x-text="employee.hours ? employee.hours + ' hrs' : 'N/A'"></td>
                                     
                                     <!-- Actions -->
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div class="flex space-x-2">
-                                            <button
-                                                @click="openAttendanceView(employee)"
-                                                :disabled="!employee.attendance_id"
-                                                :class="employee.attendance_id ? 'text-blue-600 hover:text-blue-900' : 'text-gray-400 cursor-not-allowed'"
-                                                class="transition-colors">
-                                                View
-                                            </button>
-                                        </div>
-                                    </td>
+                                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                          <div class="flex space-x-2">
+                                              <button
+                                                  @click="openAttendanceView(employee)"
+                                                  class="text-blue-600 hover:text-blue-900 transition-colors">
+                                                  View
+                                              </button>
+                                          </div>
+                                      </td>
                                 </tr>
                             </template>
                             
@@ -444,87 +442,124 @@
         </div>
     </div>
 
-    <!-- Attendance View Modal -->
-    <div x-cloak x-show="showAttendanceViewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="closeAttendanceView()">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
-            <div class="flex items-center justify-between border-b px-6 py-4">
-                <h3 class="text-lg font-semibold text-gray-900">Attendance Details</h3>
-                <button class="text-gray-500 hover:text-gray-700" @click="closeAttendanceView()">
-                    <span class="sr-only">Close</span>
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            <div class="px-6 py-4">
-                <template x-if="viewLoading">
-                    <div class="text-center py-6 text-gray-600">Loading attendance details...</div>
-                </template>
-                <template x-if="viewError">
-                    <div class="text-center py-6 text-red-600" x-text="viewError"></div>
-                </template>
-                <template x-if="!viewLoading && !viewError && viewRecord">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <p class="text-gray-500">Employee</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.employee_name || 'Unknown'"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Employee ID</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.employee_id || 'N/A'"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Department</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.department || 'N/A'"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Position</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.position || 'N/A'"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Date</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.date || 'N/A'"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Status</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.status || 'N/A'"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Time Start</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.clock_in_time || 'N/A'"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Time End</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.clock_out_time || 'N/A'"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Break Start</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.break_start || 'N/A'"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Break End</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.break_end || 'N/A'"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Total Hours</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.hours_worked ?? 'N/A'"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Overtime Hours</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.overtime_hours ?? 'N/A'"></p>
-                        </div>
-                        <div class="md:col-span-2">
-                            <p class="text-gray-500">Notes</p>
-                            <p class="font-medium text-gray-900" x-text="viewRecord.notes || 'N/A'"></p>
-                        </div>
-                    </div>
-                </template>
-            </div>
-            <div class="flex justify-end border-t px-6 py-4">
-                <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200" @click="closeAttendanceView()">Close</button>
-            </div>
-        </div>
-    </div>
+      <!-- Attendance View Modal -->
+      <div x-cloak x-show="showAttendanceViewModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="attendance-modal-title" role="dialog" aria-modal="true">
+          <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+              <!-- Background overlay -->
+              <div x-show="showAttendanceViewModal"
+                   x-transition:enter="ease-out duration-300"
+                   x-transition:enter-start="opacity-0"
+                   x-transition:enter-end="opacity-100"
+                   x-transition:leave="ease-in duration-200"
+                   x-transition:leave-start="opacity-100"
+                   x-transition:leave-end="opacity-0"
+                   @click="closeAttendanceView()"
+                   class="fixed inset-0 bg-opacity-3 backdrop-blur-sm transition-opacity"
+                   aria-hidden="true"></div>
+
+              <!-- This element is to trick the browser into centering the modal contents. -->
+              <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+              <!-- Modal panel -->
+              <div x-show="showAttendanceViewModal"
+                   x-transition:enter="ease-out duration-300"
+                   x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                   x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                   x-transition:leave="ease-in duration-200"
+                   x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                   x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                   @click.stop
+                   class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+
+                  <!-- Modal Header -->
+                  <div class="bg-white px-4 pt-6 pb-4 sm:px-6 border-b border-gray-200">
+                      <div class="flex items-start justify-between">
+                          <div>
+                              <h3 class="text-xl leading-6 font-semibold text-gray-900" id="attendance-modal-title">Attendance Details</h3>
+                              <p class="mt-2 text-sm text-gray-600">Latest attendance details for the selected employee.</p>
+                          </div>
+                          <button class="text-gray-500 hover:text-gray-700" @click="closeAttendanceView()">
+                              <span class="sr-only">Close</span>
+                              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                              </svg>
+                          </button>
+                      </div>
+                  </div>
+
+                  <!-- Modal Body -->
+                  <div class="bg-white px-4 pb-4 sm:px-6">
+                      <template x-if="viewLoading">
+                          <div class="text-center py-6 text-gray-600">Loading attendance details...</div>
+                      </template>
+                      <template x-if="viewError">
+                          <div class="text-center py-6 text-red-600" x-text="viewError"></div>
+                      </template>
+                      <template x-if="!viewLoading && !viewError && viewRecord !== null">
+                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                              <div>
+                                  <p class="text-gray-500">Employee</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.employee_name || '---'"></p>
+                              </div>
+                              <div>
+                                  <p class="text-gray-500">Employee ID</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.employee_id || '---'"></p>
+                              </div>
+                              <div>
+                                  <p class="text-gray-500">Department</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.department || '---'"></p>
+                              </div>
+                              <div>
+                                  <p class="text-gray-500">Position</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.position || '---'"></p>
+                              </div>
+                              <div>
+                                  <p class="text-gray-500">Date</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.date || '---'"></p>
+                              </div>
+                              <div>
+                                  <p class="text-gray-500">Status</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.status || '---'"></p>
+                              </div>
+                              <div>
+                                  <p class="text-gray-500">Time Start</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.clock_in_time || '---'"></p>
+                              </div>
+                              <div>
+                                  <p class="text-gray-500">Time End</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.clock_out_time || '---'"></p>
+                              </div>
+                              <div>
+                                  <p class="text-gray-500">Break Start</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.break_start || '---'"></p>
+                              </div>
+                              <div>
+                                  <p class="text-gray-500">Break End</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.break_end || '---'"></p>
+                              </div>
+                              <div>
+                                  <p class="text-gray-500">Total Hours</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.hours_worked ?? '---'"></p>
+                              </div>
+                              <div>
+                                  <p class="text-gray-500">Overtime Hours</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.overtime_hours ?? '---'"></p>
+                              </div>
+                              <div class="md:col-span-2">
+                                  <p class="text-gray-500">Notes</p>
+                                  <p class="font-medium text-gray-900" x-text="viewRecord.notes || '---'"></p>
+                              </div>
+                          </div>
+                      </template>
+                  </div>
+
+                  <!-- Modal Footer -->
+                  <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-3">
+                      <button class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400" @click="closeAttendanceView()">Close</button>
+                  </div>
+              </div>
+          </div>
+      </div>
 
     <!-- Clock In/Out Tab -->
     <div x-show="activeTab === 'clockinout'" class="space-y-6" x-init="
@@ -789,10 +824,12 @@
                                                 </template>
                                                 
                                                 <!-- More Options Button -->
-                                                <button class="inline-flex items-center px-2 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-colors" title="More options">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                                                <button @click="openAttendanceView(employee)" class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-colors" title="View attendance details">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                                     </svg>
+                                                    View
                                                 </button>
                                             </div>
                                         </td>
@@ -1868,15 +1905,15 @@ function attendanceTracker() {
             }
         },
 
-        async openAttendanceView(employee) {
-            this.viewError = '';
-            this.viewRecord = null;
-            this.showAttendanceViewModal = true;
+          async openAttendanceView(employee) {
+              this.viewError = '';
+              this.viewRecord = null;
+              this.showAttendanceViewModal = true;
 
-            if (!employee || !employee.attendance_id) {
-                this.viewError = 'No attendance record found for today.';
-                return;
-            }
+              if (!employee || !employee.attendance_id) {
+                  this.viewRecord = {};
+                  return;
+              }
 
             this.viewLoading = true;
             try {
@@ -3095,3 +3132,4 @@ function attendanceTracker() {
 </script>
 
 @endsection
+

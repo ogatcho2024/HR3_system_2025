@@ -568,6 +568,10 @@ Route::middleware(['auth'])->group(function () {
         // Manual Entry
         Route::get('/manual-entry', [\App\Http\Controllers\AttendanceController::class, 'create'])->name('manual-entry');
         Route::post('/manual-entry', [\App\Http\Controllers\AttendanceController::class, 'store'])->name('manual-entry.store');
+
+        // Clock In/Out details for modal (RBAC enforced in controller)
+        Route::get('/employee/{employee}/today-details', [\App\Http\Controllers\AttendanceController::class, 'getEmployeeTodayDetails'])
+            ->whereNumber('employee');
         
         // Clock In/Out Actions
         Route::post('/clock-in', [\App\Http\Controllers\AttendanceController::class, 'clockIn'])->name('clock-in');

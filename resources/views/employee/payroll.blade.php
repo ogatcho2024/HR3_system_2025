@@ -94,9 +94,9 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button class="text-indigo-600 hover:text-indigo-900 mr-4">View Details</button>
+                                <button class="action-btn action-btn--view mr-2">View Details</button>
                                 @if($payslip['status'] == 'available')
-                                <button class="text-green-600 hover:text-green-900">Download PDF</button>
+                                <button class="action-btn action-btn--download">Download PDF</button>
                                 @endif
                             </td>
                         </tr>

@@ -347,9 +347,9 @@
                                 Dec 15, 2024
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                                <button class="text-blue-600 hover:text-blue-700">View</button>
-                                <button class="text-green-600 hover:text-green-700">Approve</button>
-                                <button class="text-red-600 hover:text-red-700">Reject</button>
+                                <button class="action-btn action-btn--view">View</button>
+                                <button class="action-btn action-btn--approve">Approve</button>
+                                <button class="action-btn action-btn--reject">Reject</button>
                             </td>
                         </tr>
                     </tbody>

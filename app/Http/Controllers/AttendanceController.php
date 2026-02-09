@@ -620,6 +620,78 @@ class AttendanceController extends Controller
     }
 
     /**
+     * Get today's attendance details for a specific employee (Clock In/Out modal).
+     */
+    public function getEmployeeTodayDetails(\Illuminate\Http\Request $request, \App\Models\Employee $employee)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        // RBAC: Employee can only view their own data
+        if ($user->isEmployee()) {
+            if (!$employee->user_id || $employee->user_id !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
+            }
+        }
+
+        $today = now()->toDateString();
+        $attendance = Attendance::where('user_id', $employee->user_id)
+            ->whereDate('date', $today)
+            ->first();
+
+        $hoursWorked = null;
+        $overtime = null;
+        if ($attendance) {
+            if ($attendance->clock_in_time && $attendance->clock_out_time) {
+                $hoursWorked = number_format($attendance->calculateHours(), 2);
+                $overtime = number_format($attendance->calculateOvertime(), 2);
+            } elseif ($attendance->hours_worked !== null) {
+                $hoursWorked = number_format((float) $attendance->hours_worked, 2);
+                $overtime = $attendance->overtime_hours !== null ? number_format((float) $attendance->overtime_hours, 2) : null;
+            }
+        }
+
+        $logs = \App\Models\QrAttendanceLog::forEmployee($employee->id)
+            ->orderBy('scanned_at', 'desc')
+            ->limit(20)
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'type' => $log->log_type,
+                    'time' => $log->scanned_at ? $log->scanned_at->format('Y-m-d H:i:s') : null,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'employee' => [
+                    'id' => $employee->id,
+                    'name' => $employee->user ? $employee->user->name . ' ' . $employee->user->lastname : 'Unknown',
+                    'employee_id' => $employee->employee_id,
+                    'department' => $employee->department,
+                    'position' => $employee->position,
+                ],
+                'attendance' => [
+                    'date' => $today,
+                    'status' => $attendance ? $attendance->status : null,
+                    'time_in' => $attendance && $attendance->clock_in_time ? \Carbon\Carbon::parse($attendance->clock_in_time)->format('H:i:s') : null,
+                    'time_out' => $attendance && $attendance->clock_out_time ? \Carbon\Carbon::parse($attendance->clock_out_time)->format('H:i:s') : null,
+                    'break_start' => $attendance && $attendance->break_start ? \Carbon\Carbon::parse($attendance->break_start)->format('H:i:s') : null,
+                    'break_end' => $attendance && $attendance->break_end ? \Carbon\Carbon::parse($attendance->break_end)->format('H:i:s') : null,
+                    'total_hours' => $hoursWorked,
+                    'overtime' => $overtime,
+                ],
+            ],
+            'logs' => $logs,
+        ]);
+    }
+
+    /**
      * Dashboard method to display main HR dashboard with real-time attendance data
      */
     public function dashboard(): View
@@ -2065,18 +2137,18 @@ class AttendanceController extends Controller
             'break_start' => $attendance->break_start,
             'break_end' => $attendance->break_end,
         ];
-        
+
         // Calculate hours worked and overtime if both clock in/out times exist
         if ($attendance->clock_in_time && $attendance->clock_out_time) {
             $hoursWorked = $attendance->calculateHours();
             $overtimeHours = $attendance->calculateOvertime();
-            
+
             $updateData['hours_worked'] = $hoursWorked;
             $updateData['overtime_hours'] = $overtimeHours;
         }
-        
+
         $timesheet->update($updateData);
-        
+
         return $timesheet;
     }
 }

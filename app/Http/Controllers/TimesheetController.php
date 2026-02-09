@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Jobs\SendTimesheetToPayrollJob;
+use App\Services\NightDifferentialService;
 
 class TimesheetController extends Controller
 {
@@ -87,7 +88,8 @@ class TimesheetController extends Controller
                 if ($overtimeHours === null && $totalHours !== null) {
                     $overtimeHours = max(0, $totalHours - 8);
                 }
-                
+                $nightDiffMinutes = $timesheet->night_diff_minutes ?? 0;
+
                 return [
                     'id' => $timesheet->id,
                     'employee' => $fullName !== '' ? $fullName : 'User #' . $timesheet->user_id,
@@ -101,6 +103,7 @@ class TimesheetController extends Controller
                         Carbon::createFromTimeString($timesheet->clock_out_time)->format('H:i') : '--',
                     'overtime_hours' => $overtimeHours !== null ? number_format($overtimeHours, 2) : '0.00',
                     'total_hours' => $totalHours !== null ? number_format($totalHours, 2) : '0.00',
+                    'night_diff_minutes' => (int) $nightDiffMinutes,
                     'status' => $timesheet->status,
                     'project_name' => $timesheet->project_name ?: 'General Work',
                     'work_description' => $timesheet->work_description ?: 'Daily work activities',
@@ -370,11 +373,21 @@ class TimesheetController extends Controller
             
             // Store old status before updating
             $oldStatus = $timesheet->status;
-            
+
+            $nightService = new NightDifferentialService();
+            $nightMinutes = $nightService->calculateMinutes(
+                $timesheet->work_date,
+                Timesheet::normalizeTimeValue($timesheet->clock_in_time),
+                Timesheet::normalizeTimeValue($timesheet->clock_out_time),
+                Timesheet::normalizeTimeValue($timesheet->break_start),
+                Timesheet::normalizeTimeValue($timesheet->break_end)
+            );
+
             $timesheet->update([
                 'status' => 'approved',
                 'approved_at' => now(),
-                'approved_by' => Auth::id() ?? 1
+                'approved_by' => Auth::id() ?? 1,
+                'night_diff_minutes' => $nightMinutes,
             ]);
             
             Log::info('[Timesheet] Timesheet approved', [
@@ -460,6 +473,20 @@ class TimesheetController extends Controller
                     'approved_at' => now(),
                     'approved_by' => Auth::id() ?? 1
                 ]);
+
+            $nightService = new NightDifferentialService();
+            foreach ($timesheetsToApprove as $timesheet) {
+                $nightMinutes = $nightService->calculateMinutes(
+                    $timesheet->work_date,
+                    Timesheet::normalizeTimeValue($timesheet->clock_in_time),
+                    Timesheet::normalizeTimeValue($timesheet->clock_out_time),
+                    Timesheet::normalizeTimeValue($timesheet->break_start),
+                    Timesheet::normalizeTimeValue($timesheet->break_end)
+                );
+                $timesheet->update([
+                    'night_diff_minutes' => $nightMinutes,
+                ]);
+            }
             
             // ============================================================
             // REAL-TIME PAYROLL SYNC: Dispatch jobs for each approved timesheet

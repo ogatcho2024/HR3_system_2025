@@ -119,7 +119,7 @@
                                         {{ number_format($balance->carried_forward ?? 0, 2) }}
                                     </td>
                                     <td class="px-2 py-4 whitespace-nowrap text-sm font-medium">
-                                        <button type="button" class="text-indigo-600 hover:text-indigo-900"
+                                        <button type="button" class="action-btn action-btn--edit"
                                                 onclick="openAdjustBalanceModal({{ $balance->user_id }}, '{{ $balance->leave_type }}', {{ $year }})">
                                             Adjust
                                         </button>

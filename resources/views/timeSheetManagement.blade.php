@@ -442,12 +442,13 @@
                   <th class="text-center py-3 px-4 font-medium text-gray-700">Time Start</th>
                   <th class="text-center py-3 px-4 font-medium text-gray-700">Time End</th>
                   <th class="text-center py-3 px-4 font-medium text-gray-700">Over Time</th>
-                  <th class="text-center py-3 px-4 font-medium text-gray-700">Total Hours</th>
-                  <th class="text-center py-3 px-4 font-medium text-gray-700">Status</th>
-                  <th class="text-center py-3 px-4 font-medium text-gray-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+                    <th class="text-center py-3 px-4 font-medium text-gray-700">Total Hours</th>
+                    <th class="text-center py-3 px-4 font-medium text-gray-700">Night Diff</th>
+                    <th class="text-center py-3 px-4 font-medium text-gray-700">Status</th>
+                    <th class="text-center py-3 px-4 font-medium text-gray-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
                 <template x-for="timesheet in employeeTimesheets" :key="timesheet.id">
                   <tr class="border-b hover:bg-gray-50">
                     <td class="py-3 px-4">
@@ -459,11 +460,12 @@
                     <td class="py-3 px-4 text-center font-mono" x-text="new Date(timesheet.date).toLocaleDateString()"></td>
                     <td class="py-3 px-4 text-center font-mono" x-text="timesheet.time_start"></td>
                     <td class="py-3 px-4 text-center font-mono" x-text="timesheet.time_end"></td>
-                    <td class="py-3 px-4 text-center font-mono" x-text="timesheet.overtime_hours + 'h'"></td>
-                    <td class="py-3 px-4 text-center font-mono font-semibold" x-text="timesheet.total_hours + 'h'"></td>
-                    <td class="py-3 px-4 text-center">
-                      <span class="px-2 py-1 rounded-full text-xs" :class="getTimesheetStatusClass(timesheet.status)" x-text="timesheet.status"></span>
-                    </td>
+                      <td class="py-3 px-4 text-center font-mono" x-text="timesheet.overtime_hours + 'h'"></td>
+                      <td class="py-3 px-4 text-center font-mono font-semibold" x-text="timesheet.total_hours + 'h'"></td>
+                      <td class="py-3 px-4 text-center font-mono" x-text="(timesheet.night_diff_minutes ?? 0) + 'm'"></td>
+                      <td class="py-3 px-4 text-center">
+                        <span class="px-2 py-1 rounded-full text-xs" :class="getTimesheetStatusClass(timesheet.status)" x-text="timesheet.status"></span>
+                      </td>
                     <td class="py-3 px-4 text-center">
                       <div class="flex justify-center gap-1">
                         <button @click="editTimesheetEntry(timesheet)" class="text-blue-600 hover:text-blue-800 p-1" title="Edit Entry">
@@ -481,7 +483,7 @@
                   </tr>
                 </template>
                 <tr x-show="employeeTimesheets.length === 0">
-                  <td colspan="8" class="py-8 text-center text-gray-500">
+                    <td colspan="9" class="py-8 text-center text-gray-500">
                     <div class="flex flex-col items-center">
                       <svg class="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>

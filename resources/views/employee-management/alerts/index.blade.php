@@ -97,14 +97,14 @@
                             </div>
                             
                             <div class="flex items-center space-x-2 ml-4">
-                                <a href="{{ route('employee-management.alerts.edit', $alert) }}" class="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                                <a href="{{ route('employee-management.alerts.edit', $alert) }}" class="action-btn action-btn--edit">
                                     Edit
                                 </a>
                                 <form method="POST" action="{{ route('employee-management.alerts.delete', $alert) }}" class="inline"
                                       onsubmit="return confirm('Are you sure you want to delete this alert?')">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-900 text-sm font-medium">
+                                    <button type="submit" class="action-btn action-btn--delete">
                                         Delete
                                     </button>
                                 </form>

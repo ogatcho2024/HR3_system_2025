@@ -97,11 +97,11 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <a href="{{ route('attendance.manual-entry') }}" class="text-blue-600 hover:text-blue-900 mr-3">Edit</a>
+                                <a href="{{ route('attendance.manual-entry') }}" class="action-btn action-btn--edit mr-2">Edit</a>
                                 <form action="#" method="POST" class="inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure you want to delete this attendance record?')">Delete</button>
+                                    <button type="submit" class="action-btn action-btn--delete" onclick="return confirm('Are you sure you want to delete this attendance record?')">Delete</button>
                                 </form>
                             </td>
                         </tr>

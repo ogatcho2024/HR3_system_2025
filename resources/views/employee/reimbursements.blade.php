@@ -178,9 +178,9 @@
                                 {{ $reimbursement->submitted_date->format('M j, Y') }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button class="text-indigo-600 hover:text-indigo-900 mr-4">View Details</button>
+                                <button class="action-btn action-btn--view mr-2">View Details</button>
                                 @if($reimbursement->status == 'pending')
-                                <button class="text-green-600 hover:text-green-900">Edit</button>
+                                <button class="action-btn action-btn--edit">Edit</button>
                                 @endif
                             </td>
                         </tr>

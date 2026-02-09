@@ -13,10 +13,17 @@ use App\Models\ShiftRequest;
 use App\Models\Attendance;
 use App\Models\Reimbursement;
 use App\Services\PayrollService;
+use App\Services\LeaveBalanceService;
 use Carbon\Carbon;
 
 class EmployeeDashboardController extends Controller
 {
+    protected $leaveBalanceService;
+
+    public function __construct(LeaveBalanceService $leaveBalanceService)
+    {
+        $this->leaveBalanceService = $leaveBalanceService;
+    }
     /**
      * Display the employee dashboard
      */
@@ -201,6 +208,14 @@ class EmployeeDashboardController extends Controller
         $startDate = Carbon::parse($validatedData['start_date']);
         $endDate = Carbon::parse($validatedData['end_date']);
         $daysRequested = $startDate->diffInDays($endDate) + 1;
+
+        // Ensure leave balance exists and is sufficient (no deduction yet)
+        $balance = $this->leaveBalanceService->ensureBalance(
+            $user->id,
+            $validatedData['leave_type'],
+            (int) $startDate->format('Y')
+        );
+        $this->leaveBalanceService->assertSufficient($balance, (float) $daysRequested);
         
         // Create leave request
         LeaveRequest::create([
@@ -212,6 +227,9 @@ class EmployeeDashboardController extends Controller
             'reason' => $validatedData['reason'],
             'status' => 'pending',
         ]);
+
+        // Mark pending credits
+        $this->leaveBalanceService->applyPending($balance, (float) $daysRequested);
         
         return redirect()->route('employee.leave-requests')
             ->with('success', 'Leave request submitted successfully!');
@@ -234,7 +252,14 @@ class EmployeeDashboardController extends Controller
             return redirect()->route('employee.leave-requests')
                 ->with('error', 'Cannot cancel a request that has already been processed.');
         }
-        
+        // Remove pending credits
+        $balance = $this->leaveBalanceService->ensureBalance(
+            $leaveRequest->user_id,
+            $leaveRequest->leave_type,
+            (int) $leaveRequest->start_date->format('Y')
+        );
+        $this->leaveBalanceService->removePending($balance, (float) $leaveRequest->days_requested);
+
         $leaveRequest->delete();
         
         return redirect()->route('employee.leave-requests')
