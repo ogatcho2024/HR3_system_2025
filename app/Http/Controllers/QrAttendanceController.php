@@ -38,7 +38,7 @@ class QrAttendanceController extends Controller
 
         // Generate today's QR token
         $dailyToken = $employee->generateDailyQrToken();
-        $currentDate = date('Y-m-d');
+        $currentDate = Carbon::now(config('app.timezone'))->toDateString();
 
         // Get today's attendance stats
         $stats = $this->qrAttendanceService->getAttendanceStats($employee->id);

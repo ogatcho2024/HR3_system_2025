@@ -159,7 +159,7 @@ class Employee extends Model
             $this->save();
         }
         
-        $currentDate = date('Y-m-d');
+        $currentDate = \Carbon\Carbon::now(config('app.timezone'))->toDateString();
         return hash_hmac('sha256', $currentDate, $this->qr_secret);
     }
     
