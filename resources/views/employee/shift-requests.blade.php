@@ -306,8 +306,6 @@
                                 <option value="">Select type...</option>
                                 <option value="schedule_change">Schedule Change</option>
                                 <option value="swap">Shift Swap</option>
-                                <option value="cover">Cover Request</option>
-                                <option value="overtime">Overtime Request</option>
                             </select>
                         </div>
                         
