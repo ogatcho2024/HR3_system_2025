@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use App\Services\AttendanceStatusService;
 
@@ -20,6 +21,10 @@ class AttendanceController extends Controller
 {
     private function parseTimeValue(string $value): Carbon
     {
+        if (preg_match('/\d{4}-\d{2}-\d{2}/', $value)) {
+            return Carbon::parse($value);
+        }
+
         $format = substr_count($value, ':') === 2 ? 'H:i:s' : 'H:i';
         return Carbon::createFromFormat($format, $value);
     }
@@ -184,6 +189,254 @@ class AttendanceController extends Controller
 
         return redirect()->route('attendanceTimeTracking')
             ->with('success', 'Attendance record created successfully!');
+    }
+
+    /**
+     * Store manual attendance entry for the authenticated user (AJAX).
+     */
+    public function storeSelfManualEntry(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validatedData = $request->validate([
+            'date' => 'required|date',
+            'clock_in_time' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'clock_out_time' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'break_start' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'break_end' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'status' => 'required|in:present,late,absent,on_break',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $userId = Auth::id();
+        $validatedData['user_id'] = $userId;
+        $validatedData['created_by'] = $userId;
+
+        $existingEntry = Attendance::where('user_id', $userId)
+            ->whereDate('date', $validatedData['date'])
+            ->first();
+
+        $clockIn = $validatedData['clock_in_time'] ?? null;
+        $clockOut = $validatedData['clock_out_time'] ?? null;
+
+        if ($existingEntry && $clockIn && $existingEntry->clock_in_time) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Time In already exists for this date.',
+                'errors' => ['clock_in_time' => ['Time In already exists for this date.']],
+            ], 422);
+        }
+
+        $effectiveClockIn = $clockIn ?: ($existingEntry->clock_in_time ?? null);
+        if ($clockOut && !$effectiveClockIn) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Time Out cannot be set without an existing Time In.',
+                'errors' => ['clock_out_time' => ['Time Out cannot be set without an existing Time In.']],
+            ], 422);
+        }
+
+        if ($clockIn && $clockOut) {
+            $minutes = Attendance::calculateHoursFromTimes($clockIn, $clockOut) * 60;
+            if ($minutes <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Time Out must be later than Time In.',
+                    'errors' => ['clock_out_time' => ['Time Out must be later than Time In.']],
+                ], 422);
+            }
+        }
+
+        if ($existingEntry) {
+            $updateData = [];
+            foreach ($validatedData as $key => $value) {
+                if ($value !== null && $value !== '') {
+                    $updateData[$key] = $value;
+                }
+            }
+
+            if (!empty($updateData['clock_in_time']) && !empty($updateData['clock_out_time'])) {
+                $updateData['hours_worked'] = Attendance::calculateHoursFromTimes(
+                    $updateData['clock_in_time'],
+                    $updateData['clock_out_time'],
+                    $updateData['break_start'] ?? $existingEntry->break_start,
+                    $updateData['break_end'] ?? $existingEntry->break_end
+                );
+                $updateData['overtime_hours'] = max(0, $updateData['hours_worked'] - 8.0);
+            }
+
+            $existingEntry->update($updateData);
+            $attendance = $existingEntry->refresh();
+        } else {
+            if (!empty($validatedData['clock_in_time']) && !empty($validatedData['clock_out_time'])) {
+                $validatedData['hours_worked'] = Attendance::calculateHoursFromTimes(
+                    $validatedData['clock_in_time'],
+                    $validatedData['clock_out_time'],
+                    $validatedData['break_start'] ?? null,
+                    $validatedData['break_end'] ?? null
+                );
+                $validatedData['overtime_hours'] = max(0, $validatedData['hours_worked'] - 8.0);
+            }
+            $attendance = Attendance::create($validatedData);
+        }
+
+        $this->syncAttendanceToTimesheet($attendance);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Attendance entry saved successfully!',
+            'data' => [
+                'id' => $attendance->id,
+                'date' => $attendance->date ? $attendance->date->toDateString() : null,
+                'status' => $attendance->status,
+                'clock_in_time' => $this->formatTimeValue($attendance->clock_in_time),
+                'clock_out_time' => $this->formatTimeValue($attendance->clock_out_time),
+                'break_start' => $this->formatTimeValue($attendance->break_start),
+                'break_end' => $this->formatTimeValue($attendance->break_end),
+                'hours_worked' => $attendance->hours_worked,
+                'overtime_hours' => $attendance->overtime_hours,
+                'notes' => $attendance->notes,
+            ],
+        ]);
+    }
+
+    /**
+     * Store manual attendance entry for Admin/Super Admin (AJAX).
+     */
+    public function storeAdminManualEntry(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user || (!$user->isAdmin() && !$user->isSuperAdmin())) {
+            abort(403, 'Unauthorized access. Admin or Super Admin only.');
+        }
+
+        $validatedData = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'date' => 'required|date',
+            'clock_in_time' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'clock_out_time' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'break_start' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'break_end' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'status' => 'required|in:present,late,absent,on_break',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $validatedData['created_by'] = $user->id;
+
+        $existingEntry = Attendance::where('user_id', $validatedData['user_id'])
+            ->whereDate('date', $validatedData['date'])
+            ->first();
+
+        $clockIn = $validatedData['clock_in_time'] ?? null;
+        $clockOut = $validatedData['clock_out_time'] ?? null;
+
+        if ($existingEntry && $clockIn && $existingEntry->clock_in_time) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Time In already exists for this date.',
+                'errors' => ['clock_in_time' => ['Time In already exists for this date.']],
+            ], 422);
+        }
+
+        $effectiveClockIn = $clockIn ?: ($existingEntry->clock_in_time ?? null);
+        if ($clockOut && !$effectiveClockIn) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Time Out cannot be set without an existing Time In.',
+                'errors' => ['clock_out_time' => ['Time Out cannot be set without an existing Time In.']],
+            ], 422);
+        }
+
+        if ($clockIn && $clockOut) {
+            $minutes = Attendance::calculateHoursFromTimes($clockIn, $clockOut) * 60;
+            if ($minutes <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Time Out must be later than Time In.',
+                    'errors' => ['clock_out_time' => ['Time Out must be later than Time In.']],
+                ], 422);
+            }
+        }
+
+        if ($existingEntry) {
+            $updateData = [];
+            foreach ($validatedData as $key => $value) {
+                if ($value !== null && $value !== '') {
+                    $updateData[$key] = $value;
+                }
+            }
+
+            if (!empty($updateData['clock_in_time']) && !empty($updateData['clock_out_time'])) {
+                $updateData['hours_worked'] = Attendance::calculateHoursFromTimes(
+                    $updateData['clock_in_time'],
+                    $updateData['clock_out_time'],
+                    $updateData['break_start'] ?? $existingEntry->break_start,
+                    $updateData['break_end'] ?? $existingEntry->break_end
+                );
+                $updateData['overtime_hours'] = max(0, $updateData['hours_worked'] - 8.0);
+            }
+
+            $existingEntry->update($updateData);
+            $attendance = $existingEntry->refresh();
+        } else {
+            if (!empty($validatedData['clock_in_time']) && !empty($validatedData['clock_out_time'])) {
+                $validatedData['hours_worked'] = Attendance::calculateHoursFromTimes(
+                    $validatedData['clock_in_time'],
+                    $validatedData['clock_out_time'],
+                    $validatedData['break_start'] ?? null,
+                    $validatedData['break_end'] ?? null
+                );
+                $validatedData['overtime_hours'] = max(0, $validatedData['hours_worked'] - 8.0);
+            }
+            $attendance = Attendance::create($validatedData);
+        }
+
+        $this->syncAttendanceToTimesheet($attendance);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Attendance entry saved successfully!',
+            'data' => [
+                'id' => $attendance->id,
+                'date' => $attendance->date ? $attendance->date->toDateString() : null,
+                'status' => $attendance->status,
+                'clock_in_time' => $this->formatTimeValue($attendance->clock_in_time),
+                'clock_out_time' => $this->formatTimeValue($attendance->clock_out_time),
+                'break_start' => $this->formatTimeValue($attendance->break_start),
+                'break_end' => $this->formatTimeValue($attendance->break_end),
+                'hours_worked' => $attendance->hours_worked,
+                'overtime_hours' => $attendance->overtime_hours,
+                'notes' => $attendance->notes,
+            ],
+        ]);
+    }
+
+    /**
+     * Return active employees for manual entry dropdown (Admin/Super Admin only).
+     */
+    public function getActiveEmployees(): \Illuminate\Http\JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user || (!$user->isAdmin() && !$user->isSuperAdmin())) {
+            abort(403, 'Unauthorized access. Admin or Super Admin only.');
+        }
+
+        $employees = Employee::with('user')
+            ->active()
+            ->get()
+            ->map(function ($employee) {
+                $name = trim(($employee->user->name ?? '') . ' ' . ($employee->user->lastname ?? ''));
+                return [
+                    'user_id' => $employee->user_id,
+                    'employee_id' => $employee->employee_id,
+                    'name' => $name !== '' ? $name : 'Unknown',
+                    'department' => $employee->department,
+                    'position' => $employee->position,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'employees' => $employees,
+        ]);
     }
 
     /**
@@ -2106,10 +2359,15 @@ class AttendanceController extends Controller
             case 'on_break':
                 return 'submitted'; // On break entries might need approval
             case 'absent':
-                return 'draft'; // Absent entries are drafts
+                return 'submitted';
             default:
-                return 'draft';
+                return 'submitted';
         }
+    }
+
+    private function getTimesheetStatusColumn(): string
+    {
+        return Schema::hasColumn('timesheets', 'Status') ? 'Status' : 'status';
     }
     
     /**
@@ -2117,6 +2375,9 @@ class AttendanceController extends Controller
      */
     private function syncAttendanceToTimesheet(Attendance $attendance)
     {
+        $statusField = $this->getTimesheetStatusColumn();
+        $mappedStatus = $this->mapAttendanceStatus($attendance->status);
+
         // Find or create timesheet entry for this date
         $timesheet = Timesheet::firstOrCreate(
             [
@@ -2124,7 +2385,7 @@ class AttendanceController extends Controller
                 'work_date' => $attendance->date
             ],
             [
-                'status' => 'draft',
+                $statusField => $mappedStatus,
                 'project_name' => 'General Work',
                 'work_description' => 'Daily work activities'
             ]
@@ -2136,6 +2397,7 @@ class AttendanceController extends Controller
             'clock_out_time' => $attendance->clock_out_time,
             'break_start' => $attendance->break_start,
             'break_end' => $attendance->break_end,
+            $statusField => $mappedStatus,
         ];
 
         // Calculate hours worked and overtime if both clock in/out times exist

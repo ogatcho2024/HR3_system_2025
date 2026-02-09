@@ -18,6 +18,23 @@ class AttendanceStatusService
         $this->graceMinutes = $graceMinutes ?? (int) env('ATTENDANCE_GRACE_MINUTES', 15);
     }
 
+    private function normalizeTimeValue(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        if (preg_match('/\d{4}-\d{2}-\d{2}/', $value)) {
+            try {
+                return Carbon::parse($value)->format('H:i:s');
+            } catch (\Exception $e) {
+                return null;
+            }
+        }
+
+        return $value;
+    }
+
     public function resolveForEmployee(Employee $employee, Carbon $date, ?Carbon $now = null): array
     {
         $now = $now ?? Carbon::now();
@@ -95,9 +112,14 @@ class AttendanceStatusService
             return 'present';
         }
 
-        $shiftStart = Carbon::parse($date->toDateString() . ' ' . $assignment->shiftTemplate->start_time);
+        $shiftStartTime = $this->normalizeTimeValue($assignment->shiftTemplate->start_time);
+        if (!$shiftStartTime) {
+            return 'present';
+        }
+        $shiftStart = Carbon::parse($date->toDateString() . ' ' . $shiftStartTime);
         $graceDeadline = $shiftStart->copy()->addMinutes($this->graceMinutes);
-        $clockInAt = Carbon::parse($date->toDateString() . ' ' . $clockInTime);
+        $normalizedClockIn = $this->normalizeTimeValue($clockInTime) ?? $clockInTime;
+        $clockInAt = Carbon::parse($date->toDateString() . ' ' . $normalizedClockIn);
 
         if ($clockInAt->lessThanOrEqualTo($graceDeadline)) {
             $isLate = false;
@@ -114,7 +136,11 @@ class AttendanceStatusService
             return 'scheduled';
         }
 
-        $shiftStart = Carbon::parse($date->toDateString() . ' ' . $assignment->shiftTemplate->start_time);
+        $shiftStartTime = $this->normalizeTimeValue($assignment->shiftTemplate->start_time);
+        if (!$shiftStartTime) {
+            return 'scheduled';
+        }
+        $shiftStart = Carbon::parse($date->toDateString() . ' ' . $shiftStartTime);
         $graceDeadline = $shiftStart->copy()->addMinutes($this->graceMinutes);
 
         if ($date->isFuture()) {

@@ -422,6 +422,12 @@ Route::prefix('attendance')->name('attendance.')->group(function () {
     
     // Delete attendance record
     Route::delete('/{attendance}', [\App\Http\Controllers\AttendanceController::class, 'destroy']);
+
+    // Manual entry (Admin/Super Admin only)
+    Route::middleware(['auth', \App\Http\Middleware\Ensure2FAVerified::class, 'account.type:Super admin,Admin'])->group(function () {
+        Route::post('/manual-entry', [\App\Http\Controllers\AttendanceController::class, 'storeAdminManualEntry']);
+        Route::get('/active-employees', [\App\Http\Controllers\AttendanceController::class, 'getActiveEmployees']);
+    });
     
     // Simple attendance counts endpoint
     Route::get('/simple-counts', function() {
@@ -573,6 +579,7 @@ Route::middleware(['auth'])->group(function () {
         // Manual Entry
         Route::get('/manual-entry', [\App\Http\Controllers\AttendanceController::class, 'create'])->name('manual-entry');
         Route::post('/manual-entry', [\App\Http\Controllers\AttendanceController::class, 'store'])->name('manual-entry.store');
+        Route::post('/manual-entry/self', [\App\Http\Controllers\AttendanceController::class, 'storeSelfManualEntry'])->name('manual-entry.self');
 
         // Clock In/Out details for modal (RBAC enforced in controller)
         Route::get('/employee/{employee}/today-details', [\App\Http\Controllers\AttendanceController::class, 'getEmployeeTodayDetails'])

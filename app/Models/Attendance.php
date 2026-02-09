@@ -144,8 +144,31 @@ class Attendance extends Model
      */
     private static function parseTimeValue(string $value): Carbon
     {
+        $value = self::normalizeTimeString($value);
         $format = substr_count($value, ':') === 2 ? 'H:i:s' : 'H:i';
         return Carbon::createFromFormat($format, $value);
+    }
+
+    /**
+     * Normalize time-only strings (strip date, convert AM/PM, etc.).
+     */
+    private static function normalizeTimeString(string $value): string
+    {
+        $value = trim($value);
+
+        // If datetime string, keep only the time part
+        if (strpos($value, ' ') !== false) {
+            $parts = preg_split('/\s+/', $value);
+            $value = end($parts);
+        }
+
+        // Convert 12h format to 24h if needed (e.g., "10:00 PM")
+        if (preg_match('/\b(am|pm)\b/i', $value)) {
+            $dt = Carbon::createFromFormat('h:i A', strtoupper($value));
+            return $dt->format('H:i');
+        }
+
+        return $value;
     }
 
     /**

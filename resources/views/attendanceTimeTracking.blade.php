@@ -613,12 +613,14 @@
                         </svg>
                         <span class="whitespace-nowrap">Scan QR Code</span>
                     </button>
-                    <a href="{{ route('attendance.manual-entry') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-md border border-blue-600 hover:border-blue-700" style="display: inline-flex !important; visibility: visible !important; opacity: 1 !important; background-color: #2563eb !important; color: #ffffff !important; position: relative !important; z-index: 10 !important;">
-                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #ffffff !important;">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        <span class="whitespace-nowrap" style="color: #ffffff !important;">Manual Entry</span>
-                    </a>
+                    @if(Auth::check() && (Auth::user()->isAdmin() || Auth::user()->isSuperAdmin()))
+                        <button type="button" data-toggle="modal" data-target="#manualEntryModal" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-md border border-blue-600 hover:border-blue-700" style="display: inline-flex !important; visibility: visible !important; opacity: 1 !important; background-color: #2563eb !important; color: #ffffff !important; position: relative !important; z-index: 10 !important;">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #ffffff !important;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            <span class="whitespace-nowrap" style="color: #ffffff !important;">Manual Entry</span>
+                        </button>
+                    @endif
                 </div>
             </div>
 
@@ -1811,12 +1813,203 @@
     </div>
 </div>
 
+<!-- Manual Attendance Entry Modal -->
+<div class="modal fade" id="manualEntryModal" tabindex="-1" role="dialog" aria-labelledby="manualEntryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="manualEntryModalLabel">Manual Attendance Entry</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="manualEntryForm">
+                <div class="modal-body">
+                    <div id="manualEntryErrors" class="alert alert-danger d-none"></div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="manualEntryEmployee">Employee</label>
+                            <select class="form-control" id="manualEntryEmployee" name="user_id" required>
+                                <option value="">Loading employees...</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="manualEntryDate">Date</label>
+                            <input type="date" class="form-control" id="manualEntryDate" name="date" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="manualEntryStatus">Status</label>
+                            <select class="form-control" id="manualEntryStatus" name="status" required>
+                                <option value="present">Present</option>
+                                <option value="late">Late</option>
+                                <option value="on_break">On Break</option>
+                                <option value="absent">Absent</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="manualEntryTimeIn">Time In</label>
+                            <input type="time" class="form-control" id="manualEntryTimeIn" name="clock_in_time">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="manualEntryTimeOut">Time Out</label>
+                            <input type="time" class="form-control" id="manualEntryTimeOut" name="clock_out_time">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="manualEntryBreakStart">Break Start</label>
+                            <input type="time" class="form-control" id="manualEntryBreakStart" name="break_start">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="manualEntryBreakEnd">Break End</label>
+                            <input type="time" class="form-control" id="manualEntryBreakEnd" name="break_end">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="manualEntryNotes">Notes (optional)</label>
+                        <textarea class="form-control" id="manualEntryNotes" name="notes" rows="3" placeholder="Reason for manual entry..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="manualEntrySubmit">
+                        <span id="manualEntryLoading" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        <span id="manualEntrySubmitText">Save Entry</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Include html5-qrcode library -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
 <script>
 // API Base URL - uses Laravel's url() helper to work in any environment
 const ATTENDANCE_API_BASE_URL = '{{ url("") }}';
+
+document.addEventListener('DOMContentLoaded', function () {
+    const manualEntryForm = document.getElementById('manualEntryForm');
+    if (!manualEntryForm) return;
+
+    const errorBox = document.getElementById('manualEntryErrors');
+    const submitBtn = document.getElementById('manualEntrySubmit');
+    const submitText = document.getElementById('manualEntrySubmitText');
+    const submitLoading = document.getElementById('manualEntryLoading');
+    const employeeSelect = document.getElementById('manualEntryEmployee');
+
+    async function loadManualEntryEmployees() {
+        if (!employeeSelect) return;
+        employeeSelect.innerHTML = '<option value="">Loading employees...</option>';
+        try {
+            const response = await fetch(ATTENDANCE_API_BASE_URL + '/attendance/active-employees', {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) {
+                throw new Error('Failed to load employees.');
+            }
+            const data = await response.json();
+            if (!data.success || !Array.isArray(data.employees)) {
+                throw new Error('Failed to load employees.');
+            }
+            if (data.employees.length === 0) {
+                employeeSelect.innerHTML = '<option value="">No active employees found</option>';
+                return;
+            }
+            employeeSelect.innerHTML = '<option value="">Select employee</option>';
+            data.employees.forEach((emp) => {
+                const label = `${emp.name}${emp.employee_id ? ' (' + emp.employee_id + ')' : ''}`;
+                const option = document.createElement('option');
+                option.value = emp.user_id;
+                option.textContent = label;
+                employeeSelect.appendChild(option);
+            });
+        } catch (error) {
+            employeeSelect.innerHTML = '<option value="">Failed to load employees</option>';
+        }
+    }
+
+    $('#manualEntryModal').on('show.bs.modal', function () {
+        errorBox.classList.add('d-none');
+        errorBox.innerHTML = '';
+        manualEntryForm.reset();
+        loadManualEntryEmployees();
+    });
+
+    manualEntryForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        errorBox.classList.add('d-none');
+        errorBox.innerHTML = '';
+        submitBtn.disabled = true;
+        submitLoading.classList.remove('d-none');
+        submitText.textContent = 'Saving...';
+
+        const payload = {
+            user_id: employeeSelect ? employeeSelect.value : null,
+            date: document.getElementById('manualEntryDate').value,
+            status: document.getElementById('manualEntryStatus').value,
+            clock_in_time: document.getElementById('manualEntryTimeIn').value || null,
+            clock_out_time: document.getElementById('manualEntryTimeOut').value || null,
+            break_start: document.getElementById('manualEntryBreakStart').value || null,
+            break_end: document.getElementById('manualEntryBreakEnd').value || null,
+            notes: document.getElementById('manualEntryNotes').value || null
+        };
+
+        try {
+            const response = await fetch(ATTENDANCE_API_BASE_URL + '/attendance/manual-entry', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.status === 422) {
+                const errorData = await response.json();
+                const errors = errorData.errors || {};
+                const messages = Object.values(errors).flat();
+                errorBox.innerHTML = messages.map(msg => `<div>${msg}</div>`).join('');
+                errorBox.classList.remove('d-none');
+                return;
+            }
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || 'Failed to save manual entry.');
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                errorBox.innerHTML = result.message || 'Failed to save manual entry.';
+                errorBox.classList.remove('d-none');
+                return;
+            }
+
+            $('#manualEntryModal').modal('hide');
+            window.location.reload();
+        } catch (err) {
+            errorBox.innerHTML = err.message || 'Failed to save manual entry.';
+            errorBox.classList.remove('d-none');
+        } finally {
+            submitBtn.disabled = false;
+            submitLoading.classList.add('d-none');
+            submitText.textContent = 'Save Entry';
+        }
+    });
+});
 
 function attendanceTracker() {
     return {
@@ -3125,4 +3318,3 @@ function attendanceTracker() {
 </script>
 
 @endsection
-
