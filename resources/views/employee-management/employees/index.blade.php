@@ -106,24 +106,24 @@
                 @if($employees->count() > 0)
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 table-fixed">
-                        <thead class="bg-gray-50">
+                        <thead class="bg-green-950">
                             <tr>
-                                <th scope="col" class="w-1/4 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="w-1/4 px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">
                                     User
                                 </th>
-                                <th scope="col" class="w-1/6 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="w-1/6 px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">
                                     Department
                                 </th>
-                                <th scope="col" class="w-1/8 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="w-1/8 px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">
                                     Profile Status
                                 </th>
-                                <th scope="col" class="w-1/8 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="w-1/8 px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">
                                     Date Created
                                 </th>
-                                <th scope="col" class="w-1/8 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="w-1/8 px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">
                                     User Role
                                 </th>
-                                <th scope="col" class="w-1/6 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="w-1/6 px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">
                                     {{ Auth::user()->isStaff() ? 'Access' : 'Actions' }}
                                 </th>
                             </tr>

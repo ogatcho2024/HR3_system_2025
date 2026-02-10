@@ -33,6 +33,10 @@ class Notification extends Model
         'updated_at' => 'datetime',
     ];
 
+    protected $appends = [
+        'time_ago',
+    ];
+
     /**
      * Get the user that owns the notification
      */

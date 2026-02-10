@@ -8,16 +8,21 @@ use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\ShiftRequest;
 use App\Models\Alert;
+use App\Services\AlertNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class AdminEmployeeController extends Controller
 {
-    public function __construct()
+    protected AlertNotificationService $alertNotifications;
+
+    public function __construct(AlertNotificationService $alertNotifications)
     {
         $this->middleware('admin');
+        $this->alertNotifications = $alertNotifications;
     }
 
     /**
@@ -159,7 +164,25 @@ class AdminEmployeeController extends Controller
      */
     public function createAlert(): View
     {
-        return view('admin.alerts.create');
+        $alertTypes = config('alerts.types', []);
+        $alertPriorities = config('alerts.priorities', []);
+        $alertTargetRoles = User::query()
+            ->whereNotNull('account_type')
+            ->distinct()
+            ->orderBy('account_type')
+            ->pluck('account_type')
+            ->filter()
+            ->mapWithKeys(function ($role) {
+                $label = ucwords(str_replace(['_', '-'], ' ', $role));
+                return [$role => $label];
+            })
+            ->toArray();
+
+        return view('admin.alerts.create', compact(
+            'alertTypes',
+            'alertPriorities',
+            'alertTargetRoles'
+        ));
     }
 
     /**
@@ -167,20 +190,36 @@ class AdminEmployeeController extends Controller
      */
     public function storeAlert(Request $request): RedirectResponse
     {
+        $alertTypes = config('alerts.types', []);
+        $alertPriorities = config('alerts.priorities', []);
+        $alertTargetRoles = User::query()
+            ->whereNotNull('account_type')
+            ->distinct()
+            ->orderBy('account_type')
+            ->pluck('account_type')
+            ->filter()
+            ->mapWithKeys(function ($role) {
+                $label = ucwords(str_replace(['_', '-'], ' ', $role));
+                return [$role => $label];
+            })
+            ->toArray();
+
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
             'message' => 'required|string',
-            'type' => 'required|in:info,warning,error,success',
-            'priority' => 'required|in:low,medium,high,urgent',
+            'type' => ['required', Rule::in(array_keys($alertTypes))],
+            'priority' => ['required', Rule::in(array_keys($alertPriorities))],
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'target_roles' => 'nullable|array',
+            'target_roles.*' => [Rule::in(array_keys($alertTargetRoles))],
         ]);
 
         $validatedData['created_by'] = Auth::id();
         $validatedData['is_active'] = true;
 
-        Alert::create($validatedData);
+        $alert = Alert::create($validatedData);
+        $this->alertNotifications->dispatchIfEligible($alert);
 
         return redirect()->route('admin.alerts')
             ->with('success', 'Alert created successfully!');
@@ -191,7 +230,26 @@ class AdminEmployeeController extends Controller
      */
     public function editAlert(Alert $alert): View
     {
-        return view('admin.alerts.edit', compact('alert'));
+        $alertTypes = config('alerts.types', []);
+        $alertPriorities = config('alerts.priorities', []);
+        $alertTargetRoles = User::query()
+            ->whereNotNull('account_type')
+            ->distinct()
+            ->orderBy('account_type')
+            ->pluck('account_type')
+            ->filter()
+            ->mapWithKeys(function ($role) {
+                $label = ucwords(str_replace(['_', '-'], ' ', $role));
+                return [$role => $label];
+            })
+            ->toArray();
+
+        return view('admin.alerts.edit', compact(
+            'alert',
+            'alertTypes',
+            'alertPriorities',
+            'alertTargetRoles'
+        ));
     }
 
     /**
@@ -199,18 +257,34 @@ class AdminEmployeeController extends Controller
      */
     public function updateAlert(Request $request, Alert $alert): RedirectResponse
     {
+        $alertTypes = config('alerts.types', []);
+        $alertPriorities = config('alerts.priorities', []);
+        $alertTargetRoles = User::query()
+            ->whereNotNull('account_type')
+            ->distinct()
+            ->orderBy('account_type')
+            ->pluck('account_type')
+            ->filter()
+            ->mapWithKeys(function ($role) {
+                $label = ucwords(str_replace(['_', '-'], ' ', $role));
+                return [$role => $label];
+            })
+            ->toArray();
+
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
             'message' => 'required|string',
-            'type' => 'required|in:info,warning,error,success',
-            'priority' => 'required|in:low,medium,high,urgent',
+            'type' => ['required', Rule::in(array_keys($alertTypes))],
+            'priority' => ['required', Rule::in(array_keys($alertPriorities))],
             'is_active' => 'boolean',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'target_roles' => 'nullable|array',
+            'target_roles.*' => [Rule::in(array_keys($alertTargetRoles))],
         ]);
 
         $alert->update($validatedData);
+        $this->alertNotifications->dispatchIfEligible($alert->fresh());
 
         return redirect()->route('admin.alerts')
             ->with('success', 'Alert updated successfully!');

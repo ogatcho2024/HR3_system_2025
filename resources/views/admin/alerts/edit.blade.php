@@ -64,10 +64,9 @@
                                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('type') border-red-300 @enderror" 
                                         required>
                                     <option value="">Select Type</option>
-                                    <option value="info" {{ old('type', $alert->type) == 'info' ? 'selected' : '' }}>Information</option>
-                                    <option value="warning" {{ old('type', $alert->type) == 'warning' ? 'selected' : '' }}>Warning</option>
-                                    <option value="error" {{ old('type', $alert->type) == 'error' ? 'selected' : '' }}>Error</option>
-                                    <option value="success" {{ old('type', $alert->type) == 'success' ? 'selected' : '' }}>Success</option>
+                                    @foreach($alertTypes as $value => $label)
+                                        <option value="{{ $value }}" {{ old('type', $alert->type) == $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
                                 </select>
                                 @error('type')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -80,10 +79,9 @@
                                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 @error('priority') border-red-300 @enderror" 
                                         required>
                                     <option value="">Select Priority</option>
-                                    <option value="low" {{ old('priority', $alert->priority) == 'low' ? 'selected' : '' }}>Low</option>
-                                    <option value="medium" {{ old('priority', $alert->priority) == 'medium' ? 'selected' : '' }}>Medium</option>
-                                    <option value="high" {{ old('priority', $alert->priority) == 'high' ? 'selected' : '' }}>High</option>
-                                    <option value="urgent" {{ old('priority', $alert->priority) == 'urgent' ? 'selected' : '' }}>Urgent</option>
+                                    @foreach($alertPriorities as $value => $label)
+                                        <option value="{{ $value }}" {{ old('priority', $alert->priority) == $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
                                 </select>
                                 @error('priority')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -137,33 +135,15 @@
                                 <p class="text-sm text-gray-600 mb-3">Select which user roles should see this alert. Leave unchecked to show to all users.</p>
                                 
                                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                    <label class="flex items-center">
-                                        <input type="checkbox" name="target_roles[]" value="employee" 
-                                               {{ in_array('employee', old('target_roles', $alert->target_roles ?? [])) ? 'checked' : '' }}
-                                               class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                                        <span class="ml-2 text-sm text-gray-700">Employee</span>
-                                    </label>
-                                    
-                                    <label class="flex items-center">
-                                        <input type="checkbox" name="target_roles[]" value="manager" 
-                                               {{ in_array('manager', old('target_roles', $alert->target_roles ?? [])) ? 'checked' : '' }}
-                                               class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                                        <span class="ml-2 text-sm text-gray-700">Manager</span>
-                                    </label>
-                                    
-                                    <label class="flex items-center">
-                                        <input type="checkbox" name="target_roles[]" value="hr" 
-                                               {{ in_array('hr', old('target_roles', $alert->target_roles ?? [])) ? 'checked' : '' }}
-                                               class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                                        <span class="ml-2 text-sm text-gray-700">HR</span>
-                                    </label>
-                                    
-                                    <label class="flex items-center">
-                                        <input type="checkbox" name="target_roles[]" value="admin" 
-                                               {{ in_array('admin', old('target_roles', $alert->target_roles ?? [])) ? 'checked' : '' }}
-                                               class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                                        <span class="ml-2 text-sm text-gray-700">Admin</span>
-                                    </label>
+                                    @foreach($alertTargetRoles as $value => $label)
+                                        @php $fieldId = 'role_' . $value; @endphp
+                                        <label class="flex items-center">
+                                            <input id="{{ $fieldId }}" type="checkbox" name="target_roles[]" value="{{ $value }}" 
+                                                   {{ in_array($value, old('target_roles', $alert->target_roles ?? [])) ? 'checked' : '' }}
+                                                   class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                            <span class="ml-2 text-sm text-gray-700">{{ $label }}</span>
+                                        </label>
+                                    @endforeach
                                 </div>
                             </div>
                             @error('target_roles')

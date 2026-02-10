@@ -3,13 +3,40 @@
 @section('title', 'Employee Portal')
 
 @section('content')
-<section class="relative w-full min-h-screen flex justify-center items-center p-4">
+<section class="relative w-full min-h-screen flex justify-center items-center p-4 bg-gradient-to-b from-slate-100 to-slate-200">
 
     <!-- Main Container -->
-    <div class="relative z-10 bg-slate-200/50 shadow-md w-full max-w-5xl min-h-96 rounded-lg flex flex-col md:flex-row overflow-hidden">
+    <div class="relative z-10 w-full max-w-5xl min-h-96 rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden flex flex-col md:flex-row">
+
+        <!-- Left Info Side -->
+        <div class="hidden md:flex md:w-1/2 p-10 bg-slate-900 text-white flex-col justify-between">
+            <div>
+                <div class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs tracking-wide">
+                    Employee Self Service
+                </div>
+                <h2 class="mt-6 text-3xl font-semibold">HR3 Employee Portal</h2>
+                <p class="mt-3 text-sm text-slate-200 leading-relaxed">
+                    Secure access to attendance, shift requests, leave tracking, and notifications in one place.
+                </p>
+            </div>
+            <div class="space-y-3 text-sm text-slate-200">
+                <div class="flex items-start gap-2">
+                    <span class="mt-1 h-2 w-2 rounded-full bg-emerald-400"></span>
+                    <span>OTP‑secured sign-in with account lockout protection.</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="mt-1 h-2 w-2 rounded-full bg-blue-400"></span>
+                    <span>Real‑time updates for attendance and approvals.</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="mt-1 h-2 w-2 rounded-full bg-amber-400"></span>
+                    <span>Centralized alerts and audit visibility.</span>
+                </div>
+            </div>
+        </div>
         
         <!-- Right Form Side -->
-        <div class="w-full md:w-1/2 p-6 flex bg-white/30 backdrop-blur-md flex-col justify-center">
+        <div class="w-full md:w-1/2 p-8 md:p-10 flex bg-white flex-col justify-center">
 
             {{-- Show Google login error --}}
             @if ($errors->has('msg'))
@@ -107,21 +134,21 @@
             @endif
 
 
-            <div class="text-center mb-4">
-                <h1 class="font-bold text-xl md:text-2xl text-blue-950">Employee Portal</h1>
-                <p class="opacity-50 font-bold text-xs text-gray-900 mt-2">Sign in your account</p>
+            <div class="text-center mb-6">
+                <h1 class="font-semibold text-2xl text-slate-900">Welcome back</h1>
+                <p class="text-sm text-slate-500 mt-2">Sign in to continue to your portal</p>
             </div>
 
-            <form method="POST" action="{{ route('login.submit') }}" class="space-y-3 mt-3 w-full">
+            <form method="POST" action="{{ route('login.submit') }}" class="space-y-4 w-full">
                 @csrf
 
                 <!-- Email -->
                 <div class="relative z-0 w-full group">
                     <input type="email" name="email" id="email"
-                        class="block py-2 px-0 w-full text-sm text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 focus:outline-none focus:ring-0 focus:border-black peer"
+                        class="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder-transparent shadow-sm focus:border-slate-900 focus:ring-0 peer"
                         placeholder=" " value="{{ old('email') }}" required />
                     <label for="email"
-                        class="absolute text-xs text-blue-950 duration-300 transform scale-75 -translate-y-6 top-3 origin-[0] peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:scale-75 peer-focus:-translate-y-6">
+                        class="absolute left-3 top-2 text-xs text-slate-600 transition-all duration-200 transform -translate-y-5 scale-90 bg-white px-1 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-5 peer-focus:scale-90">
                         Email address
                     </label>
                     @error('email')
@@ -132,10 +159,10 @@
                 <!-- Password -->
                 <div class="relative z-0 w-full group">
                     <input type="password" name="password" id="password"
-                        class="block py-2 px-0 w-full text-sm text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 focus:outline-none focus:ring-0 focus:border-black peer"
+                        class="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder-transparent shadow-sm focus:border-slate-900 focus:ring-0 peer"
                         placeholder=" " required />
                     <label for="password"
-                        class="absolute text-xs text-blue-950 duration-300 transform scale-75 -translate-y-6 top-3 origin-[0] peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:scale-75 peer-focus:-translate-y-6">
+                        class="absolute left-3 top-2 text-xs text-slate-600 transition-all duration-200 transform -translate-y-5 scale-90 bg-white px-1 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-5 peer-focus:scale-90">
                         Password
                     </label>
                     @error('password')
@@ -144,15 +171,15 @@
                 </div>
 
                 <div class="flex items-center justify-between text-xs mt-1">
-                    <label class="flex items-center gap-1 text-gray-900">
-                        <input type="checkbox" name="remember" class="h-3 w-3 text-blue-600 border-gray-300 focus:ring-blue-500">
+                    <label class="flex items-center gap-2 text-slate-700">
+                        <input type="checkbox" name="remember" class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900">
                         <span>Remember me</span>
                     </label>
-                    <a href="#" class="opacity-60 text-gray-900 font-semibold">Forgot Password?</a>
+                    <a href="#" class="text-slate-500 hover:text-slate-900 font-medium">Forgot Password?</a>
                 </div>
 
                 <button type="submit" id="loginButton"
-                    class="w-full text-white bg-gray-900 hover:bg-gray-950 focus:ring-4 focus:ring-orange-300 font-medium rounded-lg text-sm px-5 py-2.5 mt-3 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="w-full text-white bg-slate-900 hover:bg-slate-950 focus:ring-4 focus:ring-slate-300 font-medium rounded-lg text-sm px-5 py-2.5 mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
                     <span id="loginButtonText">Sign In</span>
                 </button>
 
@@ -165,21 +192,21 @@
                 <!-- Social Logins -->
                 <div class="flex flex-col sm:flex-row justify-center gap-3">
                     <a href="{{ route('google.login') }}"
-                        class="flex items-center justify-center gap-2 border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-100 text-xs w-full">
+                        class="flex items-center justify-center gap-2 border border-slate-200 px-4 py-2 rounded-md hover:bg-slate-50 text-xs w-full">
                         <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
                         Google
                     </a>
                     <button type="button"
-                        class="flex items-center justify-center gap-2 border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-100 text-xs w-full">
+                        class="flex items-center justify-center gap-2 border border-slate-200 px-4 py-2 rounded-md hover:bg-slate-50 text-xs w-full">
                         <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" class="w-5 h-5" alt="Facebook">
                         Facebook
                     </button>
                 </div>
 
                 <!-- Register -->
-                <div class="text-center text-xs text-gray-900 font-bold mt-4">
-                    <span class="opacity-50">Don't have an account?</span>
-                    <a href="{{ route('register') }}" class="text-blue-600 hover:underline ml-1">Register</a>
+                <div class="text-center text-xs text-slate-700 font-medium mt-4">
+                    <span class="text-slate-500">Don't have an account?</span>
+                    <a href="{{ route('register') }}" class="text-slate-900 hover:underline ml-1">Register</a>
                 </div>
             </form>
         </div>
