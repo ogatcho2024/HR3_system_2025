@@ -978,7 +978,13 @@
         // PDF Download Methods
         async downloadDailyPDF() {
             try {
-                const response = await fetch(getApiBaseUrl() + '/attendance/export-daily-pdf?date=' + new Date().toISOString().split('T')[0]);
+                const department = encodeURIComponent(this.selectedDepartment || 'all');
+                const employee = encodeURIComponent(this.selectedEmployee || 'all');
+                const response = await fetch(
+                    getApiBaseUrl() +
+                    '/attendance/export-daily-pdf?date=' + new Date().toISOString().split('T')[0] +
+                    '&department=' + department + '&employee=' + employee
+                );
                 if (response.ok) {
                     const contentType = response.headers.get('content-type');
                     if (contentType && contentType.includes('application/pdf')) {
@@ -1010,7 +1016,13 @@
         
         async downloadWeeklyPDF() {
             try {
-                const response = await fetch(getApiBaseUrl() + '/attendance/export-weekly-pdf?date=' + new Date().toISOString().split('T')[0]);
+                const department = encodeURIComponent(this.selectedDepartment || 'all');
+                const employee = encodeURIComponent(this.selectedEmployee || 'all');
+                const response = await fetch(
+                    getApiBaseUrl() +
+                    '/attendance/export-weekly-pdf?date=' + new Date().toISOString().split('T')[0] +
+                    '&department=' + department + '&employee=' + employee
+                );
                 if (response.ok) {
                     const contentType = response.headers.get('content-type');
                     if (contentType && contentType.includes('application/pdf')) {
@@ -1041,7 +1053,13 @@
         
         async downloadMonthlyPDF() {
             try {
-                const response = await fetch(getApiBaseUrl() + '/attendance/export-monthly-pdf?date=' + new Date().toISOString().split('T')[0]);
+                const department = encodeURIComponent(this.selectedDepartment || 'all');
+                const employee = encodeURIComponent(this.selectedEmployee || 'all');
+                const response = await fetch(
+                    getApiBaseUrl() +
+                    '/attendance/export-monthly-pdf?date=' + new Date().toISOString().split('T')[0] +
+                    '&department=' + department + '&employee=' + employee
+                );
                 if (response.ok) {
                     const contentType = response.headers.get('content-type');
                     if (contentType && contentType.includes('application/pdf')) {
@@ -1072,7 +1090,13 @@
         
         async downloadYearlyPDF() {
             try {
-                const response = await fetch(getApiBaseUrl() + '/attendance/export-yearly-pdf?date=' + new Date().toISOString().split('T')[0]);
+                const department = encodeURIComponent(this.selectedDepartment || 'all');
+                const employee = encodeURIComponent(this.selectedEmployee || 'all');
+                const response = await fetch(
+                    getApiBaseUrl() +
+                    '/attendance/export-yearly-pdf?date=' + new Date().toISOString().split('T')[0] +
+                    '&department=' + department + '&employee=' + employee
+                );
                 if (response.ok) {
                     const contentType = response.headers.get('content-type');
                     if (contentType && contentType.includes('application/pdf')) {
@@ -1250,8 +1274,8 @@
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <div class="flex items-center justify-between mb-6">
                     <h4 class="text-lg font-semibold text-gray-900" x-text="'Daily Report - ' + dailyData.date"></h4>
-                    <div class="flex space-x-2" x-data="pdfExporter()">
-                        <button @click="downloadPDF('daily')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+                    <div class="flex space-x-2">
+                        <button @click="downloadDailyPDF()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
@@ -1344,8 +1368,8 @@
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <div class="flex items-center justify-between mb-6">
                     <h4 class="text-lg font-semibold text-gray-900 mb-6" x-text="'Weekly Report - ' + weeklyData.weekOf"></h4>
-                    <div class="flex space-x-2" x-data="pdfExporter()">
-                        <button @click="downloadPDF('weekly')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+                    <div class="flex space-x-2">
+                        <button @click="downloadWeeklyPDF()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
@@ -1445,8 +1469,8 @@
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <div class="flex items-center justify-between mb-6">
                     <h4 class="text-lg font-semibold text-gray-900 mb-6" x-text="'Monthly Report - ' + monthlyData.month"></h4>
-                    <div class="flex space-x-2" x-data="pdfExporter()">
-                        <button @click="downloadPDF('monthly')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+                    <div class="flex space-x-2">
+                        <button @click="downloadMonthlyPDF()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
@@ -1548,8 +1572,8 @@
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <div class="flex items-center justify-between mb-6">
                     <h4 class="text-lg font-semibold text-gray-900 mb-6" x-text="'Annual Report - ' + yearlyData.year"></h4>
-                    <div class="flex space-x-2" x-data="pdfExporter()">
-                        <button @click="downloadPDF('yearly')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+                    <div class="flex space-x-2">
+                        <button @click="downloadYearlyPDF()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
@@ -2800,44 +2824,6 @@ function attendanceTracker() {
         }
     }
 }
-
-    function pdfExporter() {
-        return {
-            downloadPDF(type) {
-                let url = null;
-
-                switch (type) {
-                    case 'daily':
-                        url = @json(route('attendance.export-daily-pdf'));
-                        break;
-                    case 'weekly':
-                        url = @json(route('attendance.export-weekly-pdf'));
-                        break;
-                    case 'monthly':
-                        url = @json(route('attendance.export-monthly-pdf'));
-                        break;
-                    case 'yearly':
-                        url = @json(route('attendance.export-yearly-pdf'));
-                        break;
-                    default:
-                        console.error("Invalid PDF type:", type);
-                        return;
-                }
-
-                fetch(url)
-                    .then(res => res.blob())
-                    .then(blob => {
-                        const link = document.createElement('a');
-                        link.href = window.URL.createObjectURL(blob);
-                        link.download = `${type}-report.pdf`; // dynamic filename
-                        document.body.appendChild(link);
-                        link.click();
-                        link.remove();
-                    })
-                    .catch(err => console.error("PDF export failed:", err));
-            }
-        }
-    }
 
     // QR Scanner Modal Component
     function qrScannerModal() {

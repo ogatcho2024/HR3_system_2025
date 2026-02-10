@@ -143,6 +143,9 @@
     <div class="header">
         <h1>Yearly Attendance Report</h1>
         <h2>{{ $year }}</h2>
+        @if(!empty($filterSummary))
+            <p style="margin: 6px 0; color: #6B7280;">Filter: {{ $filterSummary }}</p>
+        @endif
         <p style="margin: 10px 0; color: #6B7280;">Generated on {{ $generatedAt->format('F j, Y \a\t g:i A') }}</p>
     </div>
 

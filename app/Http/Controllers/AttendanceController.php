@@ -1220,40 +1220,142 @@ class AttendanceController extends Controller
     {
         $period = $request->get('period', 'daily'); // daily, weekly, monthly, yearly
         $today = Carbon::now();
-        
+        [$employeeIds, $totalEmployees, $departments, $employees] = $this->resolveAnalyticsFilters($request);
+
         switch ($period) {
             case 'daily':
-                return $this->getDailyAnalytics($today);
+                $data = $this->getDailyAnalytics($today, $employeeIds, $totalEmployees);
+                break;
             case 'weekly':
-                return $this->getWeeklyAnalytics($today);
+                $data = $this->getWeeklyAnalytics($today, $employeeIds, $totalEmployees);
+                break;
             case 'monthly':
-                return $this->getMonthlyAnalytics($today);
+                $data = $this->getMonthlyAnalytics($today, $employeeIds, $totalEmployees);
+                break;
             case 'yearly':
-                return $this->getYearlyAnalytics($today);
+                $data = $this->getYearlyAnalytics($today, $employeeIds, $totalEmployees);
+                break;
             default:
-                return $this->getDailyAnalytics($today);
+                $data = $this->getDailyAnalytics($today, $employeeIds, $totalEmployees);
+                break;
         }
+
+        return response()->json([
+            'success' => true,
+            'data' => array_merge($data, [
+                'departments' => $departments,
+                'employees' => $employees,
+            ]),
+        ]);
+    }
+
+    private function resolveAnalyticsFilters(Request $request): array
+    {
+        $department = $request->get('department', 'all');
+        $employee = $request->get('employee', 'all');
+
+        $departments = Employee::active()
+            ->whereNotNull('department')
+            ->distinct()
+            ->orderBy('department')
+            ->pluck('department')
+            ->values();
+
+        $employeeOptionsQuery = Employee::active()
+            ->whereNotNull('user_id')
+            ->with('user');
+
+        if (!empty($department) && $department !== 'all') {
+            $employeeOptionsQuery->where('department', $department);
+        }
+
+        $employees = $employeeOptionsQuery
+            ->get()
+            ->map(function (Employee $employee) {
+                $name = trim(($employee->user->name ?? '') . ' ' . ($employee->user->lastname ?? ''));
+                if ($name === '') {
+                    $name = $employee->employee_id ?: ('User #' . $employee->user_id);
+                }
+                return [
+                    'id' => $employee->user_id,
+                    'name' => $name,
+                ];
+            })
+            ->sortBy('name')
+            ->values()
+            ->all();
+
+        $filterQuery = Employee::active()->whereNotNull('user_id');
+        if (!empty($department) && $department !== 'all') {
+            $filterQuery->where('department', $department);
+        }
+        if (!empty($employee) && $employee !== 'all') {
+            $filterQuery->where('user_id', $employee);
+        }
+
+        $employeeIds = $filterQuery->pluck('user_id')->filter()->values()->all();
+        $totalEmployees = count($employeeIds);
+
+        return [$employeeIds, $totalEmployees, $departments, $employees];
+    }
+
+    private function buildAnalyticsFilterSummary(Request $request): string
+    {
+        $department = $request->get('department', 'all');
+        $employee = $request->get('employee', 'all');
+
+        $parts = [];
+        if (!empty($department) && $department !== 'all') {
+            $parts[] = 'Department: ' . $department;
+        }
+
+        if (!empty($employee) && $employee !== 'all') {
+            $user = User::find($employee);
+            if ($user) {
+                $name = trim(($user->name ?? '') . ' ' . ($user->lastname ?? ''));
+                $parts[] = 'Employee: ' . ($name !== '' ? $name : ('User #' . $user->id));
+            } else {
+                $parts[] = 'Employee: User #' . $employee;
+            }
+        }
+
+        if (empty($parts)) {
+            return 'All employees';
+        }
+
+        return implode(' | ', $parts);
     }
     
     /**
      * Get daily analytics data
      */
-    private function getDailyAnalytics(Carbon $date)
+    private function getDailyAnalytics(Carbon $date, array $employeeIds, int $totalEmployees)
     {
         $dateString = $date->toDateString();
-        $totalEmployees = Employee::active()->count();
-        
+
         // Get today's attendance data
-        $todayAttendance = Attendance::whereDate('date', $dateString)->get();
-        
+        $todayAttendance = Attendance::whereDate('date', $dateString);
+        if (!empty($employeeIds)) {
+            $todayAttendance->whereIn('user_id', $employeeIds);
+        } else {
+            $todayAttendance->whereRaw('1 = 0');
+        }
+        $todayAttendance = $todayAttendance->get();
+
         $present = $todayAttendance->where('status', 'present')->count();
         $late = $todayAttendance->where('status', 'late')->count();
-        $absent = $totalEmployees - $todayAttendance->count();
         $onBreak = $todayAttendance->where('status', 'on_break')->count();
-        
+        $absent = max(0, $totalEmployees - ($present + $late + $onBreak));
+
         // Calculate average check-in time
-        $avgCheckIn = Attendance::whereDate('date', $dateString)
-            ->whereNotNull('clock_in_time')
+        $avgCheckInQuery = Attendance::whereDate('date', $dateString)
+            ->whereNotNull('clock_in_time');
+        if (!empty($employeeIds)) {
+            $avgCheckInQuery->whereIn('user_id', $employeeIds);
+        } else {
+            $avgCheckInQuery->whereRaw('1 = 0');
+        }
+        $avgCheckIn = $avgCheckInQuery
             ->selectRaw('AVG(TIME_TO_SEC(clock_in_time)) as avg_seconds')
             ->first();
             
@@ -1264,7 +1366,7 @@ class AttendanceController extends Controller
         $overtimeHours = $todayAttendance->sum('overtime_hours');
         $undertimeCases = $todayAttendance->where('hours_worked', '<', 8)->where('status', '!=', 'absent')->count();
         
-        return response()->json([
+        return [
             'date' => $date->format('l, F j, Y'),
             'totalEmployees' => $totalEmployees,
             'present' => $present,
@@ -1274,20 +1376,25 @@ class AttendanceController extends Controller
             'avgCheckIn' => $avgCheckInTime,
             'overtime' => round($overtimeHours, 1),
             'undertime' => $undertimeCases
-        ]);
+        ];
     }
     
     /**
      * Get weekly analytics data
      */
-    private function getWeeklyAnalytics(Carbon $date)
+    private function getWeeklyAnalytics(Carbon $date, array $employeeIds, int $totalEmployees)
     {
         $startOfWeek = $date->copy()->startOfWeek();
         $endOfWeek = $date->copy()->endOfWeek();
         
         // Get weekly attendance data
-        $weeklyAttendance = Attendance::whereBetween('date', [$startOfWeek, $endOfWeek])->get();
-        $totalEmployees = Employee::active()->count();
+        $weeklyAttendanceQuery = Attendance::whereBetween('date', [$startOfWeek, $endOfWeek]);
+        if (!empty($employeeIds)) {
+            $weeklyAttendanceQuery->whereIn('user_id', $employeeIds);
+        } else {
+            $weeklyAttendanceQuery->whereRaw('1 = 0');
+        }
+        $weeklyAttendance = $weeklyAttendanceQuery->get();
         
         // Calculate daily averages
         $workingDays = 0;
@@ -1299,11 +1406,14 @@ class AttendanceController extends Controller
             if (!$day->isWeekend()) {
                 $workingDays++;
                 $dayAttendance = $weeklyAttendance->where('date', $day->toDateString());
+                $dayPresentLate = $dayAttendance->whereIn('status', ['present', 'late'])->count();
+                $dayOnBreak = $dayAttendance->where('status', 'on_break')->count();
+                $dayAbsent = max(0, $totalEmployees - ($dayPresentLate + $dayOnBreak));
                 $dailyStats[] = [
                     'day' => $day->format('l'),
-                    'present' => $dayAttendance->whereIn('status', ['present', 'late'])->count(),
-                    'absent' => $totalEmployees - $dayAttendance->count(),
-                    'rate' => $totalEmployees > 0 ? round(($dayAttendance->whereIn('status', ['present', 'late'])->count() / $totalEmployees) * 100, 1) : 0
+                    'present' => $dayPresentLate,
+                    'absent' => $dayAbsent,
+                    'rate' => $totalEmployees > 0 ? round(($dayPresentLate / $totalEmployees) * 100, 1) : 0
                 ];
             }
         }
@@ -1313,13 +1423,15 @@ class AttendanceController extends Controller
         $worstDay = collect($dailyStats)->sortBy('rate')->first();
         
         // Calculate averages
+        $presentLateCount = $weeklyAttendance->whereIn('status', ['present', 'late'])->count();
+        $onBreakCount = $weeklyAttendance->where('status', 'on_break')->count();
         $avgDaily = [
-            'present' => $workingDays > 0 ? round($weeklyAttendance->whereIn('status', ['present', 'late'])->count() / $workingDays) : 0,
+            'present' => $workingDays > 0 ? round($presentLateCount / $workingDays) : 0,
             'late' => $workingDays > 0 ? round($weeklyAttendance->where('status', 'late')->count() / $workingDays) : 0,
-            'absent' => $workingDays > 0 ? round(($totalEmployees * $workingDays - $weeklyAttendance->count()) / $workingDays) : 0
+            'absent' => $workingDays > 0 ? round((($totalEmployees * $workingDays) - ($presentLateCount + $onBreakCount)) / $workingDays) : 0
         ];
-        
-        return response()->json([
+
+        return [
             'weekOf' => $startOfWeek->format('F j') . ' - ' . $endOfWeek->format('F j, Y'),
             'totalHours' => round($totalHours, 0),
             'avgDaily' => $avgDaily,
@@ -1328,20 +1440,25 @@ class AttendanceController extends Controller
             'overtimeHours' => round($overtimeHours, 0),
             'undertimeHours' => 0, // Calculate based on your business logic
             'dailyBreakdown' => $dailyStats
-        ]);
+        ];
     }
     
     /**
      * Get monthly analytics data
      */
-    private function getMonthlyAnalytics(Carbon $date)
+    private function getMonthlyAnalytics(Carbon $date, array $employeeIds, int $totalEmployees)
     {
         $startOfMonth = $date->copy()->startOfMonth();
         $endOfMonth = $date->copy()->endOfMonth();
         
         // Get monthly attendance data
-        $monthlyAttendance = Attendance::whereBetween('date', [$startOfMonth, $endOfMonth])->get();
-        $totalEmployees = Employee::active()->count();
+        $monthlyAttendanceQuery = Attendance::whereBetween('date', [$startOfMonth, $endOfMonth]);
+        if (!empty($employeeIds)) {
+            $monthlyAttendanceQuery->whereIn('user_id', $employeeIds);
+        } else {
+            $monthlyAttendanceQuery->whereRaw('1 = 0');
+        }
+        $monthlyAttendance = $monthlyAttendanceQuery->get();
         
         // Calculate working days in the month
         $workingDays = 0;
@@ -1355,23 +1472,28 @@ class AttendanceController extends Controller
         $totalHours = $monthlyAttendance->sum('hours_worked');
         $overtimeHours = $monthlyAttendance->sum('overtime_hours');
         $lateInstances = $monthlyAttendance->where('status', 'late')->count();
-        $absentDays = ($totalEmployees * $workingDays) - $monthlyAttendance->count();
+        $actualAttendance = $monthlyAttendance->whereIn('status', ['present', 'late', 'on_break'])->count();
+        $absentDays = max(0, ($totalEmployees * $workingDays) - $actualAttendance);
         
         // Calculate average attendance rate
         $expectedAttendance = $totalEmployees * $workingDays;
-        $actualAttendance = $monthlyAttendance->whereIn('status', ['present', 'late'])->count();
         $avgAttendance = $expectedAttendance > 0 ? round(($actualAttendance / $expectedAttendance) * 100, 1) : 0;
         
         // Calculate perfect attendance (employees with full attendance this month)
-        $perfectAttendance = Employee::active()
-            ->whereHas('attendances', function ($query) use ($startOfMonth, $endOfMonth, $workingDays) {
-                $query->whereBetween('date', [$startOfMonth, $endOfMonth])
-                    ->where('status', 'present')
-                    ->groupBy('user_id')
-                    ->havingRaw('COUNT(*) = ?', [$workingDays]);
-            })->count();
-        
-        return response()->json([
+        if (empty($employeeIds)) {
+            $perfectAttendance = 0;
+        } else {
+            $perfectAttendance = Employee::active()
+                ->whereIn('user_id', $employeeIds)
+                ->whereHas('attendances', function ($query) use ($startOfMonth, $endOfMonth, $workingDays) {
+                    $query->whereBetween('date', [$startOfMonth, $endOfMonth])
+                        ->where('status', 'present')
+                        ->groupBy('user_id')
+                        ->havingRaw('COUNT(*) = ?', [$workingDays]);
+                })->count();
+        }
+
+        return [
             'month' => $date->format('F Y'),
             'workingDays' => $workingDays,
             'totalHours' => round($totalHours, 0),
@@ -1380,20 +1502,25 @@ class AttendanceController extends Controller
             'lateInstances' => $lateInstances,
             'absentDays' => $absentDays,
             'overtimeHours' => round($overtimeHours, 0)
-        ]);
+        ];
     }
     
     /**
      * Get yearly analytics data
      */
-    private function getYearlyAnalytics(Carbon $date)
+    private function getYearlyAnalytics(Carbon $date, array $employeeIds, int $totalEmployees)
     {
         $startOfYear = $date->copy()->startOfYear();
         $endOfYear = $date->copy()->endOfYear();
         
         // Get yearly attendance data
-        $yearlyAttendance = Attendance::whereBetween('date', [$startOfYear, $endOfYear])->get();
-        $totalEmployees = Employee::active()->count();
+        $yearlyAttendanceQuery = Attendance::whereBetween('date', [$startOfYear, $endOfYear]);
+        if (!empty($employeeIds)) {
+            $yearlyAttendanceQuery->whereIn('user_id', $employeeIds);
+        } else {
+            $yearlyAttendanceQuery->whereRaw('1 = 0');
+        }
+        $yearlyAttendance = $yearlyAttendanceQuery->get();
         
         // Calculate working days in the year
         $workingDays = 0;
@@ -1409,7 +1536,7 @@ class AttendanceController extends Controller
         
         // Calculate average attendance rate
         $expectedAttendance = $totalEmployees * $workingDays;
-        $actualAttendance = $yearlyAttendance->whereIn('status', ['present', 'late'])->count();
+        $actualAttendance = $yearlyAttendance->whereIn('status', ['present', 'late', 'on_break'])->count();
         $avgAttendance = $expectedAttendance > 0 ? round(($actualAttendance / $expectedAttendance) * 100, 1) : 0;
         
         // Find best and worst months
@@ -1430,7 +1557,7 @@ class AttendanceController extends Controller
             }
             
             $monthExpected = $totalEmployees * $monthWorkingDays;
-            $monthActual = $monthAttendance->whereIn('status', ['present', 'late'])->count();
+            $monthActual = $monthAttendance->whereIn('status', ['present', 'late', 'on_break'])->count();
             $monthRate = $monthExpected > 0 ? round(($monthActual / $monthExpected) * 100, 1) : 0;
             
             $monthlyStats[] = [
@@ -1442,7 +1569,7 @@ class AttendanceController extends Controller
         $bestMonth = collect($monthlyStats)->sortByDesc('rate')->first();
         $worstMonth = collect($monthlyStats)->sortBy('rate')->first();
         
-        return response()->json([
+        return [
             'year' => $date->format('Y'),
             'workingDays' => $workingDays,
             'totalHours' => round($totalHours, 0),
@@ -1451,7 +1578,7 @@ class AttendanceController extends Controller
             'worstMonth' => $worstMonth ? $worstMonth['month'] . ' (' . $worstMonth['rate'] . '%)' : 'N/A',
             'totalOvertime' => round($totalOvertime, 0),
             'holidaysPaid' => 18 // This would come from a holidays/leave table
-        ]);
+        ];
     }
 
     /**
@@ -1837,7 +1964,8 @@ class AttendanceController extends Controller
         try {
             $date = $request->get('date', now()->toDateString());
             $carbonDate = Carbon::parse($date);
-            $totalEmployees = Employee::active()->count();
+            [$employeeIds, $totalEmployees] = $this->resolveAnalyticsFilters($request);
+            $filterSummary = $this->buildAnalyticsFilterSummary($request);
             
             // Check if we have any employees - if not, create a basic report
             if ($totalEmployees === 0) {
@@ -1854,6 +1982,7 @@ class AttendanceController extends Controller
                     'attendanceRate' => 0,
                     'attendances' => collect([]),
                     'departmentStats' => collect([]),
+                    'filterSummary' => $filterSummary,
                     'generatedAt' => now()
                 ];
                 
@@ -1870,28 +1999,36 @@ class AttendanceController extends Controller
             }
             
             // Get daily attendance data - only include records with valid users
-            $todayAttendance = Attendance::with(['user.employee'])
+            $todayAttendanceQuery = Attendance::with(['user.employee'])
                 ->where('date', $date)
-                ->whereHas('user') // Ensure user relationship exists
+                ->whereHas('user'); // Ensure user relationship exists
+            if (!empty($employeeIds)) {
+                $todayAttendanceQuery->whereIn('user_id', $employeeIds);
+            } else {
+                $todayAttendanceQuery->whereRaw('1 = 0');
+            }
+            $todayAttendance = $todayAttendanceQuery
                 ->orderByRaw('clock_in_time IS NULL, clock_in_time ASC')
                 ->get();
             
             // Calculate statistics
             $present = $todayAttendance->where('status', 'present')->count();
             $late = $todayAttendance->where('status', 'late')->count();
-            $absent = $totalEmployees - $todayAttendance->count();
             $onBreak = $todayAttendance->where('status', 'on_break')->count();
+            $absent = max(0, $totalEmployees - ($present + $late + $onBreak));
             $totalHours = $todayAttendance->sum('hours_worked') ?: 0;
             $overtimeHours = $todayAttendance->sum('overtime_hours') ?: 0;
             
             // Calculate dynamic department stats
             $departmentStats = Employee::active()
+                ->whereIn('user_id', $employeeIds)
                 ->whereNotNull('department')
                 ->get()
                 ->groupBy('department')
-                ->map(function ($employees, $department) use ($date) {
+                ->map(function ($employees, $department) use ($date, $employeeIds) {
                     $totalInDept = $employees->count();
                     $presentInDept = Attendance::where('date', $date)
+                        ->whereIn('user_id', $employeeIds)
                         ->whereHas('user.employee', function ($query) use ($department) {
                             $query->where('department', $department);
                         })
@@ -1922,6 +2059,7 @@ class AttendanceController extends Controller
                 'attendanceRate' => $totalEmployees > 0 ? round((($present + $late + $onBreak) / $totalEmployees) * 100, 1) : 0,
                 'attendances' => $todayAttendance,
                 'departmentStats' => $departmentStats,
+                'filterSummary' => $filterSummary,
                 'generatedAt' => now()
             ];
             
@@ -1976,11 +2114,18 @@ class AttendanceController extends Controller
             $carbonDate = Carbon::parse($date);
             $startOfWeek = $carbonDate->copy()->startOfWeek();
             $endOfWeek = $carbonDate->copy()->endOfWeek();
-            $totalEmployees = Employee::active()->count();
+            [$employeeIds, $totalEmployees] = $this->resolveAnalyticsFilters($request);
+            $filterSummary = $this->buildAnalyticsFilterSummary($request);
             
             // Get weekly attendance data
-            $weeklyAttendance = Attendance::with(['user.employee'])
-                ->whereBetween('date', [$startOfWeek, $endOfWeek])
+            $weeklyAttendanceQuery = Attendance::with(['user.employee'])
+                ->whereBetween('date', [$startOfWeek, $endOfWeek]);
+            if (!empty($employeeIds)) {
+                $weeklyAttendanceQuery->whereIn('user_id', $employeeIds);
+            } else {
+                $weeklyAttendanceQuery->whereRaw('1 = 0');
+            }
+            $weeklyAttendance = $weeklyAttendanceQuery
                 ->orderBy('date')
                 ->orderBy('clock_in_time')
                 ->get();
@@ -1996,11 +2141,12 @@ class AttendanceController extends Controller
                     $workingDays++;
                     $dayAttendance = $weeklyAttendance->where('date', $day->toDateString());
                     $presentCount = $dayAttendance->whereIn('status', ['present', 'late'])->count();
+                    $onBreakCount = $dayAttendance->where('status', 'on_break')->count();
                     
                     $dailyStats[] = [
                         'date' => $day->format('l, M j'),
                         'present' => $presentCount,
-                        'absent' => $totalEmployees - $dayAttendance->count(),
+                        'absent' => max(0, $totalEmployees - ($presentCount + $onBreakCount)),
                         'rate' => $totalEmployees > 0 ? round(($presentCount / $totalEmployees) * 100, 1) : 0
                     ];
                 }
@@ -2008,12 +2154,14 @@ class AttendanceController extends Controller
             
             // Department performance
             $departmentStats = Employee::active()
+                ->whereIn('user_id', $employeeIds)
                 ->whereNotNull('department')
                 ->get()
                 ->groupBy('department')
-                ->map(function ($employees, $department) use ($startOfWeek, $endOfWeek, $workingDays) {
+                ->map(function ($employees, $department) use ($startOfWeek, $endOfWeek, $workingDays, $employeeIds) {
                     $totalInDept = $employees->count();
                     $presentDays = Attendance::whereBetween('date', [$startOfWeek, $endOfWeek])
+                        ->whereIn('user_id', $employeeIds)
                         ->whereHas('user.employee', function ($query) use ($department) {
                             $query->where('department', $department);
                         })
@@ -2040,6 +2188,7 @@ class AttendanceController extends Controller
                 'dailyStats' => $dailyStats,
                 'departmentStats' => $departmentStats,
                 'avgAttendanceRate' => $dailyStats ? round(collect($dailyStats)->avg('rate'), 1) : 0,
+                'filterSummary' => $filterSummary,
                 'generatedAt' => now()
             ];
             
@@ -2076,12 +2225,18 @@ class AttendanceController extends Controller
             $carbonDate = Carbon::parse($date);
             $startOfMonth = $carbonDate->copy()->startOfMonth();
             $endOfMonth = $carbonDate->copy()->endOfMonth();
-            $totalEmployees = Employee::active()->count();
+            [$employeeIds, $totalEmployees] = $this->resolveAnalyticsFilters($request);
+            $filterSummary = $this->buildAnalyticsFilterSummary($request);
             
             // Get monthly attendance data
-            $monthlyAttendance = Attendance::with(['user.employee'])
-                ->whereBetween('date', [$startOfMonth, $endOfMonth])
-                ->get();
+            $monthlyAttendanceQuery = Attendance::with(['user.employee'])
+                ->whereBetween('date', [$startOfMonth, $endOfMonth]);
+            if (!empty($employeeIds)) {
+                $monthlyAttendanceQuery->whereIn('user_id', $employeeIds);
+            } else {
+                $monthlyAttendanceQuery->whereRaw('1 = 0');
+            }
+            $monthlyAttendance = $monthlyAttendanceQuery->get();
             
             // Calculate working days
             $workingDays = 0;
@@ -2094,20 +2249,25 @@ class AttendanceController extends Controller
             // Calculate statistics
             $totalHours = $monthlyAttendance->sum('hours_worked');
             $overtimeHours = $monthlyAttendance->sum('overtime_hours');
-            $totalPresent = $monthlyAttendance->whereIn('status', ['present', 'late'])->count();
+            $totalPresent = $monthlyAttendance->whereIn('status', ['present', 'late', 'on_break'])->count();
             $expectedAttendance = $totalEmployees * $workingDays;
             $avgAttendanceRate = $expectedAttendance > 0 ? round(($totalPresent / $expectedAttendance) * 100, 1) : 0;
             
             // Perfect attendance employees
-            $perfectAttendanceEmployees = Employee::active()
-                ->with('user')
-                ->whereHas('user.attendances', function ($query) use ($startOfMonth, $endOfMonth, $workingDays) {
-                    $query->whereBetween('date', [$startOfMonth, $endOfMonth])
-                        ->where('status', 'present')
-                        ->groupBy('user_id')
-                        ->havingRaw('COUNT(*) = ?', [$workingDays]);
-                })
-                ->get();
+            if (empty($employeeIds)) {
+                $perfectAttendanceEmployees = collect();
+            } else {
+                $perfectAttendanceEmployees = Employee::active()
+                    ->with('user')
+                    ->whereIn('user_id', $employeeIds)
+                    ->whereHas('user.attendances', function ($query) use ($startOfMonth, $endOfMonth, $workingDays) {
+                        $query->whereBetween('date', [$startOfMonth, $endOfMonth])
+                            ->where('status', 'present')
+                            ->groupBy('user_id')
+                            ->havingRaw('COUNT(*) = ?', [$workingDays]);
+                    })
+                    ->get();
+            }
             
             // Top performers by hours
             $topPerformers = $monthlyAttendance
@@ -2115,7 +2275,7 @@ class AttendanceController extends Controller
                 ->map(function ($records, $userId) {
                     $user = User::with('employee')->find($userId);
                     return [
-                        'name' => $user->name,
+                        'name' => $user->name ?? 'Unknown',
                         'department' => $user->employee->department ?? 'No Department',
                         'hours' => round($records->sum('hours_worked'), 1),
                         'days_present' => $records->whereIn('status', ['present', 'late'])->count()
@@ -2126,12 +2286,14 @@ class AttendanceController extends Controller
             
             // Department performance
             $departmentStats = Employee::active()
+                ->whereIn('user_id', $employeeIds)
                 ->whereNotNull('department')
                 ->get()
                 ->groupBy('department')
-                ->map(function ($employees, $department) use ($startOfMonth, $endOfMonth, $workingDays) {
+                ->map(function ($employees, $department) use ($startOfMonth, $endOfMonth, $workingDays, $employeeIds) {
                     $totalInDept = $employees->count();
                     $presentDays = Attendance::whereBetween('date', [$startOfMonth, $endOfMonth])
+                        ->whereIn('user_id', $employeeIds)
                         ->whereHas('user.employee', function ($query) use ($department) {
                             $query->where('department', $department);
                         })
@@ -2146,6 +2308,7 @@ class AttendanceController extends Controller
                         'employees' => $totalInDept,
                         'rate' => $rate,
                         'totalHours' => round(Attendance::whereBetween('date', [$startOfMonth, $endOfMonth])
+                            ->whereIn('user_id', $employeeIds)
                             ->whereHas('user.employee', function ($query) use ($department) {
                                 $query->where('department', $department);
                             })
@@ -2167,6 +2330,7 @@ class AttendanceController extends Controller
                 'topPerformers' => $topPerformers,
                 'departmentStats' => $departmentStats,
                 'lateInstances' => $monthlyAttendance->where('status', 'late')->count(),
+                'filterSummary' => $filterSummary,
                 'generatedAt' => now()
             ];
             
@@ -2203,12 +2367,18 @@ class AttendanceController extends Controller
             $carbonDate = Carbon::parse($date);
             $startOfYear = $carbonDate->copy()->startOfYear();
             $endOfYear = $carbonDate->copy()->endOfYear();
-            $totalEmployees = Employee::active()->count();
+            [$employeeIds, $totalEmployees] = $this->resolveAnalyticsFilters($request);
+            $filterSummary = $this->buildAnalyticsFilterSummary($request);
             
             // Get yearly attendance data
-            $yearlyAttendance = Attendance::with(['user.employee'])
-                ->whereBetween('date', [$startOfYear, $endOfYear])
-                ->get();
+            $yearlyAttendanceQuery = Attendance::with(['user.employee'])
+                ->whereBetween('date', [$startOfYear, $endOfYear]);
+            if (!empty($employeeIds)) {
+                $yearlyAttendanceQuery->whereIn('user_id', $employeeIds);
+            } else {
+                $yearlyAttendanceQuery->whereRaw('1 = 0');
+            }
+            $yearlyAttendance = $yearlyAttendanceQuery->get();
             
             // Calculate working days
             $workingDays = 0;
@@ -2221,7 +2391,7 @@ class AttendanceController extends Controller
             // Calculate statistics
             $totalHours = $yearlyAttendance->sum('hours_worked');
             $totalOvertime = $yearlyAttendance->sum('overtime_hours');
-            $totalPresent = $yearlyAttendance->whereIn('status', ['present', 'late'])->count();
+            $totalPresent = $yearlyAttendance->whereIn('status', ['present', 'late', 'on_break'])->count();
             $expectedAttendance = $totalEmployees * $workingDays;
             $avgAttendanceRate = $expectedAttendance > 0 ? round(($totalPresent / $expectedAttendance) * 100, 1) : 0;
             
@@ -2243,7 +2413,7 @@ class AttendanceController extends Controller
                 }
                 
                 $monthExpected = $totalEmployees * $monthWorkingDays;
-                $monthActual = $monthAttendance->whereIn('status', ['present', 'late'])->count();
+                $monthActual = $monthAttendance->whereIn('status', ['present', 'late', 'on_break'])->count();
                 $monthRate = $monthExpected > 0 ? round(($monthActual / $monthExpected) * 100, 1) : 0;
                 
                 $monthlyStats[] = [
@@ -2256,12 +2426,14 @@ class AttendanceController extends Controller
             
             // Department performance
             $departmentStats = Employee::active()
+                ->whereIn('user_id', $employeeIds)
                 ->whereNotNull('department')
                 ->get()
                 ->groupBy('department')
-                ->map(function ($employees, $department) use ($startOfYear, $endOfYear, $workingDays) {
+                ->map(function ($employees, $department) use ($startOfYear, $endOfYear, $workingDays, $employeeIds) {
                     $totalInDept = $employees->count();
                     $presentDays = Attendance::whereBetween('date', [$startOfYear, $endOfYear])
+                        ->whereIn('user_id', $employeeIds)
                         ->whereHas('user.employee', function ($query) use ($department) {
                             $query->where('department', $department);
                         })
@@ -2276,6 +2448,7 @@ class AttendanceController extends Controller
                         'employees' => $totalInDept,
                         'rate' => $rate,
                         'totalHours' => round(Attendance::whereBetween('date', [$startOfYear, $endOfYear])
+                            ->whereIn('user_id', $employeeIds)
                             ->whereHas('user.employee', function ($query) use ($department) {
                                 $query->where('department', $department);
                             })
@@ -2300,6 +2473,7 @@ class AttendanceController extends Controller
                 'departmentStats' => $departmentStats,
                 'bestMonth' => $bestMonth,
                 'worstMonth' => $worstMonth,
+                'filterSummary' => $filterSummary,
                 'generatedAt' => now()
             ];
             

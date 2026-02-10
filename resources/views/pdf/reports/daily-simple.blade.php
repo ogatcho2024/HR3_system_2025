@@ -35,6 +35,9 @@
     <div class="header">
         <h1>Daily Attendance Report</h1>
         <h2>{{ $date->format('l, F j, Y') }}</h2>
+        @if(!empty($filterSummary))
+            <p>Filter: {{ $filterSummary }}</p>
+        @endif
         <p>Generated on: {{ $generatedAt->format('F j, Y g:i A') }}</p>
     </div>
 
