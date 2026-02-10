@@ -23,6 +23,12 @@ class ShiftManagementController extends Controller
     public function index(Request $request)
     {
         $shiftTemplates = ShiftTemplate::active()
+            ->withCount([
+                'shiftAssignments as assigned_employees_count' => function ($query) {
+                    $query->whereIn('status', ['scheduled', 'confirmed'])
+                        ->select(DB::raw('COUNT(DISTINCT employee_id)'));
+                }
+            ])
             ->orderBy('name')
             ->get();
             
@@ -137,11 +143,24 @@ class ShiftManagementController extends Controller
                 $q->whereNull('status')
                   ->orWhereIn('status', ['active', 'Active', 'ACTIVE']);
             })
+            ->withCount([
+                'shiftAssignments as assigned_employees_count' => function ($query) {
+                    $query->whereIn('status', ['scheduled', 'confirmed'])
+                        ->select(DB::raw('COUNT(DISTINCT employee_id)'));
+                }
+            ])
             ->orderBy('name')
             ->get();
 
         if ($shiftTemplates->isEmpty()) {
-            $shiftTemplates = ShiftTemplate::orderBy('name')->get();
+            $shiftTemplates = ShiftTemplate::withCount([
+                    'shiftAssignments as assigned_employees_count' => function ($query) {
+                        $query->whereIn('status', ['scheduled', 'confirmed'])
+                            ->select(DB::raw('COUNT(DISTINCT employee_id)'));
+                    }
+                ])
+                ->orderBy('name')
+                ->get();
         }
 
         $shiftTemplates = $shiftTemplates->map(function ($shift) {

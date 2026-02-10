@@ -23,30 +23,37 @@
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Current Week Overview -->
-        <div class="bg-white shadow rounded-lg mb-8">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">This Week</h3>
-                <p class="text-sm text-gray-500">{{ now()->startOfWeek()->format('M j') }} - {{ now()->endOfWeek()->format('M j, Y') }}</p>
+        <div class="bg-white shadow rounded-xl mb-8">
+            <div class="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">This Week</h3>
+                    <p class="text-sm text-gray-500">{{ now()->startOfWeek()->format('M j') }} - {{ now()->endOfWeek()->format('M j, Y') }}</p>
+                </div>
+                <div class="text-xs text-gray-500 uppercase tracking-wide">Weekly Schedule</div>
             </div>
             <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-3">
                     @for($i = 0; $i < 7; $i++)
                         @php
                             $day = now()->startOfWeek()->addDays($i);
                             $daySchedule = $schedule->where('date', $day->format('Y-m-d'))->first();
+                            $isToday = $day->isToday();
                         @endphp
-                        <div class="text-center">
-                            <div class="text-sm font-medium text-gray-500">{{ $day->format('D') }}</div>
-                            <div class="text-lg font-bold text-gray-900 mb-2">{{ $day->format('j') }}</div>
+                        <div class="rounded-lg border {{ $isToday ? 'border-blue-200 bg-blue-50/60' : 'border-gray-200 bg-gray-50' }} p-3 text-center">
+                            <div class="text-xs font-semibold {{ $isToday ? 'text-blue-700' : 'text-gray-500' }}">{{ $day->format('D') }}</div>
+                            <div class="text-lg font-bold {{ $isToday ? 'text-blue-900' : 'text-gray-900' }}">{{ $day->format('j') }}</div>
                             @if($daySchedule)
-                                <div class="bg-blue-100 rounded-md p-2">
-                                    <div class="text-xs font-medium text-blue-800">{{ $daySchedule['shift'] }}</div>
-                                    <div class="text-xs text-blue-600">{{ $daySchedule['time'] }}</div>
+                                <div class="mt-2 rounded-md bg-white border border-gray-200 px-2 py-1">
+                                    <div class="text-xs font-semibold text-gray-900">{{ $daySchedule['shift'] }}</div>
+                                    <div class="text-xs text-gray-500">{{ $daySchedule['time'] }}</div>
                                 </div>
                             @else
-                                <div class="bg-gray-100 rounded-md p-2">
+                                <div class="mt-2 rounded-md border border-dashed border-gray-300 px-2 py-1">
                                     <div class="text-xs text-gray-500">No shift</div>
                                 </div>
+                            @endif
+                            @if($isToday)
+                                <div class="mt-2 text-[10px] font-semibold text-blue-700">Today</div>
                             @endif
                         </div>
                     @endfor

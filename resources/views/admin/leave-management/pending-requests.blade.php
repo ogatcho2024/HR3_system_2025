@@ -89,15 +89,15 @@
                 @if($pendingRequests->count() > 0)
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
+                            <thead class="bg-green-950">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ML Suggestion</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Employee</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Leave Type</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Duration</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Dates</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Applied</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">ML Suggestion</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">

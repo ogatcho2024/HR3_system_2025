@@ -92,10 +92,10 @@
                                 <p class="text-2xl font-semibold text-indigo-600">{{ $latestDemandForecast->predicted_count }}</p>
                                 <p class="text-xs text-gray-500">
                                     {{ $latestDemandForecast->forecast_start_date->format('M j, Y') }} - {{ $latestDemandForecast->forecast_end_date->format('M j, Y') }}
-                                    · Model {{ $latestDemandForecast->model_version }}
+                                    &middot; Model {{ $latestDemandForecast->model_version }}
                                 </p>
                             @else
-                                <p class="text-sm text-gray-500">Pending prediction – run offline job.</p>
+                                <p class="text-sm text-gray-500">Pending prediction &ndash; run offline job.</p>
                             @endif
                         </div>
                         <div class="p-3 bg-indigo-100 rounded-full">

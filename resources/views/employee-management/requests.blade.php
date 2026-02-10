@@ -155,7 +155,7 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <button @click="openLeaveModal({{ $request->id }})" class="text-indigo-600 hover:text-indigo-900 mr-4">View Details</button>
+                                        <button @click="openLeaveModal({{ $request->id }})" class="inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 bg-white text-blue-600 hover:bg-blue-50 hover:text-blue-700 shadow-sm" aria-label="View details"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0c-1.273 4.057-5.064 7-9.542 7C7.064 19 3.273 16.057 2 12c1.273-4.057 5.064-7 9.458-7 4.478 0 8.269 2.943 9.542 7z"/></svg></button>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -245,7 +245,7 @@
                                         {{ $request->approved_at ? $request->approved_at->format('M j, Y') : 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <button @click="openLeaveModal({{ $request->id }})" class="text-indigo-600 hover:text-indigo-900 mr-4">View Details</button>
+                                        <button @click="openLeaveModal({{ $request->id }})" class="inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 bg-white text-blue-600 hover:bg-blue-50 hover:text-blue-700 shadow-sm" aria-label="View details"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0c-1.273 4.057-5.064 7-9.542 7C7.064 19 3.273 16.057 2 12c1.273-4.057 5.064-7 9.458-7 4.478 0 8.269 2.943 9.542 7z"/></svg></button>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -335,7 +335,7 @@
                                         {{ $request->approved_at ? $request->approved_at->format('M j, Y') : 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <button @click="openLeaveModal({{ $request->id }})" class="text-indigo-600 hover:text-indigo-900 mr-4">View Details</button>
+                                        <button @click="openLeaveModal({{ $request->id }})" class="inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 bg-white text-blue-600 hover:bg-blue-50 hover:text-blue-700 shadow-sm" aria-label="View details"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0c-1.273 4.057-5.064 7-9.542 7C7.064 19 3.273 16.057 2 12c1.273-4.057 5.064-7 9.458-7 4.478 0 8.269 2.943 9.542 7z"/></svg></button>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -422,7 +422,7 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <button @click="openShiftModal({{ $request->id }})" class="text-indigo-600 hover:text-indigo-900 mr-4">View Details</button>
+                                        <button @click="openShiftModal({{ $request->id }})" class="inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 bg-white text-blue-600 hover:bg-blue-50 hover:text-blue-700 shadow-sm" aria-label="View details"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0c-1.273 4.057-5.064 7-9.542 7C7.064 19 3.273 16.057 2 12c1.273-4.057 5.064-7 9.458-7 4.478 0 8.269 2.943 9.542 7z"/></svg></button>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -510,7 +510,7 @@
                                         {{ $request->approved_at ? $request->approved_at->format('M j, Y') : 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <button @click="openShiftModal({{ $request->id }})" class="text-indigo-600 hover:text-indigo-900 mr-4">View Details</button>
+                                        <button @click="openShiftModal({{ $request->id }})" class="inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 bg-white text-blue-600 hover:bg-blue-50 hover:text-blue-700 shadow-sm" aria-label="View details"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0c-1.273 4.057-5.064 7-9.542 7C7.064 19 3.273 16.057 2 12c1.273-4.057 5.064-7 9.458-7 4.478 0 8.269 2.943 9.542 7z"/></svg></button>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -598,7 +598,7 @@
                                         {{ $request->approved_at ? $request->approved_at->format('M j, Y') : 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <button @click="openShiftModal({{ $request->id }})" class="text-indigo-600 hover:text-indigo-900 mr-4">View Details</button>
+                                        <button @click="openShiftModal({{ $request->id }})" class="inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 bg-white text-blue-600 hover:bg-blue-50 hover:text-blue-700 shadow-sm" aria-label="View details"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0c-1.273 4.057-5.064 7-9.542 7C7.064 19 3.273 16.057 2 12c1.273-4.057 5.064-7 9.458-7 4.478 0 8.269 2.943 9.542 7z"/></svg></button>
                                     </td>
                                 </tr>
                                 @endforeach
