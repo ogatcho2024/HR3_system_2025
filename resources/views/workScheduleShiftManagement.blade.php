@@ -262,7 +262,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                                 </svg>
                             </button>
-                            <span class="text-sm font-medium text-gray-900">Aug 12 - Aug 18, 2025</span>
+                            <span class="text-sm font-medium text-gray-900">{{ $weekRange['start'] }} - {{ $weekRange['end'] }}</span>
                             <button class="p-2 text-gray-400 hover:text-gray-600">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -278,22 +278,23 @@
             <div class="p-4 md:p-6">
                 <!-- Filters -->
                 <div class="mb-4 md:mb-6">
-                    <div class="flex flex-col sm:flex-row gap-2 md:gap-4">
-                        <select class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-                            <option>All Shifts</option>
-                            <option>Morning Shift</option>
-                            <option>Evening Shift</option>
-                            <option>Night Shift</option>
-                            <option>Weekend Shift</option>
-                        </select>
-                        <select class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-                            <option>All Departments</option>
-                            @foreach($departments as $department)
-                                <option value="{{ $department->department_code }}">{{ $department->department_name }}</option>
+                    <form method="GET" action="{{ route('workScheduleShiftManagement') }}" class="flex flex-col sm:flex-row gap-2 md:gap-4">
+                        <input type="hidden" name="tab" value="schedule">
+                        <select name="shift_template" class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <option value="">All Shifts</option>
+                            @foreach($shiftTemplates as $template)
+                                <option value="{{ $template->id }}" {{ (string)($calendarShiftTemplate ?? '') === (string)$template->id ? 'selected' : '' }}>{{ $template->name }}</option>
                             @endforeach
                         </select>
-                        <button class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm">Reset Filters</button>
-                    </div>
+                        <select name="department" class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <option value="">All Departments</option>
+                            @foreach($departments as $department)
+                                <option value="{{ $department->department_code }}" {{ ($calendarDepartment ?? '') === $department->department_code ? 'selected' : '' }}>{{ $department->department_name }}</option>
+                            @endforeach
+                        </select>
+                        <button type="submit" class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Apply Filters</button>
+                        <a href="{{ route('workScheduleShiftManagement', ['tab' => 'schedule']) }}" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm text-center">Reset</a>
+                    </form>
                 </div>
 
 <!-- Calendar Grid -->
@@ -402,19 +403,19 @@
                 <!-- Quick Stats -->
                 <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
                     <div class="bg-blue-50 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-blue-600">85</div>
+                        <div class="text-2xl font-bold text-blue-600">{{ $quickStats['total_assigned'] }}</div>
                         <div class="text-xs text-gray-600">Total Assigned</div>
                     </div>
                     <div class="bg-green-50 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-green-600">94%</div>
+                        <div class="text-2xl font-bold text-green-600">{{ $quickStats['coverage_rate'] }}%</div>
                         <div class="text-xs text-gray-600">Coverage Rate</div>
                     </div>
                     <div class="bg-yellow-50 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-yellow-600">3</div>
+                        <div class="text-2xl font-bold text-yellow-600">{{ $quickStats['understaffed'] }}</div>
                         <div class="text-xs text-gray-600">Understaffed</div>
                     </div>
                     <div class="bg-red-50 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-red-600">2</div>
+                        <div class="text-2xl font-bold text-red-600">{{ $quickStats['critical_gaps'] }}</div>
                         <div class="text-xs text-gray-600">Critical Gaps</div>
                     </div>
                 </div>
@@ -465,13 +466,13 @@
                     <div class="min-w-[700px]">
                         <table class="w-full border-collapse divide-y divide-gray-200">
                             <thead>
-                                <tr class="bg-gray-50">
-                                    <th class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shift</th>
-                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Schedule</th>
-                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Started</th>
-                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <tr class="bg-green-950">
+                                    <th class="px-3 md:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Employee</th>
+                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Department</th>
+                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Shift</th>
+                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider hidden lg:table-cell">Schedule</th>
+                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Date Started</th>
+                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
@@ -508,11 +509,23 @@
                                         <td class="px-2 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-900 hidden lg:table-cell" x-text="assignment.schedule"></td>
                                         <td class="px-2 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-900" x-text="assignment.start_date"></td>
                                         <td class="px-2 md:px-6 py-3 md:py-4 text-xs md:text-sm font-medium">
-                                            <div class="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-2">
-                                                <button @click="editAssignment(assignment.id)" 
-                                                        class="text-blue-600 hover:text-blue-900 text-xs md:text-sm">Edit</button>
-                                                <button @click="removeAssignment(assignment.id)" 
-                                                        class="text-red-600 hover:text-red-900 text-xs ml-2 md:text-sm">Remove</button>
+                                            <div class="flex items-center space-x-3">
+                                                <button @click="editAssignment(assignment.id)"
+                                                        class="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors"
+                                                        title="Edit assignment">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 11l6-6m2 2l-6 6m-2 2H5v-4l6-6"></path>
+                                                    </svg>
+                                                    <span class="sr-only">Edit</span>
+                                                </button>
+                                                <button @click="removeAssignment(assignment.id)"
+                                                        class="inline-flex items-center justify-center w-8 h-8 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
+                                                        title="Remove assignment">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m5 4v6m4-6v6M10 7h4m1 0V5a1 1 0 00-1-1h-4a1 1 0 00-1 1v2"></path>
+                                                    </svg>
+                                                    <span class="sr-only">Remove</span>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -622,7 +635,7 @@
                                         <td class="px-6 py-4 text-sm text-gray-600">
                                             <button
                                                 type="button"
-                                                class="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                                                class="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors"
                                                 data-details="@php
                                                     $details = 'Requested: ' . ($request['created_at'] ?? '---') . PHP_EOL;
                                                     $details .= strip_tags($request['readable_request'] ?? '---') . PHP_EOL;
@@ -630,7 +643,14 @@
                                                     echo e($details);
                                                 @endphp"
                                                 onclick="openShiftRequestDetails(this)"
-                                            >View</button>
+                                                title="View details"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                </svg>
+                                                <span class="sr-only">View</span>
+                                            </button>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="px-2 py-1 text-xs font-medium rounded-full {{ $request['status_badge_color'] }}">

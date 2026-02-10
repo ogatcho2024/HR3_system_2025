@@ -54,6 +54,67 @@ class ShiftManagementController extends Controller
         $currentWeekStart = Carbon::now()->startOfWeek();
         $currentWeekEnd = Carbon::now()->endOfWeek();
         $shiftCalendarData = $this->getShiftCalendarData($currentWeekStart, $currentWeekEnd);
+        $weekRange = [
+            'start' => $currentWeekStart->format('M j'),
+            'end' => $currentWeekEnd->format('M j, Y'),
+        ];
+
+        $calendarDepartment = $request->get('department');
+        $calendarShiftTemplate = $request->get('shift_template');
+
+        // Apply calendar filters (if provided)
+        if ($calendarDepartment) {
+            foreach ($shiftCalendarData as &$shift) {
+                foreach ($shift['days'] as &$day) {
+                    $day['departments'] = array_filter($day['departments'], function ($key) use ($calendarDepartment) {
+                        return strtolower($key) === strtolower($calendarDepartment);
+                    }, ARRAY_FILTER_USE_KEY);
+
+                    $day['total_count'] = array_sum(array_column($day['departments'], 'count'));
+                }
+            }
+            unset($shift, $day);
+        }
+
+        if ($calendarShiftTemplate) {
+            $shiftCalendarData = array_values(array_filter($shiftCalendarData, function ($shift) use ($calendarShiftTemplate) {
+                return (string) $shift['id'] === (string) $calendarShiftTemplate;
+            }));
+        }
+
+        // Quick stats for schedule tab (current week)
+        $weekAssignmentCounts = ShiftAssignment::whereBetween('assignment_date', [$currentWeekStart, $currentWeekEnd])
+            ->whereIn('status', ['scheduled', 'confirmed'])
+            ->selectRaw('assignment_date, COUNT(*) as total_count')
+            ->groupBy('assignment_date')
+            ->get()
+            ->keyBy(function ($row) {
+                return Carbon::parse($row->assignment_date)->format('Y-m-d');
+            });
+
+        $totalAssigned = $weekAssignmentCounts->sum('total_count');
+        $understaffedDays = 0;
+        $criticalGaps = 0;
+
+        $cursorDate = $currentWeekStart->copy();
+        while ($cursorDate->lte($currentWeekEnd)) {
+            $key = $cursorDate->format('Y-m-d');
+            $count = $weekAssignmentCounts[$key]->total_count ?? 0;
+            if ($count < 3) {
+                $understaffedDays++;
+            }
+            if ($count < 2) {
+                $criticalGaps++;
+            }
+            $cursorDate->addDay();
+        }
+
+        $quickStats = [
+            'total_assigned' => $totalAssigned,
+            'coverage_rate' => $stats['coverage_rate'],
+            'understaffed' => $understaffedDays,
+            'critical_gaps' => $criticalGaps,
+        ];
         
         // Get pending shift requests
         $pendingShiftRequests = $this->getPendingShiftRequests();
@@ -64,7 +125,7 @@ class ShiftManagementController extends Controller
         // Get all active departments for dropdowns
         $departments = Department::active()->orderBy('department_name')->get();
             
-        return view('workScheduleShiftManagement', compact('shiftTemplates', 'activeTab', 'stats', 'recentActivities', 'employeeAssignments', 'shiftCalendarData', 'pendingShiftRequests', 'availableEmployees', 'departments'));
+        return view('workScheduleShiftManagement', compact('shiftTemplates', 'activeTab', 'stats', 'recentActivities', 'employeeAssignments', 'shiftCalendarData', 'pendingShiftRequests', 'availableEmployees', 'departments', 'quickStats', 'weekRange', 'calendarDepartment', 'calendarShiftTemplate'));
     }
 
     /**
@@ -417,35 +478,81 @@ class ShiftManagementController extends Controller
     }
     
     /**
-     * Get recent activities (mock data for now)
-     * In a real application, this would come from an activity log table
+     * Get recent activities from multiple data sources
      */
     private function getRecentActivities()
     {
-        // This is mock data. In a real application, you would query an activity log table
-        return [
-            [
-                'type' => 'approval',
-                'icon' => 'check',
-                'color' => 'green',
-                'message' => 'Schedule approved for <strong>Marketing Team</strong>',
-                'time' => '2 hours ago'
-            ],
-            [
-                'type' => 'creation',
-                'icon' => 'plus',
-                'color' => 'blue',
-                'message' => 'New shift template <strong>Weekend Support</strong> created',
-                'time' => '4 hours ago'
-            ],
-            [
-                'type' => 'request',
-                'icon' => 'exclamation',
-                'color' => 'yellow',
-                'message' => 'Schedule change request from <strong>John Smith</strong>',
-                'time' => '6 hours ago'
-            ]
-        ];
+        try {
+            $activities = [];
+
+            $shiftRequests = ShiftRequest::with('user')
+                ->orderByDesc('created_at')
+                ->limit(5)
+                ->get();
+
+            foreach ($shiftRequests as $request) {
+                $name = trim(($request->user->name ?? '') . ' ' . ($request->user->lastname ?? '')) ?: 'Employee';
+                $typeLabel = ucfirst(str_replace('_', ' ', $request->request_type));
+                $status = $request->status ?? 'pending';
+                $activities[] = [
+                    'type' => 'request',
+                    'icon' => $status === 'approved' ? 'check' : ($status === 'rejected' ? 'x' : 'exclamation'),
+                    'color' => $status === 'approved' ? 'green' : ($status === 'rejected' ? 'red' : 'yellow'),
+                    'message' => ucfirst($status) . ' shift request (<strong>' . e($typeLabel) . '</strong>) from <strong>' . e($name) . '</strong>',
+                    'time' => optional($request->created_at)->diffForHumans() ?? 'just now',
+                    'timestamp' => $request->created_at
+                ];
+            }
+
+            $shiftTemplates = ShiftTemplate::orderByDesc('updated_at')
+                ->limit(5)
+                ->get();
+
+            foreach ($shiftTemplates as $template) {
+                $activities[] = [
+                    'type' => 'template',
+                    'icon' => 'plus',
+                    'color' => 'blue',
+                    'message' => 'Shift template <strong>' . e($template->name) . '</strong> updated',
+                    'time' => optional($template->updated_at)->diffForHumans() ?? 'just now',
+                    'timestamp' => $template->updated_at
+                ];
+            }
+
+            $assignments = ShiftAssignment::with(['employee.user', 'shiftTemplate'])
+                ->orderByDesc('assigned_at')
+                ->limit(5)
+                ->get();
+
+            foreach ($assignments as $assignment) {
+                $employeeName = trim(($assignment->employee->user->name ?? '') . ' ' . ($assignment->employee->user->lastname ?? '')) ?: 'Employee';
+                $shiftName = $assignment->shiftTemplate->name ?? 'Shift';
+                $activities[] = [
+                    'type' => 'assignment',
+                    'icon' => 'calendar',
+                    'color' => 'purple',
+                    'message' => 'Assigned <strong>' . e($employeeName) . '</strong> to <strong>' . e($shiftName) . '</strong>',
+                    'time' => optional($assignment->assigned_at)->diffForHumans() ?? 'just now',
+                    'timestamp' => $assignment->assigned_at ?? $assignment->created_at
+                ];
+            }
+
+            $activities = collect($activities)
+                ->filter(fn ($item) => !empty($item['timestamp']))
+                ->sortByDesc('timestamp')
+                ->take(6)
+                ->values()
+                ->map(function ($item) {
+                    unset($item['timestamp']);
+                    return $item;
+                })
+                ->toArray();
+
+            return $activities;
+        } catch (\Exception $e) {
+            Log::error('Error building recent activities: ' . $e->getMessage());
+            return [];
+        }
     }
     
     /**

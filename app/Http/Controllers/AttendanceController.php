@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Attendance;
+use App\Models\LeaveRequest;
+use App\Models\ShiftRequest;
+use App\Models\ShiftAssignment;
+use App\Models\ShiftTemplate;
 use App\Models\Timesheet;
 use App\Models\User;
 use App\Models\Employee;
@@ -1001,19 +1005,139 @@ class AttendanceController extends Controller
         // Calculate attendance percentage
         $attendancePercentage = $totalEmployees > 0 ? round(($todayAttendance / $totalEmployees) * 100, 1) : 0;
         
-        // Get pending leave requests (placeholder - would need leave requests table)
-        $pendingLeaves = 24; // This could be dynamic if you have a leave requests table
-        
-        // Get open positions (placeholder - would need job postings table)
-        $openPositions = 8; // This could be dynamic if you have a job postings table
+        $pendingLeaveRequests = LeaveRequest::where('status', 'pending')->count();
+        $pendingShiftRequests = ShiftRequest::where('status', 'pending')->count();
+        $pendingRequests = $pendingLeaveRequests + $pendingShiftRequests;
+
+        // Recent activities (leave + shift + attendance)
+        $recentActivities = collect();
+
+        $recentLeaveRequests = LeaveRequest::with('user')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
+        foreach ($recentLeaveRequests as $request) {
+            $name = trim(($request->user->name ?? '') . ' ' . ($request->user->lastname ?? '')) ?: 'Employee';
+            $status = $request->status ?? 'pending';
+            $recentActivities->push([
+                'color' => $status === 'approved' ? 'green' : ($status === 'rejected' ? 'red' : 'yellow'),
+                'icon' => $status === 'approved' ? 'check' : ($status === 'rejected' ? 'x' : 'clock'),
+                'message' => 'Leave request from <strong>' . e($name) . '</strong> (' . e($status) . ')',
+                'time' => optional($request->created_at)->diffForHumans() ?? 'just now',
+                'timestamp' => $request->created_at,
+            ]);
+        }
+
+        $recentShiftRequests = ShiftRequest::with('user')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
+        foreach ($recentShiftRequests as $request) {
+            $name = trim(($request->user->name ?? '') . ' ' . ($request->user->lastname ?? '')) ?: 'Employee';
+            $status = $request->status ?? 'pending';
+            $type = ucfirst(str_replace('_', ' ', $request->request_type));
+            $recentActivities->push([
+                'color' => $status === 'approved' ? 'green' : ($status === 'rejected' ? 'red' : 'yellow'),
+                'icon' => $status === 'approved' ? 'check' : ($status === 'rejected' ? 'x' : 'clock'),
+                'message' => 'Shift request (' . e($type) . ') from <strong>' . e($name) . '</strong> (' . e($status) . ')',
+                'time' => optional($request->created_at)->diffForHumans() ?? 'just now',
+                'timestamp' => $request->created_at,
+            ]);
+        }
+
+        $recentAttendance = Attendance::with('user')
+            ->orderByDesc('updated_at')
+            ->limit(5)
+            ->get();
+
+        foreach ($recentAttendance as $attendance) {
+            $name = trim(($attendance->user->name ?? '') . ' ' . ($attendance->user->lastname ?? '')) ?: 'Employee';
+            $recentActivities->push([
+                'color' => 'blue',
+                'icon' => 'user',
+                'message' => 'Attendance updated for <strong>' . e($name) . '</strong>',
+                'time' => optional($attendance->updated_at)->diffForHumans() ?? 'just now',
+                'timestamp' => $attendance->updated_at,
+            ]);
+        }
+
+        $recentActivities = $recentActivities
+            ->sortByDesc('timestamp')
+            ->take(5)
+            ->values()
+            ->map(function ($item) {
+                unset($item['timestamp']);
+                return $item;
+            })
+            ->toArray();
+
+        // Upcoming events (approved leaves + upcoming assignments)
+        $upcomingEvents = collect();
+
+        $upcomingLeaves = LeaveRequest::with('user')
+            ->where('status', 'approved')
+            ->whereDate('start_date', '>=', $today)
+            ->orderBy('start_date')
+            ->limit(5)
+            ->get();
+
+        foreach ($upcomingLeaves as $leave) {
+            $name = trim(($leave->user->name ?? '') . ' ' . ($leave->user->lastname ?? '')) ?: 'Employee';
+            $eventDate = Carbon::parse($leave->start_date);
+            $upcomingEvents->push([
+                'date_label' => $eventDate->format('M j, Y'),
+                'day' => $eventDate->format('d'),
+                'time' => 'All day',
+                'title' => 'Leave: ' . e($name),
+                'color' => 'red',
+                'event_date' => $eventDate->toDateString(),
+            ]);
+        }
+
+        $upcomingAssignments = ShiftAssignment::with(['employee.user', 'shiftTemplate'])
+            ->whereDate('assignment_date', '>=', $today)
+            ->orderBy('assignment_date')
+            ->limit(5)
+            ->get();
+
+        foreach ($upcomingAssignments as $assignment) {
+            $employeeName = trim(($assignment->employee->user->name ?? '') . ' ' . ($assignment->employee->user->lastname ?? '')) ?: 'Employee';
+            $shiftName = $assignment->shiftTemplate->name ?? 'Shift';
+            $timeRange = $assignment->shiftTemplate && $assignment->shiftTemplate->start_time
+                ? Carbon::parse($assignment->shiftTemplate->start_time)->format('g:i A')
+                : 'TBD';
+            $eventDate = Carbon::parse($assignment->assignment_date);
+
+            $upcomingEvents->push([
+                'date_label' => $eventDate->format('M j, Y'),
+                'day' => $eventDate->format('d'),
+                'time' => $timeRange,
+                'title' => 'Shift: ' . e($shiftName) . ' (' . e($employeeName) . ')',
+                'color' => 'blue',
+                'event_date' => $eventDate->toDateString(),
+            ]);
+        }
+
+        $upcomingEvents = $upcomingEvents
+            ->sortBy('event_date')
+            ->take(3)
+            ->values()
+            ->map(function ($event) {
+                unset($event['event_date']);
+                return $event;
+            })
+            ->toArray();
         
         return view('dashb', compact(
             'totalEmployees',
             'todayAttendance', 
-            'pendingLeaves',
-            'openPositions',
+            'pendingRequests',
             'attendanceStats',
-            'attendancePercentage'
+            'attendancePercentage',
+            'recentActivities',
+            'upcomingEvents'
         ));
     }
 

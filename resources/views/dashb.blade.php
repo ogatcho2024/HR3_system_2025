@@ -193,64 +193,44 @@
             </div>
             <div class="p-6">
                 <div class="space-y-4">
-                    <div class="flex items-start space-x-3">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                </svg>
+                    @forelse(($recentActivities ?? []) as $activity)
+                        @php
+                            $color = $activity['color'] ?? 'blue';
+                            $icon = $activity['icon'] ?? 'user';
+                        @endphp
+                        <div class="flex items-start space-x-3">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-{{ $color }}-100 rounded-full flex items-center justify-center">
+                                    @if($icon === 'check')
+                                        <svg class="w-4 h-4 text-{{ $color }}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    @elseif($icon === 'x')
+                                        <svg class="w-4 h-4 text-{{ $color }}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    @elseif($icon === 'clock')
+                                        <svg class="w-4 h-4 text-{{ $color }}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    @else
+                                        <svg class="w-4 h-4 text-{{ $color }}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                        </svg>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-900">{!! $activity['message'] ?? 'Activity recorded' !!}</p>
+                                <p class="text-xs text-gray-500">{{ $activity['time'] ?? 'just now' }}</p>
                             </div>
                         </div>
-                        <div class="flex-1">
-                            <p class="text-sm text-gray-900">New employee <span class="font-medium">John Smith</span> added to Marketing department</p>
-                            <p class="text-xs text-gray-500">2 hours ago</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start space-x-3">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                                <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-sm text-gray-900">Leave request from <span class="font-medium">Sarah Johnson</span> needs approval</p>
-                            <p class="text-xs text-gray-500">4 hours ago</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start space-x-3">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-sm text-gray-900">Monthly payroll processed successfully</p>
-                            <p class="text-xs text-gray-500">1 day ago</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start space-x-3">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-sm text-gray-900">IT department budget updated</p>
-                            <p class="text-xs text-gray-500">2 days ago</p>
-                        </div>
-                    </div>
+                    @empty
+                        <div class="text-sm text-gray-500">No recent activities yet.</div>
+                    @endforelse
                 </div>
                 <div class="mt-6">
-                    <a href="{{ route('activities') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium">View all activities →</a>
+                    <a href="{{ route('activities') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium">View all activities &rarr;</a>
                 </div>
             </div>
         </div>
@@ -262,38 +242,23 @@
             </div>
             <div class="p-6">
                 <div class="space-y-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="flex-shrink-0 w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                            <span class="text-sm font-semibold text-red-700">18</span>
+                    @forelse(($upcomingEvents ?? []) as $event)
+                        @php $color = $event['color'] ?? 'blue'; @endphp
+                        <div class="flex items-center space-x-3">
+                            <div class="flex-shrink-0 w-12 h-12 bg-{{ $color }}-100 rounded-lg flex items-center justify-center">
+                                <span class="text-sm font-semibold text-{{ $color }}-700">{{ $event['day'] ?? '--' }}</span>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">{{ $event['title'] ?? 'Upcoming event' }}</p>
+                                <p class="text-xs text-gray-500">{{ $event['date_label'] ?? 'TBD' }} &bull; {{ $event['time'] ?? 'TBD' }}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">Team Building Event</p>
-                            <p class="text-xs text-gray-500">Aug 18, 2025 • 2:00 PM</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center space-x-3">
-                        <div class="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <span class="text-sm font-semibold text-blue-700">22</span>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">HR Policy Review</p>
-                            <p class="text-xs text-gray-500">Aug 22, 2025 • 10:00 AM</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center space-x-3">
-                        <div class="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                            <span class="text-sm font-semibold text-green-700">25</span>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">Monthly All-Hands</p>
-                            <p class="text-xs text-gray-500">Aug 25, 2025 • 3:00 PM</p>
-                        </div>
-                    </div>
+                    @empty
+                        <div class="text-sm text-gray-500">No upcoming events.</div>
+                    @endforelse
                 </div>
                 <div class="mt-6">
-                    <a href="{{ route('leave-management.calendar') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium">View calendar →</a>
+                    <a href="{{ route('leave-management.calendar') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium">View calendar &rarr;</a>
                 </div>
             </div>
             </div>

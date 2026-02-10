@@ -163,8 +163,8 @@
                             <p class="text-blue-100 text-lg">Your Status</p>
                         </div>
                     </div>
-                    <div class="text-xl font-bold mb-2">Clocked In</div>
-                    <div class="text-xs text-blue-200">Since 08:15 AM</div>
+                    <div class="text-xl font-bold mb-2" x-text="attendanceData.userStatus || '—'">—</div>
+                    <div class="text-xs text-blue-200" x-text="attendanceData.lastClockIn ? 'Since ' + attendanceData.lastClockIn : '—'">—</div>
                 </div>
             </div>
 
@@ -188,7 +188,7 @@
                         <div class="bg-green-50 to-green-100 rounded-lg p-4 border-l-4 border-green-500">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-sm font-medium text-gray-700">Average Check-in</span>
-                                <span class="text-2xl font-bold text-green-600" x-text="(overviewData.avgCheckIn || '08:00') + ' AM'">08:00 AM</span>
+                                <span class="text-2xl font-bold text-green-600" x-text="overviewData.avgCheckIn || '—'">—</span>
                             </div>
                             <div class="flex items-center space-x-2">
                                 <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -408,8 +408,13 @@
                                           <div class="flex space-x-2">
                                               <button
                                                   @click="openAttendanceView(employee)"
-                                                  class="text-blue-600 hover:text-blue-900 transition-colors">
-                                                  View
+                                                  class="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors rounded-md"
+                                                  title="View attendance details">
+                                                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                  </svg>
+                                                  <span class="sr-only">View</span>
                                               </button>
                                           </div>
                                       </td>
@@ -678,7 +683,7 @@
                     <div class="max-h-[600px] overflow-y-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-100 sticky top-0 z-10">
-                                <tr>
+                                <tr class="bg-green-950">
                                     <th scope="col" class="w-12 px-4 py-3">
                                         <input 
                                             type="checkbox" 
@@ -686,19 +691,19 @@
                                             class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                             title="Select all">
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
                                         Name
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
                                         Department
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
                                         Status
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
                                         Hours
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
                                         Actions
                                     </th>
                                 </tr>
@@ -778,53 +783,49 @@
                                             <div class="flex justify-end space-x-2">
                                                 <!-- Clock In Button (Absent) -->
                                                 <template x-if="employee.status === 'absent'">
-                                                    <button @click="singleClockIn(employee.id)" class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :disabled="employee.processing || false">
-                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <button @click="singleClockIn(employee.id)" class="inline-flex items-center justify-center w-8 h-8 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :disabled="employee.processing || false" title="Clock In">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
                                                         </svg>
-                                                        <span x-show="!(employee.processing || false)">Clock In</span>
-                                                        <span x-show="employee.processing || false" x-cloak>...</span>
+                                                        <span class="sr-only">Clock In</span>
                                                     </button>
                                                 </template>
                                                 
                                                 <!-- Break & Clock Out Buttons (Present/Late) -->
                                                 <template x-if="employee.status === 'present' || employee.status === 'late'">
                                                     <div class="flex space-x-2">
-                                                        <button @click="singleStartBreak(employee.id)" class="inline-flex items-center px-2.5 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :disabled="employee.processing || false">
-                                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <button @click="singleStartBreak(employee.id)" class="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :disabled="employee.processing || false" title="Start Break">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                                             </svg>
-                                                            <span x-show="!(employee.processing || false)">Break</span>
-                                                            <span x-show="employee.processing || false" x-cloak>...</span>
+                                                            <span class="sr-only">Start Break</span>
                                                         </button>
-                                                        <button @click="singleClockOut(employee.id)" class="inline-flex items-center px-2.5 py-1.5 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :disabled="employee.processing || false">
-                                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <button @click="singleClockOut(employee.id)" class="inline-flex items-center justify-center w-8 h-8 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :disabled="employee.processing || false" title="Clock Out">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
                                                             </svg>
-                                                            <span x-show="!(employee.processing || false)">Clock Out</span>
-                                                            <span x-show="employee.processing || false" x-cloak>...</span>
+                                                            <span class="sr-only">Clock Out</span>
                                                         </button>
                                                     </div>
                                                 </template>
                                                 
                                                 <!-- End Break Button (On Break) -->
                                                 <template x-if="employee.status === 'break'">
-                                                    <button @click="singleEndBreak(employee.id)" class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :disabled="employee.processing || false">
-                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <button @click="singleEndBreak(employee.id)" class="inline-flex items-center justify-center w-8 h-8 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :disabled="employee.processing || false" title="End Break">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                                         </svg>
-                                                        <span x-show="!(employee.processing || false)">End Break</span>
-                                                        <span x-show="employee.processing || false" x-cloak>...</span>
+                                                        <span class="sr-only">End Break</span>
                                                     </button>
                                                 </template>
                                                 
                                                 <!-- More Options Button -->
-                                                <button @click="openAttendanceView(employee)" class="inline-flex items-center px-2.5 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-colors" title="View attendance details">
-                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <button @click="openAttendanceView(employee)" class="inline-flex items-center justify-center w-8 h-8 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors" title="View attendance details">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                                     </svg>
-                                                    View
+                                                    <span class="sr-only">View</span>
                                                 </button>
                                             </div>
                                         </td>
@@ -854,6 +855,8 @@
         selectedEmployee: 'all',
         currentDate: new Date(),
         analyticsLoading: false,
+        departments: [],
+        employees: [],
         dailyData: {
             date: 'Loading...',
             totalEmployees: 0,
@@ -872,7 +875,8 @@
             bestDay: 'Loading...',
             worstDay: 'Loading...',
             overtimeHours: 0,
-            undertimeHours: 0
+            undertimeHours: 0,
+            dailyBreakdown: []
         },
         monthlyData: {
             month: 'Loading...',
@@ -882,17 +886,20 @@
             perfectAttendance: 0,
             lateInstances: 0,
             absentDays: 0,
-            overtimeHours: 0
+            overtimeHours: 0,
+            improvementNeeded: null,
+            efficiencyRate: null
         },
         yearlyData: {
-            year: '2024',
+            year: new Date().getFullYear().toString(),
             workingDays: 0,
             totalHours: 0,
             avgAttendance: '0%',
             bestMonth: 'Loading...',
             worstMonth: 'Loading...',
             totalOvertime: 0,
-            holidaysPaid: 0
+            holidaysPaid: 0,
+            insights: []
         },
         
         // Function to load analytics data
@@ -906,6 +913,9 @@
                 
                 if (data.success) {
                     // Update data based on period
+                    if (data.data.departments) this.departments = data.data.departments;
+                    if (data.data.employees) this.employees = data.data.employees;
+
                     if (period === 'daily') {
                         this.dailyData = {
                             date: data.data.date || 'Today',
@@ -926,7 +936,8 @@
                             bestDay: data.data.bestDay || 'N/A',
                             worstDay: data.data.worstDay || 'N/A',
                             overtimeHours: data.data.overtimeHours || 0,
-                            undertimeHours: data.data.undertimeHours || 0
+                            undertimeHours: data.data.undertimeHours || 0,
+                            dailyBreakdown: data.data.dailyBreakdown || []
                         };
                     } else if (period === 'monthly') {
                         this.monthlyData = {
@@ -937,18 +948,21 @@
                             perfectAttendance: data.data.perfectAttendance || 0,
                             lateInstances: data.data.lateInstances || 0,
                             absentDays: data.data.absentDays || 0,
-                            overtimeHours: data.data.overtimeHours || 0
+                            overtimeHours: data.data.overtimeHours || 0,
+                            improvementNeeded: data.data.improvementNeeded ?? null,
+                            efficiencyRate: data.data.efficiencyRate ?? null
                         };
                     } else if (period === 'yearly') {
                         this.yearlyData = {
-                            year: data.data.year || '2024',
+                            year: data.data.year || new Date().getFullYear().toString(),
                             workingDays: data.data.workingDays || 0,
                             totalHours: data.data.totalHours || 0,
                             avgAttendance: data.data.avgAttendance || '0%',
                             bestMonth: data.data.bestMonth || 'N/A',
                             worstMonth: data.data.worstMonth || 'N/A',
                             totalOvertime: data.data.totalOvertime || 0,
-                            holidaysPaid: data.data.holidaysPaid || 0
+                            holidaysPaid: data.data.holidaysPaid || 0,
+                            insights: data.data.insights || []
                         };
                     }
                 } else {
@@ -1147,24 +1161,23 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
                     <select x-model="selectedDepartment" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        <option value="all">Core Transaction</option>
-                        <option value="it">Admin</option>
-                        <option value="marketing">Financials</option>
-                        <option value="finance">Human Resources</option>
+                        <option value="all">All Departments</option>
+                        <template x-for="dept in departments" :key="dept.value || dept.id || dept">
+                            <option :value="dept.value || dept.id || dept" x-text="dept.label || dept.name || dept"></option>
+                        </template>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
                     <select x-model="selectedEmployee" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="all">All Employees</option>
-                        <option value="john-smith">John Smith</option>
-                        <option value="sarah-johnson">Sarah Johnson</option>
-                        <option value="mike-davis">Mike Davis</option>
-                        <option value="emily-brown">Emily Brown</option>
+                        <template x-for="emp in employees" :key="emp.value || emp.id || emp">
+                            <option :value="emp.value || emp.id || emp" x-text="emp.label || emp.name || emp"></option>
+                        </template>
                     </select>
                 </div>
                 <div class="flex items-end">
-                    <button class="w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors">
+                    <button class="w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors" disabled>
                         Apply Filters
                     </button>
                 </div>
@@ -1180,7 +1193,7 @@
                         <div>
                             <p class="text-green-100 text-lg">Present Today</p>
                             <p class="text-2xl font-bold" x-text="dailyData.present"></p>
-                            <p class="text-green-200 text-xs" x-text="Math.round((dailyData.present/dailyData.totalEmployees)*100) + '% attendance'"></p>
+                            <p class="text-green-200 text-xs" x-text="dailyData.totalEmployees ? Math.round((dailyData.present / dailyData.totalEmployees) * 100) + '% attendance' : '—'"></p>
                         </div>
                         <div class="p-2 bg-green-400 rounded-full">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1194,7 +1207,7 @@
                         <div>
                             <p class="text-yellow-100 text-xs">Late Arrivals</p>
                             <p class="text-2xl font-bold" x-text="dailyData.late"></p>
-                            <p class="text-yellow-200 text-xs" x-text="Math.round((dailyData.late/dailyData.present)*100) + '% of present'"></p>
+                            <p class="text-yellow-200 text-xs" x-text="dailyData.present ? Math.round((dailyData.late / dailyData.present) * 100) + '% of present' : '—'"></p>
                         </div>
                         <div class="p-2 bg-yellow-400 rounded-full">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1208,7 +1221,7 @@
                         <div>
                             <p class="text-red-100 text-xs">Absent Today</p>
                             <p class="text-2xl font-bold" x-text="dailyData.absent"></p>
-                            <p class="text-red-200 text-xs" x-text="Math.round((dailyData.absent/dailyData.totalEmployees)*100) + '% of workforce'"></p>
+                            <p class="text-red-200 text-xs" x-text="dailyData.totalEmployees ? Math.round((dailyData.absent / dailyData.totalEmployees) * 100) + '% of workforce' : '—'"></p>
                         </div>
                         <div class="p-2 bg-red-400 rounded-full">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1344,40 +1357,17 @@
                     <div>
                         <h5 class="font-medium text-gray-900 mb-4">Daily Breakdown</h5>
                         <div class="space-y-3">
-                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <span class="text-sm font-medium">Monday</span>
-                                <div class="flex items-center space-x-2">
-                                    <div class="text-sm text-green-600">138 present</div>
-                                    <div class="text-sm text-red-600">12 absent</div>
+                            <template x-for="day in weeklyData.dailyBreakdown" :key="day.day">
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-sm font-medium" x-text="day.day"></span>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="text-sm text-green-600" x-text="(day.present ?? 0) + ' present'"></div>
+                                        <div class="text-sm text-red-600" x-text="(day.absent ?? 0) + ' absent'"></div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <span class="text-sm font-medium">Tuesday</span>
-                                <div class="flex items-center space-x-2">
-                                    <div class="text-sm text-green-600">142 present</div>
-                                    <div class="text-sm text-red-600">8 absent</div>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <span class="text-sm font-medium">Wednesday</span>
-                                <div class="flex items-center space-x-2">
-                                    <div class="text-sm text-green-600">145 present</div>
-                                    <div class="text-sm text-red-600">5 absent</div>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <span class="text-sm font-medium">Thursday</span>
-                                <div class="flex items-center space-x-2">
-                                    <div class="text-sm text-green-600">140 present</div>
-                                    <div class="text-sm text-red-600">10 absent</div>
-                                </div>
-                            </div>
-                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <span class="text-sm font-medium">Friday</span>
-                                <div class="flex items-center space-x-2">
-                                    <div class="text-sm text-green-600">135 present</div>
-                                    <div class="text-sm text-red-600">15 absent</div>
-                                </div>
+                            </template>
+                            <div x-show="weeklyData.dailyBreakdown.length === 0" class="text-sm text-gray-500">
+                                No daily breakdown available.
                             </div>
                         </div>
                     </div>
@@ -1495,7 +1485,7 @@
                             </div>
                             <div class="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
                                 <span class="text-sm text-gray-700">Improvement Needed</span>
-                                <span class="font-semibold text-orange-600">12 employees</span>
+                                <span class="font-semibold text-orange-600" x-text="monthlyData.improvementNeeded !== null ? monthlyData.improvementNeeded + ' employees' : '—'"></span>
                             </div>
                         </div>
                     </div>
@@ -1512,7 +1502,7 @@
                             </div>
                             <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
                                 <span class="text-sm text-gray-700">Efficiency Rate</span>
-                                <span class="font-semibold text-green-600">97.2%</span>
+                                <span class="font-semibold text-green-600" x-text="monthlyData.efficiencyRate !== null ? monthlyData.efficiencyRate : '—'"></span>
                             </div>
                         </div>
                     </div>
@@ -1614,44 +1604,19 @@
                         <div>
                             <h5 class="font-medium text-gray-900 mb-4">Annual Insights</h5>
                             <div class="space-y-4">
-                                <div class="bg-green-50 p-4 rounded-lg">
-                                    <div class="flex items-center space-x-2 mb-2">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                                        </svg>
-                                        <span class="text-sm font-medium text-green-900">Positive Trends</span>
+                                <template x-for="insight in yearlyData.insights" :key="insight.title + insight.message">
+                                    <div class="p-4 rounded-lg" :class="insight.bgClass || 'bg-gray-50'">
+                                        <div class="flex items-center space-x-2 mb-2">
+                                            <template x-if="insight.icon">
+                                                <span x-html="insight.icon"></span>
+                                            </template>
+                                            <span class="text-sm font-medium" :class="insight.titleClass || 'text-gray-900'" x-text="insight.title"></span>
+                                        </div>
+                                        <p class="text-sm" :class="insight.messageClass || 'text-gray-700'" x-text="insight.message"></p>
                                     </div>
-                                    <p class="text-sm text-green-800">Attendance improved by 2.3% compared to last year</p>
-                                </div>
-                                
-                                <div class="bg-blue-50 p-4 rounded-lg">
-                                    <div class="flex items-center space-x-2 mb-2">
-                                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                        </svg>
-                                        <span class="text-sm font-medium text-blue-900">Peak Performance</span>
-                                    </div>
-                                    <p class="text-sm text-blue-800">Q2 showed the strongest attendance rates overall</p>
-                                </div>
-                                
-                                <div class="bg-yellow-50 p-4 rounded-lg">
-                                    <div class="flex items-center space-x-2 mb-2">
-                                        <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                        </svg>
-                                        <span class="text-sm font-medium text-yellow-900">Areas for Improvement</span>
-                                    </div>
-                                    <p class="text-sm text-yellow-800">Monday mornings show 15% higher late arrival rates</p>
-                                </div>
-                                
-                                <div class="bg-purple-50 p-4 rounded-lg">
-                                    <div class="flex items-center space-x-2 mb-2">
-                                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        <span class="text-sm font-medium text-purple-900">Overtime Analysis</span>
-                                    </div>
-                                    <p class="text-sm text-purple-800">Project deadlines drove 68% of overtime hours</p>
+                                </template>
+                                <div x-show="yearlyData.insights.length === 0" class="text-sm text-gray-500">
+                                    No annual insights available.
                                 </div>
                             </div>
                         </div>
@@ -2226,6 +2191,8 @@ function attendanceTracker() {
                         clockedOut: data.data.clockedOutToday || 0,
                         totalEmployees: data.data.totalEmployees,
                         avgCheckIn: data.data.avgCheckIn,
+                        userStatus: data.data.userStatus || '—',
+                        lastClockIn: data.data.lastClockIn || null,
                         lateThreshold: 15
                     };
                 }
@@ -2335,11 +2302,13 @@ function attendanceTracker() {
                             todayLate: data.stats.late,
                             onBreak: data.stats.break,
                             todayAbsent: data.stats.absent,
-                            overtimeToday: 24,
+                            overtimeToday: overviewData.success ? (overviewData.data.weeklyOvertime || 0) : 0,
                             clockedIn: overviewData.success ? (overviewData.data.clockedInToday || 0) : 0,
                             clockedOut: overviewData.success ? (overviewData.data.clockedOutToday || 0) : 0,
                             totalEmployees: data.stats.total,
-                            avgCheckIn: '08:24',
+                            avgCheckIn: overviewData.success ? (overviewData.data.avgCheckIn || '—') : '—',
+                            userStatus: overviewData.success ? (overviewData.data.userStatus || '—') : '—',
+                            lastClockIn: overviewData.success ? (overviewData.data.lastClockIn || null) : null,
                             lateThreshold: 15
                         };
                         
