@@ -799,6 +799,9 @@ Route::middleware(['auth'])->group(function () {
         // API routes for employee timesheets
         Route::get('/employee-timesheets', [\App\Http\Controllers\TimesheetController::class, 'getEmployeeTimesheets'])->name('employee-timesheets');
         Route::get('/stats', [\App\Http\Controllers\TimesheetController::class, 'getTimesheetStats'])->name('stats');
+        Route::get('/monthly-summary', [\App\Http\Controllers\TimesheetController::class, 'getMonthlySummary'])->name('monthly-summary');
+        Route::get('/report-results', [\App\Http\Controllers\TimesheetController::class, 'getReportResults'])->name('report-results');
+        Route::get('/export-pdf', [\App\Http\Controllers\TimesheetController::class, 'exportTimesheetReportPdf'])->name('export-pdf');
         Route::put('/{timesheet}', [\App\Http\Controllers\TimesheetController::class, 'updateTimesheet'])->name('update');
         Route::delete('/{timesheet}', [\App\Http\Controllers\TimesheetController::class, 'deleteTimesheet'])->name('delete');
         

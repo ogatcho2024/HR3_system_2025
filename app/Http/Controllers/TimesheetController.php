@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Jobs\SendTimesheetToPayrollJob;
 use App\Services\NightDifferentialService;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
 
 class TimesheetController extends Controller
 {
@@ -188,6 +189,286 @@ class TimesheetController extends Controller
                 'message' => 'Failed to fetch timesheet statistics: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    private function resolveSummaryStatus(array $counts): string
+    {
+        if (($counts['rejected'] ?? 0) > 0) {
+            return 'rejected';
+        }
+        if (($counts['submitted'] ?? 0) > 0) {
+            return 'submitted';
+        }
+        if (($counts['draft'] ?? 0) > 0) {
+            return 'draft';
+        }
+        if (($counts['approved'] ?? 0) > 0) {
+            return 'approved';
+        }
+        return 'draft';
+    }
+
+    private function buildReportData(string $fromDate, string $toDate, string $reportType): array
+    {
+        $statusColumn = Timesheet::getStatusColumnNameStatic();
+        $statusSql = "`{$statusColumn}`";
+
+        if ($reportType === 'summary') {
+            $rows = Timesheet::selectRaw("
+                    {$statusSql} as status,
+                    SUM(COALESCE(hours_worked, 0)) as total_hours
+                ")
+                ->whereBetween('work_date', [$fromDate, $toDate])
+                ->groupBy('status')
+                ->orderBy('status')
+                ->get();
+
+            $data = $rows->values()->map(function ($row, $idx) use ($fromDate, $toDate) {
+                return [
+                    'id' => $idx + 1,
+                    'date' => $fromDate . ' to ' . $toDate,
+                    'employee' => '—',
+                    'project' => 'All Projects',
+                    'task' => ucfirst($row->status) . ' Summary',
+                    'hours' => number_format((float) $row->total_hours, 2),
+                    'status' => $row->status,
+                ];
+            })->all();
+        } elseif ($reportType === 'project') {
+            $rows = Timesheet::selectRaw("
+                    COALESCE(project_name, 'General Work') as project,
+                    SUM(COALESCE(hours_worked, 0)) as total_hours,
+                    SUM(CASE WHEN {$statusSql} = 'approved' THEN 1 ELSE 0 END) as approved_count,
+                    SUM(CASE WHEN {$statusSql} = 'submitted' THEN 1 ELSE 0 END) as submitted_count,
+                    SUM(CASE WHEN {$statusSql} = 'draft' THEN 1 ELSE 0 END) as draft_count,
+                    SUM(CASE WHEN {$statusSql} = 'rejected' THEN 1 ELSE 0 END) as rejected_count
+                ")
+                ->whereBetween('work_date', [$fromDate, $toDate])
+                ->groupBy('project')
+                ->orderBy('project')
+                ->get();
+
+            $data = $rows->values()->map(function ($row, $idx) use ($fromDate, $toDate) {
+                $status = $this->resolveSummaryStatus([
+                    'approved' => $row->approved_count,
+                    'submitted' => $row->submitted_count,
+                    'draft' => $row->draft_count,
+                    'rejected' => $row->rejected_count,
+                ]);
+
+                return [
+                    'id' => $idx + 1,
+                    'date' => $fromDate . ' to ' . $toDate,
+                    'employee' => '—',
+                    'project' => $row->project,
+                    'task' => 'All Tasks',
+                    'hours' => number_format((float) $row->total_hours, 2),
+                    'status' => $status,
+                ];
+            })->all();
+        } elseif ($reportType === 'employee') {
+            $rows = Timesheet::with('user')
+                ->whereBetween('work_date', [$fromDate, $toDate])
+                ->get()
+                ->groupBy('user_id');
+
+            $data = $rows->values()->map(function ($group, $idx) use ($fromDate, $toDate, $statusColumn) {
+                $first = $group->first();
+                $counts = [
+                    'approved' => $group->where($statusColumn, 'approved')->count(),
+                    'submitted' => $group->where($statusColumn, 'submitted')->count(),
+                    'draft' => $group->where($statusColumn, 'draft')->count(),
+                    'rejected' => $group->where($statusColumn, 'rejected')->count(),
+                ];
+
+                $status = $this->resolveSummaryStatus($counts);
+                $fullName = $first && $first->user
+                    ? trim(($first->user->name ?? '') . ' ' . ($first->user->lastname ?? ''))
+                    : 'User #' . ($first->user_id ?? 'N/A');
+
+                return [
+                    'id' => $idx + 1,
+                    'date' => $fromDate . ' to ' . $toDate,
+                    'employee' => $fullName,
+                    'project' => $fullName,
+                    'task' => 'All Tasks',
+                    'hours' => number_format((float) $group->sum('hours_worked'), 2),
+                    'status' => $status,
+                ];
+            })->all();
+        } else {
+            $rows = Timesheet::with('user')
+                ->whereBetween('work_date', [$fromDate, $toDate])
+                ->orderBy('work_date')
+                ->orderBy('id')
+                ->get();
+
+            $data = $rows->values()->map(function ($row, $idx) {
+                $fullName = $row->user
+                    ? trim(($row->user->name ?? '') . ' ' . ($row->user->lastname ?? ''))
+                    : 'User #' . ($row->user_id ?? 'N/A');
+
+                return [
+                    'id' => $idx + 1,
+                    'date' => $row->work_date ? $row->work_date->format('Y-m-d') : '',
+                    'employee' => $fullName,
+                    'project' => $row->project_name ?: 'General Work',
+                    'task' => $row->work_description ?: 'Daily work activities',
+                    'hours' => number_format((float) ($row->hours_worked ?? 0), 2),
+                    'status' => $row->status ?? 'draft',
+                ];
+            })->all();
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get monthly summary and stats for timesheets
+     */
+    public function getMonthlySummary(Request $request): JsonResponse
+    {
+        try {
+            $month = $request->get('month');
+            $monthDate = $month
+                ? Carbon::createFromFormat('Y-m', $month)
+                : now();
+            $startDate = $monthDate->copy()->startOfMonth()->toDateString();
+            $endDate = $monthDate->copy()->endOfMonth()->toDateString();
+
+            $statusColumn = Timesheet::getStatusColumnNameStatic();
+            $statusSql = "`{$statusColumn}`";
+
+            $summaryRows = Timesheet::selectRaw("
+                    COALESCE(project_name, 'General Work') as project,
+                    COALESCE(work_description, 'No Task') as task,
+                    SUM(COALESCE(hours_worked, 0)) as total_hours,
+                    SUM(CASE WHEN {$statusSql} = 'approved' THEN 1 ELSE 0 END) as approved_count,
+                    SUM(CASE WHEN {$statusSql} = 'submitted' THEN 1 ELSE 0 END) as submitted_count,
+                    SUM(CASE WHEN {$statusSql} = 'draft' THEN 1 ELSE 0 END) as draft_count,
+                    SUM(CASE WHEN {$statusSql} = 'rejected' THEN 1 ELSE 0 END) as rejected_count
+                ")
+                ->whereBetween('work_date', [$startDate, $endDate])
+                ->groupBy('project', 'task')
+                ->orderBy('project')
+                ->orderBy('task')
+                ->get();
+
+            $summary = $summaryRows->values()->map(function ($row, $idx) {
+                $status = $this->resolveSummaryStatus([
+                    'approved' => $row->approved_count,
+                    'submitted' => $row->submitted_count,
+                    'draft' => $row->draft_count,
+                    'rejected' => $row->rejected_count,
+                ]);
+
+                return [
+                    'id' => $idx + 1,
+                    'project' => $row->project,
+                    'task' => $row->task,
+                    'totalHours' => number_format((float) $row->total_hours, 2),
+                    'status' => $status,
+                ];
+            });
+
+            $stats = [
+                'totalHours' => number_format((float) Timesheet::whereBetween('work_date', [$startDate, $endDate])->sum('hours_worked'), 2),
+                'approvedHours' => number_format((float) Timesheet::whereBetween('work_date', [$startDate, $endDate])->where($statusColumn, 'approved')->sum('hours_worked'), 2),
+                'pendingHours' => number_format((float) Timesheet::whereBetween('work_date', [$startDate, $endDate])->where($statusColumn, 'submitted')->sum('hours_worked'), 2),
+                'rejectedHours' => number_format((float) Timesheet::whereBetween('work_date', [$startDate, $endDate])->where($statusColumn, 'rejected')->sum('hours_worked'), 2),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'summary' => $summary,
+                'stats' => $stats,
+                'range' => [
+                    'start' => $startDate,
+                    'end' => $endDate,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load monthly summary: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate timesheet report results for Summary & Analytics
+     */
+    public function getReportResults(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'from_date' => 'required|date',
+                'to_date' => 'required|date|after_or_equal:from_date',
+                'report_type' => 'nullable|in:detailed,summary,project,employee',
+            ]);
+
+            $fromDate = $validated['from_date'];
+            $toDate = $validated['to_date'];
+            $reportType = $validated['report_type'] ?? 'detailed';
+            $data = $this->buildReportData($fromDate, $toDate, $reportType);
+
+            return response()->json([
+                'success' => true,
+                'data' => $data,
+                'range' => [
+                    'start' => $fromDate,
+                    'end' => $toDate,
+                ],
+                'report_type' => $reportType,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid report parameters.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate report: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Export timesheet report as PDF
+     */
+    public function exportTimesheetReportPdf(Request $request)
+    {
+        $validated = $request->validate([
+            'from_date' => 'required|date',
+            'to_date' => 'required|date|after_or_equal:from_date',
+            'report_type' => 'nullable|in:detailed,summary,project,employee',
+        ]);
+
+        $fromDate = $validated['from_date'];
+        $toDate = $validated['to_date'];
+        $reportType = $validated['report_type'] ?? 'detailed';
+
+        $rows = $this->buildReportData($fromDate, $toDate, $reportType);
+
+        $data = [
+            'title' => 'Timesheet Report',
+            'date_range' => $fromDate . ' to ' . $toDate,
+            'report_type' => ucfirst($reportType),
+            'rows' => $rows,
+            'generated_at' => now()->format('Y-m-d H:i'),
+            'system_name' => config('app.name', 'HR System'),
+        ];
+
+        $pdf = PDF::loadView('pdf.timesheet-report', $data)->setPaper('a4', 'landscape');
+        $dompdf = $pdf->getDomPDF();
+        $dompdf->getOptions()->setChroot(realpath(base_path()));
+        $dompdf->getOptions()->setIsRemoteEnabled(false);
+        $dompdf->getOptions()->setDefaultFont('Arial');
+
+        $filename = 'timesheet-report-' . now()->format('Y-m-d_His') . '.pdf';
+        return $pdf->download($filename);
     }
     
     /**

@@ -3,12 +3,6 @@
 @section('title', 'HR Timesheet Management')
 @section('content')
   <div class="max-w-7xl mx-auto p-6 bg-gray-300">
-    <header class="flex items-center justify-between mb-6">
-      <div>
-        <h3 class="text-2xl font-bold">Timesheet Management</h3>
-        <p class="text-sm text-gray-600 mt-1">Manage employee timesheets, approvals, and payroll integration</p>
-      </div>  
-    </header>
 
     <!-- Flash Messages -->
     @if(session('success'))
@@ -830,6 +824,11 @@
       get currentMonthYear() {
         return new Date(this.currentYear, this.currentMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       },
+
+      getMonthParam() {
+        const month = String(this.currentMonth + 1).padStart(2, '0');
+        return `${this.currentYear}-${month}`;
+      },
       
       get weeklyStatusClass() {
         const classes = {
@@ -933,19 +932,25 @@
       },
       
       loadMonthlyData() {
-        // Mock data - replace with actual API call
-        this.monthlySummary = [
-          { id: 1, project: 'Website Development', task: 'Frontend Development', totalHours: 160, status: 'approved' },
-          { id: 2, project: 'Mobile App', task: 'API Integration', totalHours: 40, status: 'pending' },
-          { id: 3, project: 'Database Migration', task: 'Data Migration', totalHours: 80, status: 'approved' }
-        ];
-        
-        this.monthlyStats = {
-          totalHours: 280,
-          approvedHours: 240,
-          pendingHours: 40,
-          rejectedHours: 0
-        };
+        const month = this.getMonthParam();
+        fetch(`${TIMESHEET_API_BASE_URL}/timesheets/monthly-summary?month=${month}`)
+          .then(response => response.json())
+          .then(result => {
+            if (result.success) {
+              this.monthlySummary = result.summary || [];
+              this.monthlyStats = result.stats || {
+                totalHours: 0,
+                approvedHours: 0,
+                pendingHours: 0,
+                rejectedHours: 0
+              };
+            } else {
+              console.error('Failed to load monthly summary:', result.message);
+            }
+          })
+          .catch(error => {
+            console.error('Error loading monthly summary:', error);
+          });
       },
       
       loadPendingApprovals() {
@@ -1056,18 +1061,46 @@
           alert('Please select both from and to dates');
           return;
         }
-        
-        // Mock report results
-        this.reportResults = [
-          { id: 1, date: '2024-01-08', project: 'Website Development', task: 'Frontend', hours: 8, status: 'approved' },
-          { id: 2, date: '2024-01-09', project: 'Mobile App', task: 'API Integration', hours: 6, status: 'pending' },
-          { id: 3, date: '2024-01-10', project: 'Database Migration', task: 'Data Migration', hours: 7.5, status: 'approved' }
-        ];
+
+        const params = new URLSearchParams({
+          from_date: this.reportFromDate,
+          to_date: this.reportToDate,
+          report_type: this.reportType
+        });
+
+        fetch(`${TIMESHEET_API_BASE_URL}/timesheets/report-results?${params}`)
+          .then(response => response.json())
+          .then(result => {
+            if (result.success) {
+              this.reportResults = result.data || [];
+            } else {
+              alert(result.message || 'Failed to generate report');
+            }
+          })
+          .catch(error => {
+            console.error('Error generating report:', error);
+            alert('An error occurred while generating the report.');
+          });
       },
       
       exportReport(format) {
+        if (!this.reportFromDate || !this.reportToDate) {
+          alert('Please select both from and to dates');
+          return;
+        }
+
+        if (format === 'pdf') {
+          const params = new URLSearchParams({
+            from_date: this.reportFromDate,
+            to_date: this.reportToDate,
+            report_type: this.reportType
+          });
+          const url = `${TIMESHEET_API_BASE_URL}/timesheets/export-pdf?${params}`;
+          window.open(url, '_blank');
+          return;
+        }
+
         console.log(`Exporting report as ${format}...`);
-        // Implement export functionality
       },
       
       async approveTimesheet(id) {
